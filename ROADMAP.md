@@ -217,5 +217,13 @@ referências, e sobrevive ao desligamento do worker enquanto espera a decisão n
 71). A decisão é lida no kernel; o sinal da outbox só avisa. Ficaram fora o ADK, que exige o
 gateway de modelos (PXOS-11), a delegação, a expiração e a revogação de aprovação, o teste de
 isolamento entre namespaces e a retomada após morte do processo do worker (testou-se o
-desligamento ordenado); o PXOS-36 continua aberto. O escopo da próxima fatia é decidido
-com o mantenedor, e cada fase começa com confirmação explícita.
+desligamento ordenado); o PXOS-36 continua aberto.
+A fatia 6 entregou o gateway de modelos em 14/11/2026 (PXOS-72 a 74 e 76): cada instalação
+grava a residência (`br` ou `global`) no bootstrap, o kernel deriva dela uma única rota, o
+gateway só monta cliente para essa rota e o agente ADK recebe um modelo preso a ela; o
+Hindsight usa a mesma rota. K12, K13 e K14 ficaram fora. A validação real no Vertex (PXOS-75)
+segue aberta: embeddings funcionam em São Paulo, mas nenhum modelo de geração respondeu em
+`southamerica-east1`, e o Claude não respondeu no endpoint global do projeto de teste. Um
+`LlmAgent` ainda pode ser montado com o nome de um modelo, sem o gateway; isso fecha na fatia 7
+(PXOS-77). O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com
+confirmação explícita.
