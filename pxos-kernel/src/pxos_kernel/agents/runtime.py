@@ -10,13 +10,13 @@ from typing import Any
 
 from google.adk.agents import LlmAgent
 from google.adk.agents.readonly_context import ReadonlyContext
-from google.adk.models.base_llm import BaseLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from pydantic import BaseModel, ValidationError, create_model
 
 from pxos_kernel.agents.versions import AgentVersion
+from pxos_kernel.model_access import GatewayModel, ModelNotAllowed
 
 APP = "pxos"
 
@@ -24,7 +24,11 @@ APP = "pxos"
 class FactReader:
     """Reads facts with the version's instructions, on the model the gateway gave."""
 
-    def __init__(self, model: BaseLlm, version: AgentVersion, payload: type[BaseModel]) -> None:
+    def __init__(
+        self, model: GatewayModel, version: AgentVersion, payload: type[BaseModel]
+    ) -> None:
+        if not isinstance(model, GatewayModel):
+            raise ModelNotAllowed("an agent gets its model from the gateway, and only from it")
         self._version = version
         optional: Any = payload | None
         self._answer = create_model("Candidate", payload=(optional, None), quote=(str | None, None))
@@ -33,7 +37,7 @@ class FactReader:
             return version.instructions  # literal: braces are text, not ADK state
 
         self._agent = LlmAgent(
-            name=version.agent.replace("-", "_"),
+            name="reader",  # an ADK name must be an identifier; actor ids need not be
             model=model,
             instruction=instructions,
             output_schema=self._answer,

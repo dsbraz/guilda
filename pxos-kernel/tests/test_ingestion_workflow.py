@@ -203,6 +203,30 @@ async def test_a_retry_after_the_commit_returns_the_same_proposals(
     assert await proposed(pool, document, 2) == ids  # no duplicates
 
 
+async def test_a_transient_model_failure_is_retried(
+    temporal: Client,
+    pool: asyncpg.Pool,
+    publisher: asyncpg.Pool,
+    registry: Registry,
+) -> None:
+    document = source()
+    calls: list[str] = []
+
+    def flaky(request: LlmRequest) -> str:
+        calls.append(fact_of(request))
+        if len(calls) == 1:
+            raise ConnectionResetError("model connection reset")
+        return READ(request)
+
+    async with worker(temporal, pool, registry, document, reply=flaky) as queue:
+        handle = await start(temporal, queue, document.key)
+        ids = await proposed(pool, document, 2)
+        await decide(pool, publisher, temporal, registry, dict.fromkeys(ids, "approved"))
+        result = await asyncio.wait_for(handle.result(), timeout=30)
+
+    assert sorted(result) == sorted(str(i) for i in ids)
+
+
 async def test_a_failure_does_not_carry_the_source_into_history(
     temporal: Client, pool: asyncpg.Pool, registry: Registry
 ) -> None:

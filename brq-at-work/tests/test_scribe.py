@@ -24,6 +24,6 @@ def test_memory_instructions_ask_for_the_verbatim_quote() -> None:
 def test_the_distribution_builds_no_adk_agent() -> None:
     """Only the kernel builds agents, on the gateway's model (ADR 0004 §2, rule 1)."""
     source = Path(brq_at_work.__file__).parent
-    adk = re.compile(r"^\s*(import|from)\s+google\.adk\b", re.M)
+    adk = re.compile(r"^\s*(import\s+google\.adk|from\s+google(\.adk|\s+import\s+adk))\b", re.M)
     files = list(source.rglob("*.py"))
     assert files and not [path for path in files if adk.search(path.read_text())]

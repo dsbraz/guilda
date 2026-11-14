@@ -22,11 +22,17 @@ from google.adk.models.llm_request import LlmRequest
 import pxos_kernel
 from agents_testing import publish, scripted
 from db_testing import Database
-from pxos_kernel.agents import NoApprovedVersion, approved_version, recorded_run
+from pxos_kernel.agents import (
+    AgentVersion,
+    FactReader,
+    NoApprovedVersion,
+    approved_version,
+    recorded_run,
+)
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import SourceDocument, ingest
-from pxos_kernel.model_access import ROUTES, FakeModels, ModelGateway
+from pxos_kernel.model_access import ROUTES, FakeModels, GatewayModel, ModelGateway, ModelNotAllowed
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 
@@ -176,6 +182,25 @@ async def test_the_application_cannot_forge_or_change_a_run(
             with pytest.raises(asyncpg.PostgresError) as refused:
                 await connection.execute(forge, version.entity_id, revision, "forged")
             assert refused.value.sqlstate == "PX015"
+
+
+async def test_the_adk_step_runs_only_on_the_gateways_model(registry: Registry) -> None:
+    """A model built around the gateway is refused, whatever the agent's id looks like."""
+    models = FakeModels(reply=scripted(read))
+    version = AgentVersion(
+        agent="shelf.agent-2",  # actor ids may hold dots and hyphens
+        entity_id=uuid4(),
+        revision=1,
+        digest="d",
+        instructions="Read it.",
+        memory_instructions="Extract it.",
+        proposes=("retail", "create_restock_order"),
+    )
+    payload = registry.get("retail").models["RestockOrder"]
+    with pytest.raises(ModelNotAllowed):
+        FactReader(models(ROUTES["br"]), version, payload)  # type: ignore[arg-type]
+    reader = FactReader(GatewayModel(ROUTES["br"], models(ROUTES["br"])), version, payload)
+    assert await reader.read(FACT) == ({**ORDER, "occurred_at": "2026-11-14T09:00:00Z"}, QUOTE)
 
 
 def test_only_the_agent_runtime_builds_adk_agents() -> None:

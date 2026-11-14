@@ -17,6 +17,7 @@ import asyncpg
 import pytest
 from starlette.applications import Starlette
 from temporalio.client import Client, WorkflowFailureError
+from temporalio.exceptions import ActivityError
 from temporalio.worker import Worker
 
 from brq_at_work.composition import bootstrap
@@ -153,10 +154,12 @@ async def test_the_scribe_runs_only_from_the_version_eva_approved(
     outbox.update(review_signals(temporal))
 
     # 1: a fresh installation has no approved version; the scribe does not run.
-    with pytest.raises(WorkflowFailureError):
+    with pytest.raises(WorkflowFailureError) as failed:
         await ingest_by_reference(
             temporal, fresh_pool, registry, scribe_models, transcript(), outbox, publisher
         )
+    assert isinstance(failed.value.cause, ActivityError)
+    assert "NoApprovedVersion" in str(failed.value.cause.cause)
     assert scribe_models.requests == []
 
     # 2: Bruno proposes the definition over MCP; the card goes to Eva, not to Ana.

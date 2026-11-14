@@ -230,6 +230,7 @@ A fatia 7 foi concluída em 14/11/2026 (PXOS-78 a 80): a definição do escriba 
 publicada no banco, aprovada pelo papel `platform-admin` pelo mesmo ciclo de proposta, e o
 escriba só roda a partir da versão vigente. Na ingestão, um agente ADK montado pelo kernel,
 com o modelo do gateway, lê cada fato extraído, e cada execução registra a versão que rodou.
-A distribuição não importa o ADK. A execução real da etapa ADK na rota `br` espera o PXOS-75.
+A distribuição não importa o ADK. A etapa ADK foi validada no Vertex só com o Gemini no
+endpoint `global`; na rota `br`, espera o PXOS-75.
 O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com confirmação
 explícita.

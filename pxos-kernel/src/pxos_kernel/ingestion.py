@@ -14,12 +14,12 @@ from datetime import datetime
 from typing import Protocol
 
 import asyncpg
-from google.adk.models.base_llm import BaseLlm
 
 from pxos_kernel.agents import FactReader, approved_version, record_run
 from pxos_kernel.context import ContextStore
 from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import session
+from pxos_kernel.model_access import GatewayModel
 from pxos_kernel.ontology import InvalidPackage, Registry
 from pxos_kernel.state import Evidence, InvalidProposal, Proposal, propose
 
@@ -82,7 +82,7 @@ async def ingest(
     registry: Registry,
     store: ContextStore,
     document: SourceDocument,
-    model: BaseLlm,
+    model: GatewayModel,
     *,
     agent: str,
 ) -> list[Proposal]:
