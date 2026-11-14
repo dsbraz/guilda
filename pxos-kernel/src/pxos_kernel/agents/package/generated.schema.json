@@ -1,0 +1,134 @@
+{
+    "$defs": {
+        "Actor": {
+            "additionalProperties": false,
+            "description": "Pessoa interna, pessoa externa ou agente.",
+            "properties": {
+                "actor_kind": {
+                    "$ref": "#/$defs/ActorKind"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "actor_kind"
+            ],
+            "title": "Actor",
+            "type": "object"
+        },
+        "ActorKind": {
+            "description": "",
+            "enum": [
+                "internal_person",
+                "external_person",
+                "agent"
+            ],
+            "title": "ActorKind",
+            "type": "string"
+        },
+        "AgentVersion": {
+            "additionalProperties": false,
+            "description": "Defini\u00e7\u00e3o publicada de um agente. O modelo n\u00e3o faz parte dela: vem da rota da resid\u00eancia da instala\u00e7\u00e3o.",
+            "properties": {
+                "agent": {
+                    "type": "string"
+                },
+                "instructions": {
+                    "description": "O que o agente faz com cada fato extra\u00eddo.",
+                    "type": "string"
+                },
+                "memory_instructions": {
+                    "description": "O que a mem\u00f3ria de contexto extrai de cada fonte.",
+                    "type": "string"
+                },
+                "proposes": {
+                    "description": "A\u00e7\u00e3o que o agente prop\u00f5e, como pacote.a\u00e7\u00e3o; dela vem o schema de sa\u00edda.",
+                    "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "agent",
+                "instructions",
+                "memory_instructions",
+                "proposes"
+            ],
+            "title": "AgentVersion",
+            "type": "object"
+        },
+        "Event": {
+            "additionalProperties": false,
+            "description": "",
+            "properties": {
+                "occurred_at": {
+                    "format": "date-time",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "occurred_at"
+            ],
+            "title": "Event",
+            "type": "object"
+        },
+        "Evidence": {
+            "additionalProperties": false,
+            "description": "Refer\u00eancia \u00e0 fonte e trecho literal que sustentam uma proposta.",
+            "properties": {
+                "context_ref": {
+                    "type": "string"
+                },
+                "quote": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "source",
+                "quote",
+                "context_ref"
+            ],
+            "title": "Evidence",
+            "type": "object"
+        },
+        "Organization": {
+            "additionalProperties": false,
+            "description": "",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Organization",
+            "type": "object"
+        },
+        "Role": {
+            "additionalProperties": false,
+            "description": "",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Role",
+            "type": "object"
+        }
+    },
+    "$id": "https://pxos.example/ontology/agents",
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "additionalProperties": true,
+    "metamodel_version": "1.12.0",
+    "title": "pxos_agents",
+    "type": "object",
+    "version": "0.1.0"
+}

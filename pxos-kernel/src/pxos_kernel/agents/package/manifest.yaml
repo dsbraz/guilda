@@ -1,0 +1,10 @@
+name: pxos_agents
+version: 0.1.0
+types:
+  - name: AgentVersion
+    readers: [platform-admin, agent]
+actions:
+  - name: publish_agent_version
+    creates: AgentVersion
+    approver: platform-admin
+    reversible: true

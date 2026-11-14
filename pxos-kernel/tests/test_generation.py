@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+from pxos_kernel.agents.versions import PACKAGE_DIR as AGENTS
 from pxos_kernel.ontology.generate import JSON_SCHEMA_FILE, MODELS_FILE, stale_files
 from pxos_kernel.ontology.loader import BASE_DIR
 
@@ -9,11 +10,11 @@ RETAIL = Path(__file__).parent / "retail_fixture"
 
 def test_generated_files_match_linkml() -> None:
     """Snapshot: regenerate with `python -m pxos_kernel.ontology.generate <dirs>`."""
-    assert stale_files([RETAIL]) == []
+    assert stale_files([RETAIL, AGENTS]) == []
 
 
 def test_generated_files_live_next_to_their_package() -> None:
-    for package_dir in (BASE_DIR, RETAIL):
+    for package_dir in (BASE_DIR, RETAIL, AGENTS):
         assert (package_dir / MODELS_FILE).is_file()
         assert (package_dir / JSON_SCHEMA_FILE).is_file()
 

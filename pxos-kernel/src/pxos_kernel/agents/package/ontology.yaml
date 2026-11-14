@@ -1,0 +1,44 @@
+# Pacote de agentes do kernel (ADR 0004 §3, K34). A definição de um agente é um tipo
+# canônico: cada revisão aprovada é uma versão publicada, imutável, com digest.
+id: https://pxos.example/ontology/agents
+name: pxos_agents
+title: Agentes da plataforma
+version: 0.1.0
+annotations:
+  pxos.base_version: 0.1.0
+prefixes:
+  linkml: https://w3id.org/linkml/
+  agents: https://pxos.example/ontology/agents/
+default_prefix: agents
+default_range: string
+imports:
+  - linkml:types
+  - pxos_base
+
+classes:
+  AgentVersion:
+    title: Versão de agente
+    description: >-
+      Definição publicada de um agente. O modelo não faz parte dela: vem da rota da
+      residência da instalação.
+    annotations:
+      pxos.kind: canonical
+    attributes:
+      agent:
+        title: agente
+        required: true
+        annotations:
+          pxos.refers_to: Actor
+      instructions:
+        title: instruções
+        description: O que o agente faz com cada fato extraído.
+        required: true
+      memory_instructions:
+        title: instruções para a memória de contexto
+        description: O que a memória de contexto extrai de cada fonte.
+        required: true
+      proposes:
+        title: ação proposta
+        description: Ação que o agente propõe, como pacote.ação; dela vem o schema de saída.
+        required: true
+        pattern: "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"

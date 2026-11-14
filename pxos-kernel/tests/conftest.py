@@ -7,6 +7,7 @@ import pytest
 import retail_fixture.generated as retail_models
 
 from db_testing import Database, create_test_database
+from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
 from pxos_kernel.model_access import Residency, install_residency
 from pxos_kernel.ontology import Registry
@@ -20,6 +21,7 @@ RETAIL = Path(__file__).parent / "retail_fixture"
 def registry() -> Registry:
     registry = Registry()
     registry.register(RETAIL, retail_models)
+    register_agents(registry)
     return registry
 
 

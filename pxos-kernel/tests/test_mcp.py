@@ -53,7 +53,13 @@ async def test_a_call_without_a_valid_token_is_refused(app: Starlette) -> None:
 async def test_catalog_is_generated_from_the_registry(app: Starlette, issuer: LocalIssuer) -> None:
     async with connect(app, issuer.token("erin")) as client:
         tools = {tool.name: tool for tool in (await client.list_tools()).tools}
-    assert set(tools) == {"list_restock_orders", "timeline", "create_restock_order"}
+    assert set(tools) == {
+        "list_restock_orders",
+        "timeline",
+        "create_restock_order",
+        "list_agent_versions",
+        "publish_agent_version",
+    }
     schema = tools["create_restock_order"].input_schema
     assert set(schema["properties"]) == {"payload", "quote", "valid_from"}
     assert {"payload", "quote"} <= set(schema["required"])
@@ -78,6 +84,25 @@ async def test_an_action_tool_creates_a_proposal_with_the_callers_statement(
     assert proposal.evidence["source"] == "mcp:erin"
     assert proposal.evidence["quote"] == "Faltam 2 M-1."
     assert proposal.digest == created["digest"]
+
+
+async def test_an_agent_version_is_proposed_like_any_fact(
+    app: Starlette, issuer: LocalIssuer
+) -> None:
+    """Before the web form, a definition is published through the MCP (ADR 0004 §3)."""
+    definition = {
+        "agent": "restock-agent",
+        "instructions": "Read each restock promise.",
+        "memory_instructions": "Extract every restock promise.",
+        "proposes": "retail.create_restock_order",
+    }
+    created = await call(
+        app,
+        issuer.token("frank"),
+        "publish_agent_version",
+        {"payload": definition, "quote": "Primeira versão."},
+    )
+    assert (created["status"], created["approver_role"]) == ("pending", "platform-admin")
 
 
 @pytest.mark.parametrize(
