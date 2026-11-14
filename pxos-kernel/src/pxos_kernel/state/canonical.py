@@ -227,6 +227,14 @@ async def get_proposal(connection: Connection, proposal_id: UUID) -> Proposal:
     return Proposal(**dict(row))
 
 
+async def get_review(connection: Connection, proposal_id: UUID) -> Review | None:
+    """The decision on a proposal the session can read, or None while it is pending."""
+    row = await connection.fetchrow(
+        "SELECT * FROM pxos.reviews WHERE proposal_id = $1", proposal_id
+    )
+    return None if row is None else Review(**dict(row))
+
+
 async def as_of(
     connection: Connection, entity_id: UUID, *, valid_at: datetime, known_at: datetime
 ) -> Fact | None:

@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import asyncpg
@@ -10,6 +10,7 @@ from db_testing import Database, create_test_database
 from pxos_kernel.identity import install_identities, read_identities
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool, install_packages
+from temporal_testing import dev_server
 
 RETAIL = Path(__file__).parent / "retail_fixture"
 
@@ -52,3 +53,9 @@ async def pool(database: Database) -> AsyncIterator[asyncpg.Pool]:
     pool = await create_pool(database.app_dsn)
     yield pool
     await pool.close()
+
+
+@pytest.fixture(scope="session")
+def temporal_address() -> Iterator[str]:
+    with dev_server() as address:
+        yield address

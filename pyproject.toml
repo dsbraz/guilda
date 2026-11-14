@@ -32,6 +32,7 @@ strict = true
 files = [
     "db_testing.py",
     "mcp_testing.py",
+    "temporal_testing.py",
     "pxos-kernel/src",
     "pxos-kernel/tests",
     "brq-at-work/src",
