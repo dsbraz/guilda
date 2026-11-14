@@ -8,6 +8,7 @@ import retail_fixture.generated as retail_models
 
 from db_testing import Database, create_test_database
 from pxos_kernel.identity import install_identities, read_identities
+from pxos_kernel.model_access import Residency, install_residency
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool, install_packages
 from temporal_testing import dev_server
@@ -22,7 +23,7 @@ def registry() -> Registry:
     return registry
 
 
-def installation(name: str, registry: Registry) -> Database:
+def installation(name: str, registry: Registry, residency: Residency) -> Database:
     database = create_test_database(name)
 
     async def bootstrap() -> None:
@@ -30,6 +31,7 @@ def installation(name: str, registry: Registry) -> Database:
         try:
             await install_identities(owner, read_identities(RETAIL / "identities.yaml"))
             await install_packages(owner, registry)
+            await install_residency(owner, residency)
         finally:
             await owner.close()
 
@@ -39,13 +41,13 @@ def installation(name: str, registry: Registry) -> Database:
 
 @pytest.fixture(scope="session")
 def database(registry: Registry) -> Database:
-    return installation("pxos_test_kernel", registry)
+    return installation("pxos_test_kernel", registry, "br")
 
 
 @pytest.fixture(scope="session")
 def other_database(registry: Registry) -> Database:
     """A second installation with the same actors, to show they share nothing (PXOS-63)."""
-    return installation("pxos_test_other", registry)
+    return installation("pxos_test_other", registry, "global")
 
 
 @pytest.fixture
