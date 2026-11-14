@@ -24,6 +24,7 @@ from brq_at_work.composition import bootstrap
 from brq_at_work.scribe import DRAFT, SCRIBE, scribe_activities
 from db_testing import Database, create_test_database
 from mcp_testing import BASE, call, running
+from model_testing import ROUTE
 from pxos_kernel.agents import approved_version, recorded_run
 from pxos_kernel.api.auth import JwtVerifier, LocalIssuer
 from pxos_kernel.api.server import build_server, http_app
@@ -53,7 +54,7 @@ COMMITMENT = (
 @pytest.fixture(scope="module")
 def fresh(registry: Registry) -> Database:
     database = create_test_database("pxos_test_brq_slice7")
-    bootstrap(database.owner_dsn, registry)
+    bootstrap(database.owner_dsn, registry, route=ROUTE)
     return database
 
 

@@ -17,7 +17,8 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from db_testing import Database
-from pxos_kernel.model_access import ROUTES, FakeModels, ModelGateway, ModelNotAllowed
+from model_testing import OTHER_ROUTE, ROUTE
+from pxos_kernel.model_access import FakeModels, ModelGateway, ModelNotAllowed
 from pxos_kernel.state import create_pool
 
 
@@ -46,14 +47,14 @@ async def ask(agent: LlmAgent, text: str) -> str:
     return answer
 
 
-async def test_an_agent_on_a_br_installation_calls_only_the_br_route(
+async def test_an_agent_calls_only_the_installation_route(
     pool: asyncpg.Pool,
 ) -> None:
     models = FakeModels(reply="ok")
     agent = LlmAgent(name="reader", model=await ModelGateway(pool, models).adk_model())
 
     assert await ask(agent, "olá") == "ok"
-    assert models.routes == [ROUTES["br"]]
+    assert models.routes == [ROUTE]
 
 
 async def test_each_installation_answers_from_its_own_route(
@@ -62,14 +63,14 @@ async def test_each_installation_answers_from_its_own_route(
     models = FakeModels(reply="ok")
     for each in (pool, other_pool):
         await ask(LlmAgent(name="reader", model=await ModelGateway(each, models).adk_model()), "x")
-    assert models.routes == [ROUTES["br"], ROUTES["global"]]
+    assert models.routes == [ROUTE, OTHER_ROUTE]
 
 
 async def test_a_request_for_another_model_is_refused(pool: asyncpg.Pool) -> None:
     models = FakeModels(reply="ok")
 
     def elsewhere(callback_context: CallbackContext, llm_request: LlmRequest) -> None:
-        llm_request.model = ROUTES["global"].model
+        llm_request.model = OTHER_ROUTE.model
 
     agent = LlmAgent(
         name="reader",

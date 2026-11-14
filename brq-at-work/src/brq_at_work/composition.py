@@ -8,7 +8,7 @@ import asyncpg
 import brq_at_work.ontology.work_context.generated as work_context_models
 from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
-from pxos_kernel.model_access import Residency, install_residency
+from pxos_kernel.model_access import Route, install_route
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import install_packages, upgrade
 
@@ -24,19 +24,16 @@ def build_registry() -> Registry:
     return registry
 
 
-RESIDENCY: Residency = "br"
-"""BRQ@work handles client transcripts: unless an installation says otherwise, models and
-memory stay in Brazil."""
-
-
 def bootstrap(
     owner_dsn: str,
     registry: Registry,
     identities: Path = IDENTITIES,
     *,
-    residency: Residency = RESIDENCY,
+    route: Route | None = None,
 ) -> None:
-    """Migrate the installation and record identities, packages and residency, as the owner."""
+    """Migrate the installation and record identities, packages and, when the deploy
+    configures one, the model route (``Route.from_environment()``), as the owner. Without a
+    route the installation gets no model."""
     upgrade(owner_dsn)
 
     async def install() -> None:
@@ -44,7 +41,8 @@ def bootstrap(
         try:
             await install_identities(owner, read_identities(identities))
             await install_packages(owner, registry)
-            await install_residency(owner, residency)
+            if route is not None:
+                await install_route(owner, route)
         finally:
             await owner.close()
 

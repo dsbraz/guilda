@@ -1,12 +1,15 @@
-"""Exit criterion of slice 6 (PXOS-76): BRQ@work declares its residency, and models obey.
+"""Exit criterion of slice 6 (PXOS-76): each BRQ@work installation uses the route its deploy
+configured, and models obey.
 
-BRQ@work installs with residency in Brazil unless told otherwise. Two installations side
-by side get their own routes; the Brazilian one never reaches the global endpoint, not
-through an ADK agent and not through Hindsight's configuration. The scribe's cycle of
-slice 2 (test_slice2_exit) runs on this same Brazilian installation.
+Which provider, model and regions a client's installation uses is decided at deploy, from
+the environment (.env.example); BRQ@work fixes none of them. Two installations side by side
+get their own routes, and an ADK agent and Hindsight's configuration stay on them. The
+scribe's cycle of slice 2 (test_slice2_exit) runs on the first installation.
 """
 
+import re
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import asyncpg
 import pytest
@@ -17,22 +20,25 @@ from google.genai import types
 
 from brq_at_work.composition import bootstrap
 from db_testing import Database, create_test_database
+from model_testing import OTHER_ROUTE, ROUTE
 from pxos_kernel.context.hindsight import server_settings
-from pxos_kernel.model_access import ROUTES, FakeModels, ModelGateway, Route
+from pxos_kernel.model_access import FakeModels, ModelGateway
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 
+SOURCE = Path(__file__).resolve().parents[1] / "src"
+
 
 @pytest.fixture(scope="module")
-def global_installation(registry: Registry) -> Database:
-    database = create_test_database("pxos_test_brq_global")
-    bootstrap(database.owner_dsn, registry, residency="global")
+def other_installation(registry: Registry) -> Database:
+    database = create_test_database("pxos_test_brq_other_route")
+    bootstrap(database.owner_dsn, registry, route=OTHER_ROUTE)
     return database
 
 
 @pytest.fixture
-async def global_pool(global_installation: Database) -> AsyncIterator[asyncpg.Pool]:
-    pool = await create_pool(global_installation.app_dsn)
+async def other_pool(other_installation: Database) -> AsyncIterator[asyncpg.Pool]:
+    pool = await create_pool(other_installation.app_dsn)
     yield pool
     await pool.close()
 
@@ -56,28 +62,38 @@ async def answer(gateway: ModelGateway) -> str:
     return text
 
 
-def regions(route: Route) -> set[str]:
-    settings = server_settings(route, project="p")
-    return {route.region, *settings.values()}
+def test_brq_at_work_fixes_no_model_or_region() -> None:
+    fixed = re.compile(
+        r"(gemini|claude)-[0-9a-z.-]+|(southamerica|northamerica|us|europe|asia|me|africa)"
+        r"-[a-z]+[0-9]|['\"]global['\"]|residen"
+    )
+    found = [
+        f"{path.relative_to(SOURCE)}: {match.group()}"
+        for path in SOURCE.rglob("*.py")
+        for match in fixed.finditer(path.read_text(encoding="utf-8"))
+    ]
+    assert found == []
 
 
-async def test_brq_at_work_keeps_a_br_installation_in_brazil(
-    pool: asyncpg.Pool, global_pool: asyncpg.Pool
+async def test_each_installation_stays_on_the_route_of_its_deploy(
+    pool: asyncpg.Pool, other_pool: asyncpg.Pool
 ) -> None:
-    # 1: installed with residency in Brazil by default.
-    async with pool.acquire() as connection:
-        assert await connection.fetchval("SELECT residency FROM pxos.installation") == "br"
-
-    # 2: each installation gets its own route.
+    # 1: each installation gets the route it was deployed with.
     models = FakeModels(reply="em dia")
-    br, world = ModelGateway(pool, models), ModelGateway(global_pool, models)
-    assert await br.route() == ROUTES["br"]
-    assert await world.route() == ROUTES["global"]
+    first, other = ModelGateway(pool, models), ModelGateway(other_pool, models)
+    assert await first.route() == ROUTE
+    assert await other.route() == OTHER_ROUTE
 
-    # 3: an ADK agent on the br installation answers through the gateway, on the br route.
-    assert await answer(br) == "em dia"
-    assert models.routes == [ROUTES["br"]]
+    # 2: an ADK agent answers through the gateway, on its installation's route.
+    assert await answer(first) == "em dia"
+    assert models.routes == [ROUTE]
 
-    # 4: neither the agent's route nor Hindsight's configuration leaves Brazil.
-    assert not regions(await br.route()) & {"global", "us-central1"}
-    assert "global" in regions(await world.route())
+    # 3: Hindsight's configuration follows the same route.
+    settings = server_settings(await first.route(), project="p")
+    assert settings["HINDSIGHT_API_LLM_VERTEXAI_REGION"] == ROUTE.memory_region
+    assert settings["HINDSIGHT_API_EMBEDDINGS_VERTEXAI_REGION"] == ROUTE.embedding_region
+    assert not set(settings.values()) & {
+        OTHER_ROUTE.region,
+        OTHER_ROUTE.memory_region,
+        OTHER_ROUTE.embedding_region,
+    }

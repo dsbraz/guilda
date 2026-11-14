@@ -51,19 +51,23 @@ Hindsight sobre o Postgres do Compose e o modelo no Vertex (gasta tokens no proj
 indicado):
 
 ```sh
-GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... scripts/hindsight-local.sh
+cp .env.example .env  # e preencha a rota de modelos
+GOOGLE_APPLICATION_CREDENTIALS=... scripts/hindsight-local.sh
 PXOS_HINDSIGHT_URL=http://127.0.0.1:18888 uv run pytest -k hindsight
 ```
 
-Cada instalação declara a residência (`br` ou `global`) no bootstrap; a BRQ@work usa `br`
-por padrão. Dela sai a única rota de modelos da instalação: o gateway entrega ao agente ADK
-um modelo preso a essa rota, e o script do Hindsight deriva da mesma rota o modelo, os
-embeddings e as regiões (`PXOS_RESIDENCY`, padrão `br`). A validação das rotas no Vertex é
-opt-in e gera cobrança; o resultado de 14/11/2026 está em
-[docs/validacoes](docs/validacoes/2026-11-14-rotas-vertex.md):
+Provedor, modelos e regiões são decisão de deploy: o FDE os define por cliente no ambiente
+(`PXOS_MODEL_PROVIDER`, `PXOS_MODEL`, `PXOS_MODEL_REGION`, `PXOS_MEMORY_*` e
+`PXOS_EMBEDDING_*`; modelo em [.env.example](.env.example)), e nada disso é fixo no código. O
+bootstrap grava a rota recebida (`route=Route.from_environment()`), um novo deploy a
+substitui, e sem rota a instalação não recebe modelo. O gateway entrega ao agente ADK um
+modelo preso a essa rota, e o script do Hindsight tira da mesma rota o modelo, os embeddings e
+as regiões. A validação da rota configurada no Vertex é opt-in e gera cobrança; os resultados
+estão em [docs/validacoes](docs/validacoes/2026-11-14-rotas-vertex.md):
 
 ```sh
-GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... uv run pytest pxos-kernel/tests/test_vertex_routes.py
+set -a; . ./.env; set +a
+GOOGLE_APPLICATION_CREDENTIALS=... uv run pytest pxos-kernel/tests/test_vertex_routes.py
 ```
 
 Para usar o contexto de trabalho por MCP (fatia 3), suba o servidor local. Ele recria o banco

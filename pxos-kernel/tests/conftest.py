@@ -8,9 +8,10 @@ import retail_fixture.generated as retail_models
 
 from agents_testing import publish
 from db_testing import Database, create_test_database
+from model_testing import OTHER_ROUTE, ROUTE
 from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
-from pxos_kernel.model_access import Residency, install_residency
+from pxos_kernel.model_access import Route, install_route
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool, install_packages
 from temporal_testing import dev_server
@@ -26,7 +27,7 @@ def registry() -> Registry:
     return registry
 
 
-def installation(name: str, registry: Registry, residency: Residency) -> Database:
+def installation(name: str, registry: Registry, route: Route) -> Database:
     database = create_test_database(name)
 
     async def bootstrap() -> None:
@@ -34,7 +35,7 @@ def installation(name: str, registry: Registry, residency: Residency) -> Databas
         try:
             await install_identities(owner, read_identities(RETAIL / "identities.yaml"))
             await install_packages(owner, registry)
-            await install_residency(owner, residency)
+            await install_route(owner, route)
         finally:
             await owner.close()
 
@@ -56,7 +57,7 @@ RESTOCK_AGENT = {
 @pytest.fixture(scope="session")
 def database(registry: Registry) -> Database:
     """The kernel's installation, where the restock agent has an approved version."""
-    database = installation("pxos_test_kernel", registry, "br")
+    database = installation("pxos_test_kernel", registry, ROUTE)
 
     async def published() -> None:
         pool = await create_pool(database.app_dsn)
@@ -72,7 +73,7 @@ def database(registry: Registry) -> Database:
 @pytest.fixture(scope="session")
 def other_database(registry: Registry) -> Database:
     """A second installation with the same actors, to show they share nothing (PXOS-63)."""
-    return installation("pxos_test_other", registry, "global")
+    return installation("pxos_test_other", registry, OTHER_ROUTE)
 
 
 @pytest.fixture

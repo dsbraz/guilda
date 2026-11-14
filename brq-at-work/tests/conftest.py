@@ -13,6 +13,7 @@ from agents_testing import publish, scripted
 from brq_at_work.composition import IDENTITIES, bootstrap, build_registry
 from brq_at_work.scribe import DRAFT
 from db_testing import Database, create_test_database
+from model_testing import ROUTE
 from pxos_kernel.model_access import FakeModels
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
@@ -45,7 +46,7 @@ def database(registry: Registry, tmp_path_factory: pytest.TempPathFactory) -> Da
         encoding="utf-8",
     )
     database = create_test_database("pxos_test_brq")
-    bootstrap(database.owner_dsn, registry, identities)
+    bootstrap(database.owner_dsn, registry, identities, route=ROUTE)
 
     async def published() -> None:
         pool = await create_pool(database.app_dsn)

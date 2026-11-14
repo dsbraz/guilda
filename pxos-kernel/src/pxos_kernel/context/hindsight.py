@@ -7,17 +7,16 @@ so a replay of an unchanged document keeps its memories as they are.
 """
 
 import os
-import sys
 from typing import Any, Self
 
 import httpx
 
-from pxos_kernel.model_access import ROUTES, Route
+from pxos_kernel.model_access import Route
 
 
 def server_settings(route: Route, *, project: str) -> dict[str, str]:
     """The Hindsight server's model and embedding settings for an installation's route.
-    Hindsight calls Vertex itself, so this is what keeps it inside the residency."""
+    Hindsight calls Vertex itself, so this is what keeps it on the route."""
     return {
         "HINDSIGHT_API_LLM_PROVIDER": "vertexai",
         "HINDSIGHT_API_LLM_VERTEXAI_PROJECT_ID": project,
@@ -80,7 +79,7 @@ class HindsightContextStore:
 
 
 if __name__ == "__main__":
-    # Shell exports for scripts/hindsight-local.sh: <residency> <project>.
-    residency, project = sys.argv[1:3]
-    for name, value in server_settings(ROUTES[residency], project=project).items():  # type: ignore[index]
+    # Shell exports for scripts/hindsight-local.sh, from the route the environment configures.
+    settings = server_settings(Route.from_environment(), project=os.environ["PXOS_VERTEX_PROJECT"])
+    for name, value in settings.items():
         print(f"export {name}={value}")

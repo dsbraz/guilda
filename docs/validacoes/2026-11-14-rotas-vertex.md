@@ -38,3 +38,13 @@ São Paulo. O Vertex aceitou o schema derivado da ação (payload opcional mais 
 resposta foi lida com o payload e o trecho certos, e um fato que não é promessa voltou
 vazio (`test_vertex_routes.py::test_the_adk_step_reads_a_fact_on_vertex`). Isso valida o
 schema e a leitura, não a residência; a etapa na rota `br` continua esperando o PXOS-75.
+
+## Rota configurada no deploy
+
+Ainda em 14/11/2026, as rotas fixas saíram do código: o teste opt-in valida a rota que o
+ambiente configura, a mesma que um deploy gravaria. Com `PXOS_MODEL_PROVIDER=gemini`,
+`gemini-3.8-flash` em `global` para o agente e a memória, e `gemini-embedding-001` em
+`southamerica-east1` para os embeddings, os quatro testes passaram: o agente pelo gateway, o
+modelo da memória, os embeddings e a etapa ADK. É uma rota de teste, não a escolha de um
+cliente; a geração saiu do país. Qual região atende a residência de cada cliente fica com o
+deploy (K44).

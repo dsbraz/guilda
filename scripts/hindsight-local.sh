@@ -2,10 +2,18 @@
 # Hindsight local para a execução real e opt-in da fatia 2 (PXOS-53, PXOS-56).
 # Banco: o Postgres do Compose (pgvector). Modelo e embeddings: Vertex no projeto do
 # desenvolvedor. As credenciais vêm de GOOGLE_APPLICATION_CREDENTIALS; nada é gravado aqui.
-# Modelo, embeddings e regiões vêm da rota da residência (PXOS-74); o padrão é br.
-# Uso: GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... [PXOS_RESIDENCY=global] \
-#      scripts/hindsight-local.sh
+# Modelo, embeddings e regiões vêm da rota da instalação (PXOS-74), definida no ambiente
+# ou no .env da raiz (modelo em .env.example); nada de modelo ou região é fixo aqui.
+# Uso: cp .env.example .env  # e ajuste
+#      GOOGLE_APPLICATION_CREDENTIALS=... scripts/hindsight-local.sh
 set -euo pipefail
+
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
 
 : "${GOOGLE_APPLICATION_CREDENTIALS:?defina GOOGLE_APPLICATION_CREDENTIALS}"
 : "${PXOS_VERTEX_PROJECT:?defina PXOS_VERTEX_PROJECT}"
@@ -20,7 +28,7 @@ docker compose exec -T postgres psql -U pxos -d hindsight_local -qc \
 
 export GOOGLE_CLOUD_PROJECT="$PXOS_VERTEX_PROJECT"
 export HINDSIGHT_API_DATABASE_URL="postgresql://pxos:pxos-local@127.0.0.1:${db_port}/hindsight_local"
-eval "$(uv run python -m pxos_kernel.context.hindsight "${PXOS_RESIDENCY:-br}" "$PXOS_VERTEX_PROJECT")"
+eval "$(uv run python -m pxos_kernel.context.hindsight)"
 export HINDSIGHT_API_LLM_PROMPT_CACHE_ENABLED=false
 export HINDSIGHT_API_EMBEDDINGS_GEMINI_OUTPUT_DIMENSIONALITY=768
 export HINDSIGHT_API_RERANKER_PROVIDER=rrf

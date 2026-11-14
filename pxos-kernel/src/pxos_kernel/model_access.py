@@ -1,14 +1,16 @@
-"""Model access by residency (PXOS-72, K11; PRD §6.4; ADR 0004 §2, rule 1).
+"""Model access by the installation's route (PXOS-72, K11; PRD §6.4; ADR 0004 §2, rule 1).
 
-Every installation records the residency it requires, and the kernel derives a single
-route from it: the provider, model and region every model call of that installation
-uses, and where embeddings are computed. The gateway builds clients for that route only;
-nobody asks it for a model or a region.
+Which provider, model and regions an installation uses is decided at deploy: the FDE sets
+them per client in the environment (see .env.example), and the bootstrap records them as
+the installation's single route. Every model call of that installation uses it, and the
+gateway builds clients for that route only; nobody asks it for a model or a region. The
+kernel fixes no model and no region.
 """
 
-from collections.abc import AsyncGenerator, Callable
-from dataclasses import dataclass
-from typing import Literal
+import os
+from collections.abc import AsyncGenerator, Callable, Mapping
+from dataclasses import astuple, dataclass, fields
+from typing import Any, Literal, Self, get_args
 
 import asyncpg
 from anthropic import AsyncAnthropicVertex
@@ -23,14 +25,15 @@ from pydantic import PrivateAttr
 
 from pxos_kernel.errors import PxosError
 
-Residency = Literal["br", "global"]
+Provider = Literal["gemini", "claude"]
+"""The providers the kernel has a client for."""
 
 
-class NoResidency(PxosError):
+class RouteNotConfigured(PxosError):
     pass
 
 
-class ResidencyMismatch(PxosError):
+class NoRoute(PxosError):
     pass
 
 
@@ -40,8 +43,7 @@ class ModelNotAllowed(PxosError):
 
 @dataclass(frozen=True)
 class Route:
-    residency: Residency
-    provider: Literal["gemini", "claude"]
+    provider: Provider
     model: str
     region: str
     memory_model: str
@@ -50,46 +52,47 @@ class Route:
     embedding_model: str
     embedding_region: str
 
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] = os.environ) -> Self:
+        """The route the deploy configured; a missing setting or unknown provider is refused."""
+        values: dict[str, Any] = {}
+        for field in fields(cls):
+            name = _VARIABLES[field.name]
+            value = environment.get(name, "").strip()
+            if not value:
+                raise RouteNotConfigured(f"{name} is not set")
+            values[field.name] = value
+        if values["provider"] not in get_args(Provider):
+            raise RouteNotConfigured(
+                f"PXOS_MODEL_PROVIDER must be one of {', '.join(get_args(Provider))}"
+            )
+        return cls(**values)
 
-ROUTES: dict[Residency, Route] = {
-    # Customer data that must stay in the country goes to Gemini in São Paulo.
-    "br": Route(
-        residency="br",
-        provider="gemini",
-        model="gemini-3.8-flash",
-        region="southamerica-east1",
-        memory_model="gemini-3.8-flash",
-        memory_region="southamerica-east1",
-        embedding_model="gemini-embedding-001",
-        embedding_region="southamerica-east1",
-    ),
-    # Everything else may use Claude on the global endpoint.
-    "global": Route(
-        residency="global",
-        provider="claude",
-        model="claude-sonnet-5-5",
-        region="global",
-        memory_model="gemini-3.8-flash",
-        memory_region="global",
-        embedding_model="gemini-embedding-001",
-        embedding_region="us-central1",
-    ),
+
+_VARIABLES = {
+    "provider": "PXOS_MODEL_PROVIDER",
+    "model": "PXOS_MODEL",
+    "region": "PXOS_MODEL_REGION",
+    "memory_model": "PXOS_MEMORY_MODEL",
+    "memory_region": "PXOS_MEMORY_REGION",
+    "embedding_model": "PXOS_EMBEDDING_MODEL",
+    "embedding_region": "PXOS_EMBEDDING_REGION",
 }
+
+_COLUMNS = ", ".join(field.name for field in fields(Route))
 
 Providers = Callable[[Route], BaseLlm]
 """Builds the model client for a route."""
 
 
-async def install_residency(owner: asyncpg.Connection, residency: Residency) -> None:
-    """Record the installation's residency, as the owner. Bootstrapping again with the same
-    residency changes nothing; another residency is refused."""
+async def install_route(owner: asyncpg.Connection, route: Route) -> None:
+    """Record the installation's route, as the owner. A new deploy replaces it."""
+    updates = ", ".join(f"{f.name} = EXCLUDED.{f.name}" for f in fields(Route))
     await owner.execute(
-        "INSERT INTO pxos.installation (residency) VALUES ($1) ON CONFLICT DO NOTHING",
-        residency,
+        f"INSERT INTO pxos.installation ({_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        f" ON CONFLICT (singleton) DO UPDATE SET {updates}",
+        *astuple(route),
     )
-    recorded = await owner.fetchval("SELECT residency FROM pxos.installation")
-    if recorded != residency:
-        raise ResidencyMismatch(f"installation requires residency {recorded}, not {residency}")
 
 
 class GatewayModel(BaseLlm):
@@ -167,10 +170,10 @@ class ModelGateway:
 
     async def route(self) -> Route:
         async with self._pool.acquire() as connection:
-            residency = await connection.fetchval("SELECT residency FROM pxos.installation")
-        if residency is None:
-            raise NoResidency("the installation has no residency; it gets no model")
-        return ROUTES[residency]
+            row = await connection.fetchrow(f"SELECT {_COLUMNS} FROM pxos.installation")
+        if row is None:
+            raise NoRoute("the installation has no route; it gets no model")
+        return Route(**dict(row))
 
     async def provider(self) -> BaseLlm:
         return self._providers(await self.route())

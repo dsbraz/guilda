@@ -1,28 +1,22 @@
 """Hindsight's own model calls follow the installation's route (PXOS-74, PRD §6.4).
 
 Hindsight calls Vertex itself, for extraction and for embeddings, so the gateway cannot
-sit in front of it. What keeps it inside the residency is its configuration, derived
-from the same route as every other model call.
+sit in front of it. What keeps it on the route is its configuration, derived from the
+same route as every other model call: the one the deploy configures.
 """
+
+import subprocess
+import sys
 
 import pytest
 
+from model_testing import OTHER_ROUTE, ROUTE
 from pxos_kernel.context.hindsight import server_settings
-from pxos_kernel.model_access import ROUTES, Residency
+from pxos_kernel.model_access import Route
 
 
-def test_a_br_installation_keeps_extraction_and_embeddings_in_sao_paulo() -> None:
-    settings = server_settings(ROUTES["br"], project="p")
-
-    assert settings["HINDSIGHT_API_LLM_VERTEXAI_REGION"] == "southamerica-east1"
-    assert settings["HINDSIGHT_API_EMBEDDINGS_VERTEXAI_REGION"] == "southamerica-east1"
-    for value in settings.values():
-        assert value not in {"global", "us-central1"}
-
-
-@pytest.mark.parametrize("residency", ["br", "global"])
-def test_the_settings_come_from_the_route(residency: Residency) -> None:
-    route = ROUTES[residency]
+@pytest.mark.parametrize("route", [ROUTE, OTHER_ROUTE], ids=["gemini", "claude"])
+def test_the_settings_come_from_the_route(route: Route) -> None:
     settings = server_settings(route, project="p")
 
     assert settings["HINDSIGHT_API_LLM_MODEL"] == route.memory_model
@@ -33,6 +27,24 @@ def test_the_settings_come_from_the_route(residency: Residency) -> None:
     assert settings["HINDSIGHT_API_EMBEDDINGS_VERTEXAI_PROJECT_ID"] == "p"
 
 
-def test_a_route_is_internally_consistent_about_residency() -> None:
-    br = ROUTES["br"]
-    assert {br.region, br.memory_region, br.embedding_region} == {"southamerica-east1"}
+def test_the_local_script_takes_the_route_from_the_environment() -> None:
+    """scripts/hindsight-local.sh evaluates these exports."""
+    environment = {
+        "PXOS_VERTEX_PROJECT": "p",
+        "PXOS_MODEL_PROVIDER": ROUTE.provider,
+        "PXOS_MODEL": ROUTE.model,
+        "PXOS_MODEL_REGION": ROUTE.region,
+        "PXOS_MEMORY_MODEL": ROUTE.memory_model,
+        "PXOS_MEMORY_REGION": ROUTE.memory_region,
+        "PXOS_EMBEDDING_MODEL": ROUTE.embedding_model,
+        "PXOS_EMBEDDING_REGION": ROUTE.embedding_region,
+    }
+    exports = subprocess.run(
+        [sys.executable, "-m", "pxos_kernel.context.hindsight"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    expected = server_settings(ROUTE, project="p")
+    assert exports == [f"export {name}={value}" for name, value in expected.items()]

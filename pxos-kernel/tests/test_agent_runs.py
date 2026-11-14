@@ -22,6 +22,7 @@ from google.adk.models.llm_request import LlmRequest
 import pxos_kernel
 from agents_testing import publish, scripted
 from db_testing import Database
+from model_testing import ROUTE
 from pxos_kernel.agents import (
     AgentVersion,
     FactReader,
@@ -32,7 +33,7 @@ from pxos_kernel.agents import (
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import SourceDocument, ingest
-from pxos_kernel.model_access import ROUTES, FakeModels, GatewayModel, ModelGateway, ModelNotAllowed
+from pxos_kernel.model_access import FakeModels, GatewayModel, ModelGateway, ModelNotAllowed
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 
@@ -70,7 +71,7 @@ async def ingested(
 
 @pytest.fixture
 def unpublished(registry: Registry) -> Iterator[Database]:
-    yield installation("pxos_test_unpublished", registry, "br")
+    yield installation("pxos_test_unpublished", registry, ROUTE)
 
 
 @pytest.fixture
@@ -107,7 +108,7 @@ async def test_the_agent_reads_each_fact_with_the_versions_instructions(
     assert len(models.requests) == 2  # one ADK run per extracted fact
     for request in models.requests:
         assert RESTOCK_AGENT["instructions"] in str(request.config.system_instruction)
-    assert set(models.routes) == {ROUTES["br"]}
+    assert set(models.routes) == {ROUTE}
 
 
 async def test_a_quote_the_model_made_up_is_not_proposed(
@@ -198,8 +199,8 @@ async def test_the_adk_step_runs_only_on_the_gateways_model(registry: Registry) 
     )
     payload = registry.get("retail").models["RestockOrder"]
     with pytest.raises(ModelNotAllowed):
-        FactReader(models(ROUTES["br"]), version, payload)  # type: ignore[arg-type]
-    reader = FactReader(GatewayModel(ROUTES["br"], models(ROUTES["br"])), version, payload)
+        FactReader(models(ROUTE), version, payload)  # type: ignore[arg-type]
+    reader = FactReader(GatewayModel(ROUTE, models(ROUTE)), version, payload)
     assert await reader.read(FACT) == ({**ORDER, "occurred_at": "2026-11-14T09:00:00Z"}, QUOTE)
 
 

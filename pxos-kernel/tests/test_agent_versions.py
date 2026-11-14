@@ -16,6 +16,7 @@ import pytest
 from conftest import installation
 
 from db_testing import Database
+from model_testing import ROUTE
 from pxos_kernel.agents import (
     AGENTS,
     AmbiguousDefinition,
@@ -50,7 +51,7 @@ def definition(instructions: str = "Read each restock promise.") -> dict[str, An
 
 @pytest.fixture
 def fresh(registry: Registry) -> Iterator[Database]:
-    yield installation("pxos_test_agent_versions", registry, "br")
+    yield installation("pxos_test_agent_versions", registry, ROUTE)
 
 
 @pytest.fixture
