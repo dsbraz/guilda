@@ -47,4 +47,4 @@ ambiente configura, a mesma que um deploy gravaria. Com `PXOS_MODEL_PROVIDER=gem
 `southamerica-east1` para os embeddings, os quatro testes passaram: o agente pelo gateway, o
 modelo da memória, os embeddings e a etapa ADK. É uma rota de teste, não a escolha de um
 cliente; a geração saiu do país. Qual região atende a residência de cada cliente fica com o
-deploy (K44).
+deploy (K44). O PXOS-75 foi fechado como substituído pela configuração de deploy (PXOS-81).

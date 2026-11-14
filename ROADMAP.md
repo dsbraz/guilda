@@ -235,6 +235,7 @@ Ainda em 14/11/2026, a rota de modelos deixou de ser fixa no código: provedor, 
 regiões vêm da configuração de deploy de cada instalação (`.env.example`), o bootstrap os
 grava e um novo deploy os substitui. As rotas `br` e `global` e o padrão `br` da BRQ@work
 saíram; qual região atende a residência de cada cliente é decisão do deploy (K44), com os
-achados do PXOS-75 como insumo.
+achados do PXOS-75 como insumo. Com isso o PXOS-75 foi fechado (PXOS-81) e a fatia 6
+está concluída.
 O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com confirmação
 explícita.
