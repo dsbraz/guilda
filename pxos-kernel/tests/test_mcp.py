@@ -34,7 +34,11 @@ async def app(
 ) -> AsyncIterator[Starlette]:
     verifier = JwtVerifier(issuer=ISSUER, audience=AUDIENCE, jwks=issuer.jwks())
     app = http_app(
-        build_server(pool, registry), verifier, issuer_url=ISSUER, resource_url=f"{BASE}/mcp"
+        build_server(pool, registry),
+        verifier,
+        pool=pool,
+        issuer_url=ISSUER,
+        resource_url=f"{BASE}/mcp",
     )
     async with running(app):
         yield app
@@ -98,14 +102,16 @@ async def test_an_invalid_action_call_creates_nothing(
     [
         pytest.param(("nobody", None), id="unknown-actor"),
         pytest.param(("gina", "restock-agent"), id="agent-without-delegation"),
+        pytest.param(("vera", None), id="external-actor"),
     ],
 )
-async def test_the_database_refuses_unknown_actors_and_delegations(
+async def test_a_token_whose_actor_the_database_refuses_gets_no_tools(
     app: Starlette, issuer: LocalIssuer, token: tuple[str, str | None]
 ) -> None:
+    """A valid signature is not enough (PXOS-62): the database must accept the actor before
+    the caller sees the catalog or calls a tool."""
     person, agent = token
-    with pytest.raises(ToolError, match="unknown actor nobody|no delegation from gina"):
-        await call(app, issuer.token(person, agent=agent), "list_restock_orders", {})
+    assert await post_status(app, issuer.token(person, agent=agent)) == 401
 
 
 async def test_list_and_timeline_show_the_approved_fact(

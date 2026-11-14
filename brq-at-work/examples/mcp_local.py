@@ -83,6 +83,7 @@ def serve() -> None:
         app = http_app(
             build_server(pool, registry, name="brq-at-work"),
             JwtVerifier(issuer=ISSUER, audience=AUDIENCE, jwks=idp.jwks()),
+            pool=pool,
             issuer_url=ISSUER,
             resource_url=f"http://127.0.0.1:{PORT}/mcp",
         )

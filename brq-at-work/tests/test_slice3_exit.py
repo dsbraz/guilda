@@ -38,6 +38,7 @@ async def app(pool: asyncpg.Pool, registry: Registry, idp: LocalIssuer) -> Async
     app = http_app(
         build_server(pool, registry, name="brq-at-work"),
         verifier,
+        pool=pool,
         issuer_url=idp.issuer,
         resource_url=f"{BASE}/mcp",
     )

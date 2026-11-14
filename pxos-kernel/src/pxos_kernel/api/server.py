@@ -5,6 +5,10 @@ The catalog is generated from the registry: ``list_<type>s`` per canonical type,
 session of the token's actor, so RLS decides what each caller sees. An action tool only
 creates a proposal, which goes to the approver the package declares; its evidence source
 is the caller (``mcp:<actor>``), never a document the kernel did not check.
+
+A signed token is not enough: the database must accept its actor and delegation before
+the caller sees the catalog, so an unknown actor, an agent without delegation and an
+external actor get 401 (PXOS-62).
 """
 
 import json
@@ -19,13 +23,13 @@ import asyncpg
 import mcp_types as types
 from mcp.server import Server, ServerRequestContext
 from mcp.server.auth.middleware.auth_context import get_access_token
-from mcp.server.auth.provider import TokenVerifier
+from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from starlette.applications import Starlette
 
 from pxos_kernel.api.auth import Caller
 from pxos_kernel.errors import PxosError
-from pxos_kernel.identity import Connection, session
+from pxos_kernel.identity import Connection, NotAuthorized, session
 from pxos_kernel.ontology import RegisteredPackage, Registry
 from pxos_kernel.state import Evidence, Fact, current, history, propose
 
@@ -72,10 +76,31 @@ def build_server(pool: asyncpg.Pool, registry: Registry, *, name: str = "pxos") 
     return Server(name, on_list_tools=list_tools, on_call_tool=call_tool)
 
 
+class AcceptedActors:
+    """Token verifier that also asks the database whether it accepts the token's actor."""
+
+    def __init__(self, verifier: TokenVerifier, pool: asyncpg.Pool) -> None:
+        self._verifier = verifier
+        self._pool = pool
+
+    async def verify_token(self, token: str) -> AccessToken | None:
+        access = await self._verifier.verify_token(token)
+        if access is None:
+            return None
+        caller = Caller.from_token(access)
+        try:
+            async with session(self._pool, caller.actor, caller.on_behalf_of):
+                pass
+        except NotAuthorized:
+            return None
+        return access
+
+
 def http_app(
     server: Server[Any],
     verifier: TokenVerifier,
     *,
+    pool: asyncpg.Pool,
     issuer_url: str,
     resource_url: str,
     host: str = "127.0.0.1",
@@ -90,7 +115,7 @@ def http_app(
             resource_server_url=resource_url,  # type: ignore[arg-type]
             validate_token_resource=False,  # the verifier checks the audience
         ),
-        token_verifier=verifier,
+        token_verifier=AcceptedActors(verifier, pool),
     )
 
 

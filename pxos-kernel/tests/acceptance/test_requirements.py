@@ -45,7 +45,11 @@ async def test_req_01_same_context_for_people_and_agents(
     idp = LocalIssuer.generate(issuer="http://idp.req01", audience="pxos")
     verifier = JwtVerifier(issuer=idp.issuer, audience=idp.audience, jwks=idp.jwks())
     app = http_app(
-        build_server(pool, registry), verifier, issuer_url=idp.issuer, resource_url=f"{BASE}/mcp"
+        build_server(pool, registry),
+        verifier,
+        pool=pool,
+        issuer_url=idp.issuer,
+        resource_url=f"{BASE}/mcp",
     )
 
     async def seen(person: str, agent: str | None = None) -> tuple[set[str], list[Any]]:
@@ -123,7 +127,11 @@ async def test_req_04_full_isolation_per_client(
     theirs = LocalIssuer.generate(issuer="http://idp.theirs", audience="pxos-theirs")
     verifier = JwtVerifier(issuer=ours.issuer, audience=ours.audience, jwks=ours.jwks())
     app = http_app(
-        build_server(pool, registry), verifier, issuer_url=ours.issuer, resource_url=f"{BASE}/mcp"
+        build_server(pool, registry),
+        verifier,
+        pool=pool,
+        issuer_url=ours.issuer,
+        resource_url=f"{BASE}/mcp",
     )
     async with running(app):
         assert await post_status(app, theirs.token("carla")) == 401
@@ -150,9 +158,39 @@ async def test_req_04_full_isolation_per_client(
     assert await raw_count("frank", "proposals") == 0
 
 
-@pending("PXOS-9", "atores externos sem acesso ao contexto interno")
-def test_req_05_identity_for_people_agents_and_external_actors() -> None:
-    raise NotImplementedError
+async def test_req_05_identity_for_people_agents_and_external_actors(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    """An agent acts under its own identity; an external actor, even one holding an internal
+    role, reaches no internal context, by MCP or by raw SQL (PXOS-61, PXOS-62)."""
+    async with session(pool, "restock-agent", "erin") as connection:
+        proposal = await propose(
+            connection,
+            registry.get("retail"),
+            "create_restock_order",
+            payload={"sku": "R-5", "quantity": 1, "occurred_at": "2026-11-14T09:00:00Z"},
+            evidence=Evidence(source="fixture:req-05", quote="R-5", context_ref="fixture:req-05"),
+            valid_from=datetime(2026, 11, 14, tzinfo=UTC),
+        )
+    assert (proposal.author, proposal.author_principal) == ("restock-agent", "erin")
+
+    idp = LocalIssuer.generate(issuer="http://idp.req05", audience="pxos")
+    verifier = JwtVerifier(issuer=idp.issuer, audience=idp.audience, jwks=idp.jwks())
+    app = http_app(
+        build_server(pool, registry),
+        verifier,
+        pool=pool,
+        issuer_url=idp.issuer,
+        resource_url=f"{BASE}/mcp",
+    )
+    async with running(app):
+        assert await post_status(app, idp.token("vera")) == 401
+        assert "items" in await call(app, idp.token("carla"), "list_restock_orders", {})
+
+    async with pool.acquire() as connection, connection.transaction():
+        await connection.execute("SELECT set_config('pxos.actor', 'vera', true)")
+        with pytest.raises(asyncpg.PostgresError, match="vera is external"):
+            await connection.fetch("SELECT * FROM pxos.proposals")
 
 
 @pending("PXOS-31", "política e autonomia; ação irreversível sempre aprovada")
