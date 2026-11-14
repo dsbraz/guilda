@@ -227,6 +227,18 @@ async def get_proposal(connection: Connection, proposal_id: UUID) -> Proposal:
     return Proposal(**dict(row))
 
 
+async def proposals_from(connection: Connection, context_ref: str) -> list[Proposal]:
+    """The proposals the session can read whose evidence points at ``context_ref``."""
+    rows = await connection.fetch(
+        """
+        SELECT * FROM pxos.proposals WHERE evidence->>'context_ref' = $1
+        ORDER BY created_at, id
+        """,
+        context_ref,
+    )
+    return [Proposal(**dict(row)) for row in rows]
+
+
 async def get_review(connection: Connection, proposal_id: UUID) -> Review | None:
     """The decision on a proposal the session can read, or None while it is pending."""
     row = await connection.fetchrow(

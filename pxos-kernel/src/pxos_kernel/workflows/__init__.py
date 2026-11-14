@@ -2,9 +2,14 @@
 
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
 
-from pxos_kernel.workflows.activities import ReviewActivities
-from pxos_kernel.workflows.definitions import AwaitReview
-from pxos_kernel.workflows.signals import review_signals, review_workflow_id
+from pxos_kernel.workflows.activities import IngestionActivities, ReviewActivities
+from pxos_kernel.workflows.definitions import (
+    AwaitReview,
+    IngestSource,
+    ingest_workflow_id,
+    review_workflow_id,
+)
+from pxos_kernel.workflows.signals import review_signals
 
 
 def workflow_runner() -> SandboxedWorkflowRunner:
@@ -18,7 +23,10 @@ def workflow_runner() -> SandboxedWorkflowRunner:
 
 __all__ = [
     "AwaitReview",
+    "IngestSource",
+    "IngestionActivities",
     "ReviewActivities",
+    "ingest_workflow_id",
     "review_signals",
     "review_workflow_id",
     "workflow_runner",

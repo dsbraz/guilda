@@ -16,6 +16,7 @@ from typing import Any, Protocol
 import asyncpg
 
 from pxos_kernel.context import ContextStore
+from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import InvalidPackage, Registry
 from pxos_kernel.state import Evidence, InvalidProposal, Proposal, propose
@@ -33,8 +34,16 @@ class SourceDocument:
         return f"{self.source}@{self.version}"
 
 
+class UnknownSource(PxosError):
+    pass
+
+
 class Connector(Protocol):
     def documents(self) -> Iterable[SourceDocument]: ...
+
+    def fetch(self, key: str) -> SourceDocument:
+        """The document ``source@version``; raises UnknownSource if there is none."""
+        ...
 
 
 class FakeConnector:
@@ -45,6 +54,12 @@ class FakeConnector:
 
     def documents(self) -> Iterator[SourceDocument]:
         return iter(self._documents)
+
+    def fetch(self, key: str) -> SourceDocument:
+        for document in self._documents:
+            if document.key == key:
+                return document
+        raise UnknownSource(f"source {key} not found")
 
 
 @dataclass(frozen=True)

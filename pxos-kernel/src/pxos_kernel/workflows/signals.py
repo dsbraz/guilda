@@ -1,16 +1,10 @@
 """Outbox handlers that nudge the workflow waiting for a decision (ADR 0004 §2, rule 5)."""
 
-from uuid import UUID
-
 from temporalio.client import Client
 from temporalio.service import RPCError, RPCStatusCode
 
 from pxos_kernel.state import Event, Handler
-from pxos_kernel.workflows.definitions import AwaitReview
-
-
-def review_workflow_id(proposal_id: UUID | str) -> str:
-    return f"pxos-review-{proposal_id}"
+from pxos_kernel.workflows.definitions import AwaitReview, review_workflow_id
 
 
 def review_signals(client: Client) -> dict[str, Handler]:
