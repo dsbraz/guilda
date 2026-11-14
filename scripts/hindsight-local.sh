@@ -2,7 +2,9 @@
 # Hindsight local para a execução real e opt-in da fatia 2 (PXOS-53, PXOS-56).
 # Banco: o Postgres do Compose (pgvector). Modelo e embeddings: Vertex no projeto do
 # desenvolvedor. As credenciais vêm de GOOGLE_APPLICATION_CREDENTIALS; nada é gravado aqui.
-# Uso: GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... scripts/hindsight-local.sh
+# Modelo, embeddings e regiões vêm da rota da residência (PXOS-74); o padrão é br.
+# Uso: GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... [PXOS_RESIDENCY=global] \
+#      scripts/hindsight-local.sh
 set -euo pipefail
 
 : "${GOOGLE_APPLICATION_CREDENTIALS:?defina GOOGLE_APPLICATION_CREDENTIALS}"
@@ -18,15 +20,8 @@ docker compose exec -T postgres psql -U pxos -d hindsight_local -qc \
 
 export GOOGLE_CLOUD_PROJECT="$PXOS_VERTEX_PROJECT"
 export HINDSIGHT_API_DATABASE_URL="postgresql://pxos:pxos-local@127.0.0.1:${db_port}/hindsight_local"
-export HINDSIGHT_API_LLM_PROVIDER=vertexai
-export HINDSIGHT_API_LLM_VERTEXAI_PROJECT_ID="$PXOS_VERTEX_PROJECT"
-export HINDSIGHT_API_LLM_VERTEXAI_REGION="${PXOS_VERTEX_LLM_REGION:-global}"
-export HINDSIGHT_API_LLM_MODEL="${PXOS_VERTEX_LLM_MODEL:-gemini-3.8-flash}"
+eval "$(uv run python -m pxos_kernel.context.hindsight "${PXOS_RESIDENCY:-br}" "$PXOS_VERTEX_PROJECT")"
 export HINDSIGHT_API_LLM_PROMPT_CACHE_ENABLED=false
-export HINDSIGHT_API_EMBEDDINGS_PROVIDER=google
-export HINDSIGHT_API_EMBEDDINGS_VERTEXAI_PROJECT_ID="$PXOS_VERTEX_PROJECT"
-export HINDSIGHT_API_EMBEDDINGS_VERTEXAI_REGION="${PXOS_VERTEX_EMBEDDING_REGION:-us-central1}"
-export HINDSIGHT_API_EMBEDDINGS_GEMINI_MODEL=gemini-embedding-001
 export HINDSIGHT_API_EMBEDDINGS_GEMINI_OUTPUT_DIMENSIONALITY=768
 export HINDSIGHT_API_RERANKER_PROVIDER=rrf
 export HINDSIGHT_API_VECTOR_EXTENSION=pgvector

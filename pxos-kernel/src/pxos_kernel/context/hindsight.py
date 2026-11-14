@@ -7,9 +7,27 @@ so a replay of an unchanged document keeps its memories as they are.
 """
 
 import os
+import sys
 from typing import Any, Self
 
 import httpx
+
+from pxos_kernel.model_access import ROUTES, Route
+
+
+def server_settings(route: Route, *, project: str) -> dict[str, str]:
+    """The Hindsight server's model and embedding settings for an installation's route.
+    Hindsight calls Vertex itself, so this is what keeps it inside the residency."""
+    return {
+        "HINDSIGHT_API_LLM_PROVIDER": "vertexai",
+        "HINDSIGHT_API_LLM_VERTEXAI_PROJECT_ID": project,
+        "HINDSIGHT_API_LLM_VERTEXAI_REGION": route.memory_region,
+        "HINDSIGHT_API_LLM_MODEL": route.memory_model,
+        "HINDSIGHT_API_EMBEDDINGS_PROVIDER": "google",
+        "HINDSIGHT_API_EMBEDDINGS_VERTEXAI_PROJECT_ID": project,
+        "HINDSIGHT_API_EMBEDDINGS_VERTEXAI_REGION": route.embedding_region,
+        "HINDSIGHT_API_EMBEDDINGS_GEMINI_MODEL": route.embedding_model,
+    }
 
 
 class HindsightContextStore:
@@ -59,3 +77,10 @@ class HindsightContextStore:
             if not page["items"] or len(items) >= page["total"]:
                 break
         return [i["text"] for i in items if i.get("fact_type") != "observation" and i["text"]]
+
+
+if __name__ == "__main__":
+    # Shell exports for scripts/hindsight-local.sh: <residency> <project>.
+    residency, project = sys.argv[1:3]
+    for name, value in server_settings(ROUTES[residency], project=project).items():  # type: ignore[index]
+        print(f"export {name}={value}")

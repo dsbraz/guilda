@@ -44,6 +44,9 @@ class Route:
     provider: Literal["gemini", "claude"]
     model: str
     region: str
+    memory_model: str
+    """The model the context memory (Hindsight) extracts with; it calls Vertex itself."""
+    memory_region: str
     embedding_model: str
     embedding_region: str
 
@@ -55,6 +58,8 @@ ROUTES: dict[Residency, Route] = {
         provider="gemini",
         model="gemini-3.8-flash",
         region="southamerica-east1",
+        memory_model="gemini-3.8-flash",
+        memory_region="southamerica-east1",
         embedding_model="gemini-embedding-001",
         embedding_region="southamerica-east1",
     ),
@@ -64,6 +69,8 @@ ROUTES: dict[Residency, Route] = {
         provider="claude",
         model="claude-sonnet-5-5",
         region="global",
+        memory_model="gemini-3.8-flash",
+        memory_region="global",
         embedding_model="gemini-embedding-001",
         embedding_region="us-central1",
     ),
