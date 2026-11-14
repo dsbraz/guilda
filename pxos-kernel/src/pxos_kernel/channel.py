@@ -2,9 +2,10 @@
 
 A created proposal becomes a card for each actor who holds the action's approver role,
 except its author and whoever the author acts for. The card is read in the recipient's
-session, so RLS decides whether they see it at all. Delivery is keyed by proposal: a
-redelivered event replaces the same card. Approving a card is a review by the recipient
-on exactly the digest the card showed.
+session, so the database decides whether they see it at all: RLS hides it, and an
+external actor gets no session, since a card shows internal context (PXOS-61). Delivery
+is keyed by proposal: a redelivered event replaces the same card. Approving a card is a
+review by the recipient on exactly the digest the card showed.
 """
 
 from collections import defaultdict
@@ -14,7 +15,7 @@ from uuid import UUID
 
 import asyncpg
 
-from pxos_kernel.identity import session
+from pxos_kernel.identity import NotAuthorized, session
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import (
     Decision,
@@ -69,11 +70,11 @@ def route_cards(pool: asyncpg.Pool, registry: Registry, channel: Channel) -> Han
             )
         for row in candidates:
             recipient = row["actor_id"]
-            async with session(pool, recipient) as connection:
-                try:
+            try:
+                async with session(pool, recipient) as connection:
                     proposal = await get_proposal(connection, proposal_id)
-                except InvalidProposal:
-                    continue  # the recipient cannot read this proposal
+            except (NotAuthorized, InvalidProposal):
+                continue  # the recipient cannot read this proposal
             if recipient in {proposal.author, proposal.author_principal}:
                 continue
             await channel.deliver_card(

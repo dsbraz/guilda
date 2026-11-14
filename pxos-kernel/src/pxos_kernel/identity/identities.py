@@ -1,8 +1,9 @@
 """Fixed identities loaded from configuration (PXOS-51).
 
-People and agents are actors with roles; a delegation lets an agent act on behalf of a
-person with only that person's roles. The owner connection writes them at bootstrap;
-the application role can only read them.
+People, external actors (customers, suppliers) and agents are actors with roles; a
+delegation lets an agent act on behalf of an internal person with only that person's
+roles. The database refuses any session of an external actor (PXOS-61). The owner
+connection writes them at bootstrap; the application role can only read them.
 """
 
 from pathlib import Path
@@ -25,7 +26,7 @@ class _Strict(BaseModel):
 
 class Actor(_Strict):
     id: str
-    kind: Literal["internal_person", "agent"]
+    kind: Literal["internal_person", "external_person", "agent"]
     name: str
     roles: tuple[str, ...] = ()
 

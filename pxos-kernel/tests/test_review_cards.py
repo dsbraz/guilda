@@ -1,7 +1,8 @@
 """Review cards on a channel (PXOS-55).
 
 A created proposal becomes a card for whoever holds the action's approver role and can
-read the type, never for its author or whoever the author acts for. The card is built in
+read the type, never for its author or whoever the author acts for, and never for an
+external actor (Vera holds store-manager in the fixture). The card is built in
 the recipient's session; approving it is a review by the recipient on the card's digest.
 """
 

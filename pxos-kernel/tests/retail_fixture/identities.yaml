@@ -18,6 +18,12 @@ actors:
   - id: frank
     kind: internal_person
     name: Frank
+  # A supplier's contact. The store-manager role is deliberate: an external actor reaches
+  # no internal context whatever roles it holds (PXOS-61).
+  - id: vera
+    kind: external_person
+    name: Vera (fornecedora)
+    roles: [store-manager]
   - id: restock-agent
     kind: agent
     name: Agente de reposição

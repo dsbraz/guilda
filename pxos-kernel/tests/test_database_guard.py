@@ -215,3 +215,49 @@ async def test_database_refuses_self_approval_and_missing_role(
                 proposal.digest,
             )
     assert error.value.sqlstate == sqlstate
+
+
+EXTERNAL_STATEMENTS = [
+    "SELECT * FROM pxos.facts",
+    "SELECT * FROM pxos.proposals",
+    "SELECT * FROM pxos.reviews",
+    "INSERT INTO pxos.proposals (package, package_version, package_digest, action, type_name,"
+    " entity_id, base_revision, operation, valid_from, payload, evidence, digest) VALUES"
+    " ('retail', '1', 'x', 'create_restock_order', 'RestockOrder', gen_random_uuid(), 0,"
+    " 'assert', now(), '{}', '{}', 'x')",
+    "INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest)"
+    " VALUES (gen_random_uuid(), 'approved', 'x')",
+]
+
+
+@pytest.mark.parametrize("statement", EXTERNAL_STATEMENTS)
+async def test_an_external_actor_reaches_no_internal_context(
+    pool: asyncpg.Pool, registry: Registry, statement: str
+) -> None:
+    """Vera is external and holds store-manager; the database refuses her all the same."""
+    await approved_fact(pool, registry)
+    async with pool.acquire() as connection, connection.transaction():
+        await connection.execute("SELECT set_config('pxos.actor', 'vera', true)")
+        with pytest.raises(asyncpg.PostgresError) as error:
+            await connection.execute(statement)
+    assert error.value.sqlstate == "PX003"
+
+
+async def test_a_session_for_or_on_behalf_of_an_external_actor_is_refused(
+    database: Database, pool: asyncpg.Pool
+) -> None:
+    with pytest.raises(NotAuthorized, match="vera is external"):
+        async with session(pool, "vera"):
+            pass
+
+    owner = await asyncpg.connect(database.owner_dsn)
+    try:
+        await owner.execute(
+            "INSERT INTO pxos.delegations (agent_id, person_id) VALUES ('restock-agent', 'vera')"
+        )
+        with pytest.raises(NotAuthorized, match="vera is external"):
+            async with session(pool, "restock-agent", "vera"):
+                pass
+    finally:
+        await owner.execute("DELETE FROM pxos.delegations WHERE person_id = 'vera'")
+        await owner.close()

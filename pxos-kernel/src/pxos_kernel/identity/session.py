@@ -30,7 +30,7 @@ async def session(
         try:
             await connection.execute("SELECT pxos.current_actor()")
         except asyncpg.PostgresError as error:
-            if error.sqlstate in {"PX001", "PX002"}:
+            if error.sqlstate in {"PX001", "PX002", "PX003"}:
                 raise NotAuthorized(str(error)) from None
             raise
         yield connection
