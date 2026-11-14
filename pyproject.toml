@@ -40,6 +40,8 @@ files = [
     "brq-at-work/src",
     "brq-at-work/tests",
     "brq-at-work/examples",
+    "quality",
+    "tests/quality",
 ]
 mypy_path = [".", "pxos-kernel/src", "brq-at-work/src", "pxos-kernel/tests", "brq-at-work"]
 explicit_package_bases = true
@@ -53,7 +55,7 @@ module = ["*.generated"]
 ignore_errors = true
 
 [tool.pytest.ini_options]
-testpaths = ["pxos-kernel/tests", "brq-at-work/tests"]
+testpaths = ["pxos-kernel/tests", "brq-at-work/tests", "tests/quality"]
 pythonpath = [".", "pxos-kernel/tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
@@ -72,9 +74,11 @@ forbidden_modules = ["brq_at_work"]
 dev = [
     "asyncpg-stubs>=0.32.0",
     "import-linter>=2.16",
+    "mutmut>=3.8.1",
     "mypy>=2.4.1",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.5.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.17.5",
     "types-pyyaml>=6.0.12.20261113",
 ]

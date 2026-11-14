@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "limits": {
+    "complexity": 10,
+    "nesting": 3,
+    "function_lines": 60,
+    "file_lines": 300,
+    "line_coverage": 90,
+    "branch_coverage": 90,
+    "mutation": 80,
+    "test_retries": 0,
+    "ci_warning_seconds": 300
+  },
+  "sources": ["pxos-kernel/src/pxos_kernel", "brq-at-work/src/brq_at_work", "quality"],
+  "tests": ["pxos-kernel/tests", "brq-at-work/tests", "tests/quality"],
+  "lint": ["pxos-kernel", "brq-at-work", "quality", "tests/quality", "agents_testing.py", "db_testing.py", "mcp_testing.py", "temporal_testing.py"],
+  "exclude": ["**/generated.py", "**/migrations/**", "spikes/**"],
+  "mutation_areas": {
+    "state": ["pxos-kernel/src/pxos_kernel/state"],
+    "ontology": ["pxos-kernel/src/pxos_kernel/ontology"],
+    "authentication": ["pxos-kernel/src/pxos_kernel/api/auth.py", "pxos-kernel/src/pxos_kernel/identity"],
+    "ingestion": ["pxos-kernel/src/pxos_kernel/ingestion.py"],
+    "model_access": ["pxos-kernel/src/pxos_kernel/model_access.py"]
+  },
+  "external_skips": {
+    "pxos-kernel/tests/test_context_contract.py": "PXOS_HINDSIGHT_URL not set",
+    "brq-at-work/tests/test_slice2_exit.py": "PXOS_HINDSIGHT_URL not set",
+    "pxos-kernel/tests/test_vertex_routes.py": "PXOS_VERTEX_PROJECT not set"
+  },
+  "pending_requirements": "pxos-kernel/tests/acceptance/test_requirements.py",
+  "generation": ["pxos-kernel/tests/retail_fixture", "pxos-kernel/src/pxos_kernel/agents/package", "brq-at-work/src/brq_at_work/ontology/work_context"]
+}

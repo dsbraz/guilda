@@ -12,3 +12,6 @@ __pycache__/
 runs/
 .coverage
 htmlcov/
+quality-reports/
+quality-history/
+mutants/

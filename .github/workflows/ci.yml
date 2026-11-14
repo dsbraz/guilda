@@ -1,16 +1,18 @@
-# CI de produto: pxos-kernel e brq-at-work. Spikes ficam fora (AGENTS.md).
+# Product quality only; spikes retain their own local validation.
 name: ci
-
 on:
   push:
     branches: [main]
   pull_request:
-
 permissions:
   contents: read
-
+  actions: read
 jobs:
-  checks:
+  quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [ci, mutation]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -27,9 +29,39 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: astral-sh/setup-uv@v10.3.3
       - run: uv sync --locked
-      - run: uv run ruff check pxos-kernel brq-at-work
-      - run: uv run ruff format --check pxos-kernel brq-at-work
-      - run: uv run python -m pxos_kernel.ontology.generate --check pxos-kernel/tests/retail_fixture pxos-kernel/src/pxos_kernel/agents/package brq-at-work/src/brq_at_work/ontology/work_context
-      - run: uv run mypy
-      - run: uv run lint-imports
-      - run: uv run pytest
+      - run: uv run python -m quality ${{ matrix.mode }}
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: quality-${{ matrix.mode }}
+          path: quality-reports/
+          retention-days: 90
+          if-no-files-found: error
+  approve:
+    needs: quality
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv sync --locked
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: quality-*
+          path: quality-reports
+          merge-multiple: true
+      - name: Read recent main evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run python -m quality.history_fetch
+      - run: uv run python -m quality all --aggregate
+        if: always()
+        env:
+          PXOS_QUALITY_JOBS_STATUS: ${{ needs.quality.result }}
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: quality-approved
+          path: quality-reports/all.*
+          retention-days: 90
+          if-no-files-found: error
