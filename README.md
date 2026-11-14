@@ -55,6 +55,17 @@ GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... scripts/hindsight-loc
 PXOS_HINDSIGHT_URL=http://127.0.0.1:18888 uv run pytest -k hindsight
 ```
 
+Cada instalação declara a residência (`br` ou `global`) no bootstrap; a BRQ@work usa `br`
+por padrão. Dela sai a única rota de modelos da instalação: o gateway entrega ao agente ADK
+um modelo preso a essa rota, e o script do Hindsight deriva da mesma rota o modelo, os
+embeddings e as regiões (`PXOS_RESIDENCY`, padrão `br`). A validação das rotas no Vertex é
+opt-in e gera cobrança; o resultado de 14/11/2026 está em
+[docs/validacoes](docs/validacoes/2026-11-14-rotas-vertex.md):
+
+```sh
+GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... uv run pytest pxos-kernel/tests/test_vertex_routes.py
+```
+
 Para usar o contexto de trabalho por MCP (fatia 3), suba o servidor local. Ele recria o banco
 `pxos_mcp` com um compromisso aprovado e usa um IdP de desenvolvimento, cuja chave fica em
 `.secrets/`:

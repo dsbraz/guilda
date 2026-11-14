@@ -7,6 +7,7 @@ import asyncpg
 
 import brq_at_work.ontology.work_context.generated as work_context_models
 from pxos_kernel.identity import install_identities, read_identities
+from pxos_kernel.model_access import Residency, install_residency
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import install_packages, upgrade
 
@@ -21,8 +22,19 @@ def build_registry() -> Registry:
     return registry
 
 
-def bootstrap(owner_dsn: str, registry: Registry, identities: Path = IDENTITIES) -> None:
-    """Migrate the installation and record identities and packages, as the owner."""
+RESIDENCY: Residency = "br"
+"""BRQ@work handles client transcripts: unless an installation says otherwise, models and
+memory stay in Brazil."""
+
+
+def bootstrap(
+    owner_dsn: str,
+    registry: Registry,
+    identities: Path = IDENTITIES,
+    *,
+    residency: Residency = RESIDENCY,
+) -> None:
+    """Migrate the installation and record identities, packages and residency, as the owner."""
     upgrade(owner_dsn)
 
     async def install() -> None:
@@ -30,6 +42,7 @@ def bootstrap(owner_dsn: str, registry: Registry, identities: Path = IDENTITIES)
         try:
             await install_identities(owner, read_identities(identities))
             await install_packages(owner, registry)
+            await install_residency(owner, residency)
         finally:
             await owner.close()
 
