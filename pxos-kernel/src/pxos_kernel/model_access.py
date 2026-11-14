@@ -6,7 +6,7 @@ uses, and where embeddings are computed. The gateway builds clients for that rou
 nobody asks it for a model or a region.
 """
 
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -16,6 +16,10 @@ from google import genai
 from google.adk.models.anthropic_llm import Claude
 from google.adk.models.base_llm import BaseLlm
 from google.adk.models.google_llm import Gemini
+from google.adk.models.llm_request import LlmRequest
+from google.adk.models.llm_response import LlmResponse
+from google.genai import types
+from pydantic import PrivateAttr
 
 from pxos_kernel.errors import PxosError
 
@@ -27,6 +31,10 @@ class NoResidency(PxosError):
 
 
 class ResidencyMismatch(PxosError):
+    pass
+
+
+class ModelNotAllowed(PxosError):
     pass
 
 
@@ -77,6 +85,54 @@ async def install_residency(owner: asyncpg.Connection, residency: Residency) -> 
         raise ResidencyMismatch(f"installation requires residency {recorded}, not {residency}")
 
 
+class GatewayModel(BaseLlm):
+    """The ADK model an agent gets from the gateway: every call goes to the route's
+    provider, and a request for any other model is refused."""
+
+    _provider: BaseLlm = PrivateAttr()
+
+    def __init__(self, route: Route, provider: BaseLlm) -> None:
+        super().__init__(model=route.model)
+        self._provider = provider
+
+    async def generate_content_async(
+        self, llm_request: LlmRequest, stream: bool = False
+    ) -> AsyncGenerator[LlmResponse, None]:
+        if llm_request.model not in (None, self.model):
+            raise ModelNotAllowed(f"{llm_request.model} is not this installation's model")
+        async for response in self._provider.generate_content_async(llm_request, stream):
+            yield response
+
+
+class FakeModels:
+    """Providers for tests: every model answers ``reply`` and records the route it served."""
+
+    def __init__(self, reply: str) -> None:
+        self.reply = reply
+        self.routes: list[Route] = []
+
+    def __call__(self, route: Route) -> BaseLlm:
+        return _FakeModel(route, self)
+
+
+class _FakeModel(BaseLlm):
+    _route: Route = PrivateAttr()
+    _models: FakeModels = PrivateAttr()
+
+    def __init__(self, route: Route, models: FakeModels) -> None:
+        super().__init__(model=route.model)
+        self._route = route
+        self._models = models
+
+    async def generate_content_async(
+        self, llm_request: LlmRequest, stream: bool = False
+    ) -> AsyncGenerator[LlmResponse, None]:
+        self._models.routes.append(self._route)
+        yield LlmResponse(
+            content=types.Content(role="model", parts=[types.Part(text=self._models.reply)])
+        )
+
+
 def vertex_models(project: str) -> Providers:
     """Vertex AI clients for a route, in the route's region."""
 
@@ -108,3 +164,8 @@ class ModelGateway:
 
     async def provider(self) -> BaseLlm:
         return self._providers(await self.route())
+
+    async def adk_model(self) -> GatewayModel:
+        """The model to give an ADK agent of this installation."""
+        route = await self.route()
+        return GatewayModel(route, self._providers(route))
