@@ -26,6 +26,9 @@ uv run lint-imports          # o kernel não importa a distribuição
 uv run pytest                # neutralidade e integração; exige o Postgres do Compose
 ```
 
+Os testes de workflow sobem o servidor de desenvolvimento do Temporal (`temporal_testing.py`,
+versão fixa). O SDK baixa o binário na primeira execução, que por isso precisa de rede.
+
 Modelos Pydantic e JSON Schema são gerados do LinkML de cada pacote (`generated.py` e
 `generated.schema.json`, ao lado do `ontology.yaml`). Depois de mudar uma ontologia:
 
@@ -79,6 +82,12 @@ O MCP só aceita um token se o banco aceitar o ator dele (fatia 4). A Dora é co
 cliente, uma atora externa: o token dela (`token dora`) é assinado pelo IdP da instalação e
 mesmo assim recebe 401, assim como o de um ator desconhecido ou de um agente sem delegação.
 Cada instalação tem banco, logins e IdP próprios; o login de uma não abre o banco de outra.
+
+O escriba também roda como workflow no Temporal (fatia 5): o workflow recebe só a referência
+do transcrito, a Activity ingere como o agente e devolve ids de proposta, e o workflow espera a
+decisão da gerente de projeto. O publicador da outbox avisa o workflow quando a proposta é
+aprovada ou rejeitada; a decisão vale quando lida no banco. O histórico do Temporal guarda ids,
+nunca o que foi dito.
 
 O CI de produto (`.github/workflows/ci.yml`) roda os mesmos checks. Os experimentos em
 `spikes/` ficam fora do workspace e do CI; seus procedimentos estão nas respectivas pastas.

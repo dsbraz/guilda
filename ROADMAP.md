@@ -211,5 +211,10 @@ de trabalho foi para o K27.
 A fatia 4 foi concluída em 14/11/2026: ator externo sem acesso ao contexto interno, token
 recusado no MCP quando o banco recusa o ator, e logins próprios por instalação (PXOS-61 a 64).
 Os reqs. 4 e 5 saíram de `xfail`; PXOS-8, 9 e 29 continuam abertos. O externo não recebe card,
-porque o card mostra contexto interno. O escopo da próxima fatia é decidido com o mantenedor, e
-cada fase começa com confirmação explícita.
+porque o card mostra contexto interno.
+A fatia 5 foi concluída em 14/11/2026: o escriba roda como workflow no Temporal, só com
+referências, e sobrevive ao desligamento do worker enquanto espera a decisão no card (PXOS-69 a
+71). A decisão é lida no kernel; o sinal da outbox só avisa. Ficaram fora o ADK, que exige o
+gateway de modelos (PXOS-11), a delegação, a expiração e a revogação de aprovação, e o teste de
+isolamento entre namespaces; o PXOS-36 continua aberto. O escopo da próxima fatia é decidido
+com o mantenedor, e cada fase começa com confirmação explícita.
