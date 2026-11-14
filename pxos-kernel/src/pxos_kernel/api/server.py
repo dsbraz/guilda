@@ -63,9 +63,10 @@ def build_server(pool: asyncpg.Pool, registry: Registry, *, name: str = "pxos") 
                 result = await entry.run(connection, caller, dict(params.arguments or {}))
         except PxosError as error:
             return _error(str(error))
+        text = json.dumps(result, default=_json, ensure_ascii=False)
         return types.CallToolResult(
-            content=[types.TextContent(type="text", text=json.dumps(result, default=str))],
-            structured_content=json.loads(json.dumps(result, default=str)),
+            content=[types.TextContent(type="text", text=text)],
+            structured_content=json.loads(text),
         )
 
     return Server(name, on_list_tools=list_tools, on_call_tool=call_tool)
@@ -253,6 +254,10 @@ def _datetime(value: Any) -> datetime:
     if parsed.tzinfo is None:
         raise InvalidCall(f"date-time needs a timezone: {value}")
     return parsed
+
+
+def _json(value: Any) -> str:
+    return value.isoformat() if isinstance(value, datetime) else str(value)
 
 
 def _snake(name: str) -> str:

@@ -72,11 +72,16 @@ def create_test_database(name: str) -> Database:
             await owner.close()
 
     asyncio.run(recreate())
-    owner_dsn = _with(ADMIN_DSN, database=name)
-    upgrade(owner_dsn)
-    asyncio.run(logins(owner_dsn))
+    database = existing_database(name)
+    upgrade(database.owner_dsn)
+    asyncio.run(logins(database.owner_dsn))
+    return database
+
+
+def existing_database(name: str) -> Database:
+    """Connection strings of a database created by ``create_test_database``."""
     return Database(
-        owner_dsn=owner_dsn,
+        owner_dsn=_with(ADMIN_DSN, database=name),
         app_dsn=_with(ADMIN_DSN, database=name, user=APP_LOGIN, password=APP_PASSWORD),
         publisher_dsn=_with(
             ADMIN_DSN, database=name, user=PUBLISHER_LOGIN, password=PUBLISHER_PASSWORD

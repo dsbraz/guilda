@@ -1,7 +1,7 @@
 # pxOS
 
 Monorepo do kernel pxOS e suas distribuições, incluindo BRQ@work.
-O kernel está em construção (fatia 1); spikes são experimentos isolados.
+O kernel está em construção, em fatias verticais (ver o roadmap); spikes são experimentos isolados.
 
 ## Conteúdo
 
@@ -51,6 +51,27 @@ indicado):
 GOOGLE_APPLICATION_CREDENTIALS=... PXOS_VERTEX_PROJECT=... scripts/hindsight-local.sh
 PXOS_HINDSIGHT_URL=http://127.0.0.1:18888 uv run pytest -k hindsight
 ```
+
+Para usar o contexto de trabalho por MCP (fatia 3), suba o servidor local. Ele recria o banco
+`pxos_mcp` com um compromisso aprovado e usa um IdP de desenvolvimento, cuja chave fica em
+`.secrets/`:
+
+```sh
+PYTHONPATH=. uv run python brq-at-work/examples/mcp_local.py serve
+```
+
+Em outro terminal, emita o token de um ator e registre o servidor no Claude Code. Um agente
+agindo por uma pessoa usa `token bruno --agent meeting-agent`:
+
+```sh
+TOKEN=$(PYTHONPATH=. uv run python brq-at-work/examples/mcp_local.py token celia)
+claude mcp add --transport http brq-at-work http://127.0.0.1:18000/mcp \
+  --header "Authorization: Bearer $TOKEN"
+```
+
+As tools são `list_commitments`, `timeline` e `create_commitment`. A proposta segue para a
+gerente de projeto; enquanto não há canal real, a aprovação do card é feita com
+`mcp_local.py approve <proposal_id> --as ana`.
 
 O CI de produto (`.github/workflows/ci.yml`) roda os mesmos checks. Os experimentos em
 `spikes/` ficam fora do workspace e do CI; seus procedimentos estão nas respectivas pastas.
