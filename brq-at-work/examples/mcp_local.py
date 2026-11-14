@@ -9,8 +9,9 @@ Na raiz do repositório, com o Postgres do Compose no ar:
 
 ``serve`` recria o banco ``pxos_mcp`` com um compromisso já aprovado e sobe o MCP em
 http://127.0.0.1:18000/mcp. ``token`` emite um token de 12 horas assinado pela chave de
-desenvolvimento (em ``.secrets/``, fora do git). ``approve`` faz o papel do card: ainda
-não há canal real, então a aprovação é feita aqui, como o ator informado.
+desenvolvimento (em ``.secrets/``, fora do git); o token de ``dora``, contato externo do
+cliente, recebe 401. ``approve`` faz o papel do card: ainda não há canal real, então a
+aprovação é feita aqui, como o ator informado.
 """
 
 import argparse

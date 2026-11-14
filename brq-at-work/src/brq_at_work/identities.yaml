@@ -12,6 +12,10 @@ actors:
     kind: internal_person
     name: Célia
     roles: [team-member]
+  # Contato do cliente: identidade própria, sem acesso ao contexto interno (PXOS-61).
+  - id: dora
+    kind: external_person
+    name: Dora (cliente)
   - id: meeting-agent
     kind: agent
     name: Agente de reuniões

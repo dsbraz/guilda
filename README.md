@@ -75,6 +75,11 @@ remove brq-at-work` antes do `add`). As tools são `list_commitments`, `timeline
 gerente de projeto; enquanto não há canal real, a aprovação do card é feita com
 `mcp_local.py approve <proposal_id> --as ana`.
 
+O MCP só aceita um token se o banco aceitar o ator dele (fatia 4). A Dora é contato do
+cliente, uma atora externa: o token dela (`token dora`) é assinado pelo IdP da instalação e
+mesmo assim recebe 401, assim como o de um ator desconhecido ou de um agente sem delegação.
+Cada instalação tem banco, logins e IdP próprios; o login de uma não abre o banco de outra.
+
 O CI de produto (`.github/workflows/ci.yml`) roda os mesmos checks. Os experimentos em
 `spikes/` ficam fora do workspace e do CI; seus procedimentos estão nas respectivas pastas.
 
