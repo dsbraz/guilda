@@ -255,6 +255,37 @@ async def as_of(
     return fact
 
 
+async def current(
+    connection: Connection,
+    package: str,
+    type_name: str,
+    *,
+    valid_at: datetime,
+    known_at: datetime,
+) -> list[Fact]:
+    """Every entity of a type whose fact is valid at ``valid_at`` as known at ``known_at``.
+
+    Same rule as ``as_of``, per entity; RLS leaves out types the actor cannot read.
+    """
+    rows = await connection.fetch(
+        """
+        SELECT DISTINCT ON (entity_id) * FROM pxos.facts
+        WHERE package = $1 AND type_name = $2 AND known_at <= $4 AND valid_from <= $3
+        ORDER BY entity_id, valid_from DESC, revision DESC
+        """,
+        package,
+        type_name,
+        valid_at,
+        known_at,
+    )
+    facts = [Fact(**dict(row)) for row in rows]
+    return [
+        fact
+        for fact in facts
+        if fact.operation != "invalidate" and (fact.valid_to is None or valid_at < fact.valid_to)
+    ]
+
+
 async def history(connection: Connection, entity_id: UUID) -> list[Fact]:
     rows = await connection.fetch(
         "SELECT * FROM pxos.facts WHERE entity_id = $1 ORDER BY revision", entity_id

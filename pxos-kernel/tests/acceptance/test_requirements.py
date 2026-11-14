@@ -6,10 +6,14 @@ placeholder that starts passing fails the suite.
 """
 
 from datetime import UTC, datetime
+from typing import Any
 
 import asyncpg
 import pytest
 
+from mcp_testing import BASE, call, connect, running
+from pxos_kernel.api.auth import JwtVerifier, LocalIssuer
+from pxos_kernel.api.server import build_server, http_app
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import Evidence, history, propose, review
@@ -19,9 +23,46 @@ def pending(issue: str, scope: str) -> pytest.MarkDecorator:
     return pytest.mark.xfail(raises=NotImplementedError, strict=True, reason=f"{issue}: {scope}")
 
 
-@pending("PXOS-30", "MCP e API como ponto único de acesso")
-def test_req_01_same_context_for_people_and_agents() -> None:
-    raise NotImplementedError
+async def test_req_01_same_context_for_people_and_agents(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    """One MCP for people and agents: an agent acting for a person sees what the person sees,
+    and whoever cannot read the type sees nothing (PXOS-58; search, pages and the API are
+    still PXOS-30)."""
+    async with session(pool, "erin") as connection:
+        proposal = await propose(
+            connection,
+            registry.get("retail"),
+            "create_restock_order",
+            payload={"sku": "R-1", "quantity": 1, "occurred_at": "2026-11-14T09:00:00Z"},
+            evidence=Evidence(source="fixture:req-01", quote="R-1", context_ref="fixture:req-01"),
+            valid_from=datetime(2026, 11, 14, tzinfo=UTC),
+        )
+    async with session(pool, "carla") as connection:
+        await review(connection, registry, proposal.id, "approved", digest=proposal.digest)
+
+    idp = LocalIssuer.generate(issuer="http://idp.req01", audience="pxos")
+    verifier = JwtVerifier(issuer=idp.issuer, audience=idp.audience, jwks=idp.jwks())
+    app = http_app(
+        build_server(pool, registry), verifier, issuer_url=idp.issuer, resource_url=f"{BASE}/mcp"
+    )
+
+    async def seen(person: str, agent: str | None = None) -> tuple[set[str], list[Any]]:
+        token = idp.token(person, agent=agent)
+        async with connect(app, token) as client:
+            tools = {tool.name for tool in (await client.list_tools()).tools}
+        return tools, (await call(app, token, "list_restock_orders", {}))["items"]
+
+    async with running(app):
+        person_tools, person = await seen("erin")
+        agent_tools, agent = await seen("erin", agent="restock-agent")
+        _, no_role = await seen("frank")
+        _, agent_alone = await seen("restock-agent")
+
+    assert agent_tools == person_tools
+    assert str(proposal.id) in {item["proposal_id"] for item in person}
+    assert agent == person
+    assert no_role == [] and agent_alone == []
 
 
 @pending("PXOS-20", "ingestão automática por eventos")

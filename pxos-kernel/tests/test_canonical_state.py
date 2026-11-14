@@ -26,6 +26,7 @@ from pxos_kernel.state import (
     StalePackage,
     StaleRevision,
     as_of,
+    current,
     get_proposal,
     history,
     propose,
@@ -329,6 +330,51 @@ async def test_retroactive_correction_and_two_date_reading(
     assert await read(pool, entity, NOV[5], first.known_at) == 3
     assert await read(pool, entity, NOV[5], second.known_at) == 5
     assert await read(pool, entity, datetime(2026, 10, 31, tzinfo=UTC), second.known_at) is None
+
+
+async def test_current_facts_of_a_type_read_like_as_of(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    corrected = await new_proposal(pool, registry, quantity=3)
+    await approve(pool, registry, corrected)
+    await approve(
+        pool,
+        registry,
+        await new_proposal(
+            pool, registry, quantity=5, entity_id=corrected.entity_id, base_revision=1
+        ),
+    )
+    gone = await new_proposal(pool, registry, quantity=4)
+    await approve(pool, registry, gone)
+    async with session(pool, "erin") as connection:
+        invalidation = await propose_invalidation(
+            connection,
+            registry.get("retail"),
+            "create_restock_order",
+            entity_id=gone.entity_id,
+            base_revision=1,
+            valid_from=NOV[10],
+            evidence=EVIDENCE,
+        )
+    await approve(pool, registry, invalidation)
+    later = await new_proposal(pool, registry, quantity=9, valid_from=NOV[20])
+    await approve(pool, registry, later)
+    ours = {corrected.entity_id, gone.entity_id, later.entity_id}
+
+    async def quantities(valid_at: datetime) -> dict[UUID, int]:
+        async with session(pool, "erin") as connection:
+            facts = await current(
+                connection, "retail", "RestockOrder", valid_at=valid_at, known_at=LATER
+            )
+        return {f.entity_id: f.payload["quantity"] for f in facts if f.entity_id in ours}
+
+    assert await quantities(NOV[5]) == {corrected.entity_id: 5, gone.entity_id: 4}
+    assert await quantities(NOV[25]) == {corrected.entity_id: 5, later.entity_id: 9}
+    async with session(pool, "frank") as connection:
+        assert (
+            await current(connection, "retail", "RestockOrder", valid_at=NOV[25], known_at=LATER)
+            == []
+        )
 
 
 async def test_future_validity_and_finite_interval(pool: asyncpg.Pool, registry: Registry) -> None:

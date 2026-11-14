@@ -31,6 +31,7 @@ python_version = "3.12"
 strict = true
 files = [
     "db_testing.py",
+    "mcp_testing.py",
     "pxos-kernel/src",
     "pxos-kernel/tests",
     "brq-at-work/src",
