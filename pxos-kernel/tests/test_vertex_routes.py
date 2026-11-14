@@ -75,7 +75,7 @@ def test_embeddings_are_computed_in_the_route_region(residency: Residency) -> No
     client = genai.Client(vertexai=True, project=PROJECT, location=route.embedding_region)
     response = client.models.embed_content(
         model=route.embedding_model,
-        contents="compromisso sintético",
+        contents="texto sintético",
         config=types.EmbedContentConfig(output_dimensionality=768),
     )
     assert response.embeddings and len(response.embeddings[0].values or []) == 768
