@@ -34,6 +34,7 @@ from pxos_kernel.workflows import (
     review_signals,
     workflow_runner,
 )
+from temporal_testing import history_bytes
 
 AGENT = "restock-agent"
 SECRET = "restock aisle 3 with 12 boxes"
@@ -147,18 +148,6 @@ async def decide(
                     reason="não precisa" if decision == "rejected" else None,
                 )
     await publish(publisher, review_signals(temporal))
-
-
-async def history_bytes(temporal: Client, workflow_id: str) -> bytes:
-    """The workflow's history and its children's, as raw protobuf: payloads, failure
-    messages and stack traces all appear there as UTF-8 bytes."""
-    history = await temporal.get_workflow_handle(workflow_id).fetch_history()
-    raw = b"".join(event.SerializeToString() for event in history.events)
-    for event in history.events:
-        if event.HasField("start_child_workflow_execution_initiated_event_attributes"):
-            child = event.start_child_workflow_execution_initiated_event_attributes.workflow_id
-            raw += await history_bytes(temporal, child)
-    return raw
 
 
 async def test_the_workflow_ingests_by_reference_and_waits_for_each_decision(

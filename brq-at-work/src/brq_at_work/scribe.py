@@ -6,8 +6,18 @@ schema; this module only parses.
 """
 
 import re
+from collections.abc import Callable
+from typing import Any
 
-from pxos_kernel.ingestion import Candidate
+import asyncpg
+
+from pxos_kernel.context import ContextStore
+from pxos_kernel.ingestion import Candidate, Connector
+from pxos_kernel.ontology import Registry
+from pxos_kernel.workflows import IngestionActivities, ReviewActivities
+
+SCRIBE = "scribe-agent"
+PACKAGE = "work_context"
 
 INSTRUCTIONS = """\
 Você lê transcrições de reuniões de projeto. Além dos fatos de contexto, registre cada
@@ -41,3 +51,20 @@ def read_commitment(fact: str) -> Candidate | None:
         },
         quote=match["quote"],
     )
+
+
+def scribe_activities(
+    pool: asyncpg.Pool, registry: Registry, store: ContextStore, connector: Connector
+) -> list[Callable[..., Any]]:
+    """The Activities a worker runs for the scribe: it ingests and reads decisions as itself."""
+    ingestion = IngestionActivities(
+        pool,
+        registry,
+        store,
+        connector,
+        package=PACKAGE,
+        instructions=INSTRUCTIONS,
+        reader=read_commitment,
+        actor=SCRIBE,
+    )
+    return ingestion.registered() + ReviewActivities(pool, actor=SCRIBE).registered()

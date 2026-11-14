@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from datetime import timedelta
 from typing import Any
 
+from temporalio.client import Client
 from temporalio.testing import WorkflowEnvironment
 
 DEV_SERVER_VERSION = "v1.10.1"
@@ -39,3 +40,15 @@ def dev_server() -> Iterator[str]:
         run(environment.shutdown())
         loop.call_soon_threadsafe(loop.stop)
         thread.join(timeout=10)
+
+
+async def history_bytes(client: Client, workflow_id: str) -> bytes:
+    """A workflow's history and its children's, as raw protobuf: payloads, failure messages
+    and stack traces all appear there as bytes, so content can be searched for directly."""
+    history = await client.get_workflow_handle(workflow_id).fetch_history()
+    raw = b"".join(event.SerializeToString() for event in history.events)
+    for event in history.events:
+        if event.HasField("start_child_workflow_execution_initiated_event_attributes"):
+            child = event.start_child_workflow_execution_initiated_event_attributes.workflow_id
+            raw += await history_bytes(client, child)
+    return raw

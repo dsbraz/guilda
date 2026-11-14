@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import asyncpg
@@ -10,6 +10,7 @@ from brq_at_work.composition import IDENTITIES, bootstrap, build_registry
 from db_testing import Database, create_test_database
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
+from temporal_testing import dev_server
 
 RETAIL = Path(__file__).parents[2] / "pxos-kernel" / "tests" / "retail_fixture"
 
@@ -47,3 +48,9 @@ async def pool(database: Database) -> AsyncIterator[asyncpg.Pool]:
     pool = await create_pool(database.app_dsn)
     yield pool
     await pool.close()
+
+
+@pytest.fixture(scope="session")
+def temporal_address() -> Iterator[str]:
+    with dev_server() as address:
+        yield address
