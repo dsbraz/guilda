@@ -5,13 +5,10 @@ sit in front of it. What keeps it on the route is its configuration, derived fro
 same route as every other model call: the one the deploy configures.
 """
 
-import subprocess
-import sys
-
 import pytest
 
 from model_testing import OTHER_ROUTE, ROUTE
-from pxos_kernel.context.hindsight import server_settings
+from pxos_kernel.context.hindsight import main, server_settings
 from pxos_kernel.model_access import Route
 
 
@@ -27,7 +24,9 @@ def test_the_settings_come_from_the_route(route: Route) -> None:
     assert settings["HINDSIGHT_API_EMBEDDINGS_VERTEXAI_PROJECT_ID"] == "p"
 
 
-def test_the_local_script_takes_the_route_from_the_environment() -> None:
+def test_the_local_script_takes_the_route_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """scripts/hindsight-local.sh evaluates these exports."""
     environment = {
         "PXOS_VERTEX_PROJECT": "p",
@@ -39,12 +38,9 @@ def test_the_local_script_takes_the_route_from_the_environment() -> None:
         "PXOS_EMBEDDING_MODEL": ROUTE.embedding_model,
         "PXOS_EMBEDDING_REGION": ROUTE.embedding_region,
     }
-    exports = subprocess.run(
-        [sys.executable, "-m", "pxos_kernel.context.hindsight"],
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.splitlines()
+    for name, value in environment.items():
+        monkeypatch.setenv(name, value)
+    main()
     expected = server_settings(ROUTE, project="p")
+    exports = capsys.readouterr().out.splitlines()
     assert exports == [f"export {name}={value}" for name, value in expected.items()]

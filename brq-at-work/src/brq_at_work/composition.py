@@ -5,7 +5,7 @@ from pathlib import Path
 
 import asyncpg
 
-import brq_at_work.ontology.work_context.generated as work_context_models
+from brq_at_work.ontology import work_context_models
 from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
 from pxos_kernel.model_access import Route, install_route

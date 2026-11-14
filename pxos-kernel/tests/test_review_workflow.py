@@ -13,12 +13,22 @@ from uuid import UUID, uuid4
 import asyncpg
 import pytest
 from temporalio.client import Client, WorkflowFailureError, WorkflowHandle
+from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker
 
 from db_testing import Database
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import Registry
-from pxos_kernel.state import Evidence, Proposal, create_pool, get_review, propose, publish, review
+from pxos_kernel.state import (
+    Event,
+    Evidence,
+    Proposal,
+    create_pool,
+    get_review,
+    propose,
+    publish,
+    review,
+)
 from pxos_kernel.workflows import (
     AwaitReview,
     ReviewActivities,
@@ -171,3 +181,21 @@ async def test_failures_do_not_hide_behind_the_wait(temporal: Client, worker: st
     handle = await start(temporal, worker, uuid4())
     with pytest.raises(WorkflowFailureError):
         await asyncio.wait_for(handle.result(), timeout=30)
+
+
+async def test_a_signal_that_fails_for_another_reason_keeps_the_event() -> None:
+    """Only "nobody waits" is ignored; an unavailable server fails the handler, so the
+    outbox keeps the event for the next run."""
+
+    class Unavailable:
+        async def signal(self, *args: object) -> None:
+            raise RPCError("unavailable", RPCStatusCode.UNAVAILABLE, b"")
+
+    class Server:
+        def get_workflow_handle(self, workflow_id: str) -> Unavailable:
+            return Unavailable()
+
+    nudge = review_signals(Server())["fact.recorded"]  # type: ignore[arg-type]
+    event = Event(1, "fact.recorded", uuid4(), {"proposal_id": str(uuid4())}, datetime.now(UTC))
+    with pytest.raises(RPCError):
+        await nudge(event)

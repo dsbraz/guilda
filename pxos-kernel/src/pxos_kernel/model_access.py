@@ -175,9 +175,6 @@ class ModelGateway:
             raise NoRoute("the installation has no route; it gets no model")
         return Route(**dict(row))
 
-    async def provider(self) -> BaseLlm:
-        return self._providers(await self.route())
-
     async def adk_model(self) -> GatewayModel:
         """The model to give an ADK agent of this installation."""
         route = await self.route()

@@ -11,16 +11,16 @@ import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 import asyncpg
 
 from pxos_kernel.agents import FactReader, approved_version, record_run
 from pxos_kernel.context import ContextStore
 from pxos_kernel.errors import PxosError
-from pxos_kernel.identity import session
+from pxos_kernel.identity import Connection, session
 from pxos_kernel.model_access import GatewayModel
-from pxos_kernel.ontology import InvalidPackage, Registry
+from pxos_kernel.ontology import InvalidPackage, RegisteredPackage, Registry
 from pxos_kernel.state import Evidence, InvalidProposal, Proposal, propose
 
 
@@ -119,23 +119,30 @@ async def ingest(
             candidate = await reader.read(fact)
             if candidate is None or not quote_in_source(candidate[1], document.text):
                 continue
-            payload, quote = candidate
-            try:
-                async with connection.transaction():
-                    proposals.append(
-                        await propose(
-                            connection,
-                            registered,
-                            action,
-                            payload=payload,
-                            evidence=Evidence(
-                                source=document.source,
-                                quote=quote,
-                                context_ref=document.key,
-                            ),
-                            valid_from=document.occurred_at,
-                        )
-                    )
-            except (InvalidPackage, InvalidProposal):
-                continue
+            proposal = await _propose(connection, registered, action, document, *candidate)
+            if proposal is not None:
+                proposals.append(proposal)
         return proposals
+
+
+async def _propose(
+    connection: Connection,
+    registered: RegisteredPackage,
+    action: str,
+    document: SourceDocument,
+    payload: dict[str, Any],
+    quote: str,
+) -> Proposal | None:
+    """Propose one candidate in a savepoint; one the kernel refuses is skipped."""
+    try:
+        async with connection.transaction():
+            return await propose(
+                connection,
+                registered,
+                action,
+                payload=payload,
+                evidence=Evidence(source=document.source, quote=quote, context_ref=document.key),
+                valid_from=document.occurred_at,
+            )
+    except (InvalidPackage, InvalidProposal):
+        return None

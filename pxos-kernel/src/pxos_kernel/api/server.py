@@ -195,34 +195,7 @@ def _action(registered: RegisteredPackage, action_name: str) -> Entry:
     definitions = payload_schema.pop("$defs", {})
 
     async def run(connection: Connection, caller: Caller, arguments: dict[str, Any]) -> Any:
-        _only(arguments, {"payload", "quote", "valid_from", "entity_id", "base_revision"})
-        payload = arguments.get("payload")
-        if not isinstance(payload, dict):
-            raise InvalidCall("payload must be an object")
-        valid_from = (
-            _datetime(arguments["valid_from"]) if "valid_from" in arguments else datetime.now(UTC)
-        )
-        proposal = await propose(
-            connection,
-            registered,
-            action_name,
-            payload=payload,
-            evidence=Evidence(
-                source=f"mcp:{caller.actor}",
-                quote=str(arguments.get("quote", "")),
-                context_ref=f"mcp:call/{uuid4()}",
-            ),
-            valid_from=valid_from,
-            entity_id=_entity(arguments["entity_id"]) if "entity_id" in arguments else None,
-            base_revision=_revision(arguments.get("base_revision", 0)),
-        )
-        return {
-            "proposal_id": proposal.id,
-            "entity_id": proposal.entity_id,
-            "digest": proposal.digest,
-            "status": "pending",
-            "approver_role": action.approver,
-        }
+        return await _propose_call(connection, registered, action_name, caller, arguments)
 
     schema: dict[str, Any] = {
         "type": "object",
@@ -261,6 +234,43 @@ def _action(registered: RegisteredPackage, action_name: str) -> Entry:
         ),
         run,
     )
+
+
+async def _propose_call(
+    connection: Connection,
+    registered: RegisteredPackage,
+    action_name: str,
+    caller: Caller,
+    arguments: dict[str, Any],
+) -> dict[str, Any]:
+    _only(arguments, {"payload", "quote", "valid_from", "entity_id", "base_revision"})
+    payload = arguments.get("payload")
+    if not isinstance(payload, dict):
+        raise InvalidCall("payload must be an object")
+    valid_from = (
+        _datetime(arguments["valid_from"]) if "valid_from" in arguments else datetime.now(UTC)
+    )
+    proposal = await propose(
+        connection,
+        registered,
+        action_name,
+        payload=payload,
+        evidence=Evidence(
+            source=f"mcp:{caller.actor}",
+            quote=str(arguments.get("quote", "")),
+            context_ref=f"mcp:call/{uuid4()}",
+        ),
+        valid_from=valid_from,
+        entity_id=_entity(arguments["entity_id"]) if "entity_id" in arguments else None,
+        base_revision=_revision(arguments.get("base_revision", 0)),
+    )
+    return {
+        "proposal_id": proposal.id,
+        "entity_id": proposal.entity_id,
+        "digest": proposal.digest,
+        "status": "pending",
+        "approver_role": registered.package.action(action_name).approver,
+    }
 
 
 def _fact(fact: Fact) -> dict[str, Any]:

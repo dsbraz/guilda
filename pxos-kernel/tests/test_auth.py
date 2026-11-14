@@ -80,3 +80,11 @@ async def test_only_the_configured_keys_and_asymmetric_algorithms_count(
     assert await verifier.verify_token(hmac) is None
 
     assert await verifier.verify_token("not a jwt") is None
+
+
+async def test_a_local_issuer_reloaded_from_its_key_signs_the_same_way(
+    issuer: LocalIssuer, verifier: JwtVerifier
+) -> None:
+    reloaded = LocalIssuer.from_pem(issuer.pem(), issuer=ISSUER, audience=AUDIENCE)
+    access = await verifier.verify_token(reloaded.token("erin"))
+    assert access is not None and Caller.from_token(access).actor == "erin"

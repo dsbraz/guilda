@@ -21,3 +21,28 @@ delegations:
     )
     with pytest.raises(InvalidIdentities, match="vera is not a person"):
         read_identities(path)
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        ("actors: [{id: ana, kind: robot, name: Ana}]", "identities.yaml"),
+        (
+            "actors: [{id: ana, kind: internal_person, name: Ana},"
+            " {id: ana, kind: agent, name: Outra}]",
+            "duplicated actor ids",
+        ),
+        (
+            "actors: [{id: ana, kind: internal_person, name: Ana},"
+            " {id: bia, kind: internal_person, name: Bia}]\n"
+            "delegations: [{agent: bia, person: ana}]",
+            "bia is not an agent",
+        ),
+    ],
+    ids=["unknown-kind", "duplicated-id", "person-as-agent"],
+)
+def test_an_invalid_identity_file_is_refused(tmp_path: Path, content: str, message: str) -> None:
+    path = tmp_path / "identities.yaml"
+    path.write_text(content, encoding="utf-8")
+    with pytest.raises(InvalidIdentities, match=message):
+        read_identities(path)

@@ -9,13 +9,15 @@ from collections.abc import AsyncIterator
 
 import asyncpg
 import pytest
+from pydantic import BaseModel
 from starlette.applications import Starlette
 
 from mcp_testing import BASE, ToolError, call, connect, post_status, running
 from pxos_kernel.api.auth import JwtVerifier, LocalIssuer
-from pxos_kernel.api.server import build_server, http_app
+from pxos_kernel.api.server import _catalog, build_server, http_app
+from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import session
-from pxos_kernel.ontology import Registry
+from pxos_kernel.ontology import RegisteredPackage, Registry
 from pxos_kernel.state import get_proposal, review
 
 ISSUER = "http://idp.test"
@@ -146,6 +148,11 @@ async def test_an_action_tool_proposes_a_change_to_an_existing_entity(
         ({"payload": {**ORDER, "quantity": 0}, "quote": "q"}, "invalid RestockOrder"),
         ({"payload": {**ORDER, "assignee": "nobody"}, "quote": "q"}, "unknown actor nobody"),
         ({"payload": ORDER, "quote": "q", "valid_from": "2026-11-14"}, "timezone"),
+        ({"payload": ORDER, "quote": "q", "valid_from": "amanhã"}, "not an ISO date-time"),
+        ({"payload": "M-1", "quote": "q"}, "payload must be an object"),
+        ({"payload": ORDER, "quote": "q", "entity_id": "x"}, "entity_id must be a UUID"),
+        ({"payload": ORDER, "quote": "q", "base_revision": -1}, "positive integer"),
+        ({"payload": ORDER, "quote": "q", "base_revision": True}, "positive integer"),
     ],
 )
 async def test_an_invalid_action_call_creates_nothing(
@@ -191,3 +198,36 @@ async def test_list_and_timeline_show_the_approved_fact(
     assert [(r["revision"], r["evidence"]["source"]) for r in timeline["items"]] == [
         (1, "mcp:erin")
     ]
+
+
+async def test_a_malformed_timeline_call_or_an_unknown_tool_is_an_error(
+    app: Starlette, issuer: LocalIssuer
+) -> None:
+    with pytest.raises(ToolError, match="entity_id must be a UUID"):
+        await call(app, issuer.token("erin"), "timeline", {"entity_id": "x"})
+    with pytest.raises(ToolError, match="unknown tool restock"):
+        await call(app, issuer.token("erin"), "restock", {})
+
+
+class Line(BaseModel):
+    sku: str
+
+
+class Order(BaseModel):
+    lines: list[Line]
+
+
+def test_payload_definitions_resolve_from_the_tool_schema(registry: Registry) -> None:
+    """A payload with nested types keeps its $defs at the root, where its $refs point."""
+    retail = registry.get("retail")
+    nested = RegisteredPackage(retail.package, {**retail.models, "RestockOrder": Order})
+    [tool] = [e.tool for e in _catalog([nested]).values() if e.tool.name == "create_restock_order"]  # type: ignore[arg-type]
+    payload = tool.input_schema["properties"]["payload"]
+    assert payload["properties"]["lines"]["items"] == {"$ref": "#/$defs/Line"}
+    assert set(tool.input_schema["$defs"]) == {"Line"}
+
+
+def test_two_tools_with_the_same_name_are_refused(registry: Registry) -> None:
+    retail = registry.get("retail")
+    with pytest.raises(PxosError, match="two tools named"):
+        _catalog([retail, retail])  # type: ignore[arg-type]

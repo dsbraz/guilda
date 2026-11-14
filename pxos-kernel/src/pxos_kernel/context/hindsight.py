@@ -30,9 +30,18 @@ def server_settings(route: Route, *, project: str) -> dict[str, str]:
 
 
 class HindsightContextStore:
-    def __init__(self, base_url: str, bank: str, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        bank: str,
+        api_key: str | None = None,
+        *,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-        self._client = httpx.AsyncClient(base_url=base_url, headers=headers, timeout=600)
+        self._client = httpx.AsyncClient(
+            base_url=base_url, headers=headers, timeout=600, transport=transport
+        )
         self._bank = f"/v1/default/banks/{bank}"
 
     @classmethod
@@ -78,8 +87,8 @@ class HindsightContextStore:
         return [i["text"] for i in items if i.get("fact_type") != "observation" and i["text"]]
 
 
-if __name__ == "__main__":
-    # Shell exports for scripts/hindsight-local.sh, from the route the environment configures.
+def main() -> None:
+    """Shell exports for scripts/hindsight-local.sh, from the route the environment configures."""
     settings = server_settings(Route.from_environment(), project=os.environ["PXOS_VERTEX_PROJECT"])
     for name, value in settings.items():
         print(f"export {name}={value}")

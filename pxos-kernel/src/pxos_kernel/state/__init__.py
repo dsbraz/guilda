@@ -5,7 +5,6 @@ from pxos_kernel.state.canonical import (
     DecisionFinal,
     DigestMismatch,
     Evidence,
-    Fact,
     InvalidProposal,
     NotApprover,
     Proposal,
@@ -13,20 +12,18 @@ from pxos_kernel.state.canonical import (
     SelfApproval,
     StalePackage,
     StaleRevision,
-    as_of,
-    current,
     get_proposal,
     get_review,
-    history,
-    install_packages,
     proposals_from,
     propose,
     propose_invalidation,
     review,
 )
 from pxos_kernel.state.db import create_pool, grant_connect
+from pxos_kernel.state.facts import Fact, as_of, current, history
 from pxos_kernel.state.migrate import upgrade
 from pxos_kernel.state.outbox import Event, Handler, publish
+from pxos_kernel.state.packages import install_packages
 
 __all__ = [
     "Decision",

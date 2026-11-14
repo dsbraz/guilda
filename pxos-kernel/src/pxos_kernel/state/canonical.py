@@ -91,21 +91,6 @@ class Review:
     decided_at: datetime
 
 
-@dataclass(frozen=True)
-class Fact:
-    entity_id: UUID
-    revision: int
-    package: str
-    type_name: str
-    operation: Operation
-    payload: dict[str, Any]
-    evidence: dict[str, str]
-    valid_from: datetime
-    valid_to: datetime | None
-    proposal_id: UUID
-    known_at: datetime
-
-
 def proposal_digest(content: dict[str, Any]) -> str:
     """Identity of exactly what a reviewer sees; any change produces another digest."""
     encoded = json.dumps(content, sort_keys=True, separators=(",", ":"), default=str).encode()
@@ -245,108 +230,6 @@ async def get_review(connection: Connection, proposal_id: UUID) -> Review | None
         "SELECT * FROM pxos.reviews WHERE proposal_id = $1", proposal_id
     )
     return None if row is None else Review(**dict(row))
-
-
-async def as_of(
-    connection: Connection, entity_id: UUID, *, valid_at: datetime, known_at: datetime
-) -> Fact | None:
-    """The fact valid at ``valid_at`` as it was known at ``known_at``.
-
-    Revisions are full snapshots from ``valid_from``. Among those known and already in
-    force, the latest ``valid_from`` wins and, on the same date, the highest revision.
-    An invalidation or an expired ``valid_to`` means no fact.
-    """
-    row = await connection.fetchrow(
-        """
-        SELECT * FROM pxos.facts
-        WHERE entity_id = $1 AND known_at <= $3 AND valid_from <= $2
-        ORDER BY valid_from DESC, revision DESC
-        LIMIT 1
-        """,
-        entity_id,
-        valid_at,
-        known_at,
-    )
-    if row is None:
-        return None
-    fact = Fact(**dict(row))
-    if fact.operation == "invalidate" or (fact.valid_to is not None and valid_at >= fact.valid_to):
-        return None
-    return fact
-
-
-async def current(
-    connection: Connection,
-    package: str,
-    type_name: str,
-    *,
-    valid_at: datetime,
-    known_at: datetime,
-) -> list[Fact]:
-    """Every entity of a type whose fact is valid at ``valid_at`` as known at ``known_at``.
-
-    Same rule as ``as_of``, per entity; RLS leaves out types the actor cannot read.
-    """
-    rows = await connection.fetch(
-        """
-        SELECT DISTINCT ON (entity_id) * FROM pxos.facts
-        WHERE package = $1 AND type_name = $2 AND known_at <= $4 AND valid_from <= $3
-        ORDER BY entity_id, valid_from DESC, revision DESC
-        """,
-        package,
-        type_name,
-        valid_at,
-        known_at,
-    )
-    facts = [Fact(**dict(row)) for row in rows]
-    return [
-        fact
-        for fact in facts
-        if fact.operation != "invalidate" and (fact.valid_to is None or valid_at < fact.valid_to)
-    ]
-
-
-async def history(connection: Connection, entity_id: UUID) -> list[Fact]:
-    rows = await connection.fetch(
-        "SELECT * FROM pxos.facts WHERE entity_id = $1 ORDER BY revision", entity_id
-    )
-    return [Fact(**dict(row)) for row in rows]
-
-
-async def install_packages(owner: asyncpg.Connection, registry: Registry) -> None:
-    """Record the registered packages so the database knows approvers and readers."""
-    async with owner.transaction():
-        for registered in registry:
-            package = registered.package
-            await owner.execute(
-                """
-                INSERT INTO pxos.packages (name, version, digest) VALUES ($1, $2, $3)
-                ON CONFLICT (name) DO UPDATE
-                SET version = EXCLUDED.version, digest = EXCLUDED.digest
-                """,
-                package.name,
-                package.version,
-                package.digest,
-            )
-            await owner.executemany(
-                """
-                INSERT INTO pxos.package_actions (package, digest, action, creates, approver_role)
-                VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING
-                """,
-                [
-                    (package.name, package.digest, a.name, a.creates, a.approver)
-                    for a in package.actions
-                ],
-            )
-            await owner.execute("DELETE FROM pxos.type_readers WHERE package = $1", package.name)
-            await owner.executemany(
-                "INSERT INTO pxos.type_readers (package, type_name, role) VALUES ($1, $2, $3)",
-                [
-                    (package.name, type_name, role)
-                    for type_name, roles in package.readers.items()
-                    for role in roles
-                ],
-            )
 
 
 async def _insert(

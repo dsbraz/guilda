@@ -179,3 +179,15 @@ def test_a_reference_can_only_point_to_an_actor(tmp_path: Path) -> None:
     assignee["annotations"]["pxos.refers_to"] = "Shelf"
     with pytest.raises(InvalidPackage, match="assignee can only refer to Actor"):
         load_package(write_package(tmp_path, schema, manifest))
+
+
+def test_package_must_declare_the_base_version_it_was_built_for(tmp_path: Path) -> None:
+    schema, manifest = retail()
+    del schema["annotations"]["pxos.base_version"]
+    with pytest.raises(InvalidPackage, match="must declare pxos.base_version"):
+        load_package(write_package(tmp_path, schema, manifest))
+
+
+def test_an_unknown_action_is_refused() -> None:
+    with pytest.raises(InvalidPackage, match="unknown action restock"):
+        load_package(RETAIL).action("restock")

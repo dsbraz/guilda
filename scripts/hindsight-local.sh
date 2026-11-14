@@ -28,7 +28,7 @@ docker compose exec -T postgres psql -U pxos -d hindsight_local -qc \
 
 export GOOGLE_CLOUD_PROJECT="$PXOS_VERTEX_PROJECT"
 export HINDSIGHT_API_DATABASE_URL="postgresql://pxos:pxos-local@127.0.0.1:${db_port}/hindsight_local"
-eval "$(uv run python -m pxos_kernel.context.hindsight)"
+eval "$(uv run python -c 'from pxos_kernel.context.hindsight import main; main()')"
 export HINDSIGHT_API_LLM_PROMPT_CACHE_ENABLED=false
 export HINDSIGHT_API_EMBEDDINGS_GEMINI_OUTPUT_DIMENSIONALITY=768
 export HINDSIGHT_API_RERANKER_PROVIDER=rrf
