@@ -124,5 +124,12 @@ import-linter, Docker Compose com portas em loopback. Uma ferramenta por respons
 
 ## Fora deste ADR
 
-Framework HTTP/MCP, motor de fluxos (Temporal ou Cloud Workflows), observabilidade e
-runtime de agentes são decididos nas issues que os introduzem.
+Observabilidade e detalhes de hospedagem são decididos nas issues que os introduzem.
+O MCP básico foi entregue na fatia 3. Em 14/11/2026, após o spike ADK + Temporal, o
+mantenedor adotou **Google ADK para agentes e Temporal como único motor de workflows
+duráveis**, conforme o [PRD v0.25](../../pxos-brq-work-prd.html#criacao-operacao) e a
+[Fase 8 do roadmap](../../ROADMAP.md). ADK executa em Activities quando participa do
+processo; identidade, aprovação e autorização continuam no kernel. A escolha dos motores
+está encerrada; integração, experiência de construção/operação e implantação ainda serão
+entregues. O [relatório do spike](../../spikes/adk-temporal/reports/ADR-001.md) registra a
+evidência e seus limites, anteriores à decisão de adoção.

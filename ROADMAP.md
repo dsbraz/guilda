@@ -2,7 +2,7 @@
 
 ## Contexto
 
-O PRD `pxos-brq-work-prd.html` (v0.24) descreve uma plataforma que ainda não existe: o **kernel do pxOS** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B). Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026 (`spikes/`). O código de produto começa agora.
+O PRD `pxos-brq-work-prd.html` (v0.25) descreve o **kernel do pxOS** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B), em construção por fatias verticais. Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026. O spike ADK + Temporal foi concluído em 14/11/2026; o mantenedor aprovou a adoção dos dois motores e a criação e operação de agentes e workflows dentro da plataforma.
 
 Decisões já tomadas:
 - **Entregável:** roadmap em fases, com marcos, dependências, gates e critérios de saída.
@@ -10,6 +10,9 @@ Decisões já tomadas:
 - **Memória:** contexto no Hindsight sobre AlloyDB; estado canônico tipado e governado próprio em PostgreSQL ([ADR 0001](docs/adr/0001-memoria-contexto-e-estado-canonico.md)). Graphiti, Neo4j, Mem0 e LangExtract rejeitados.
 - **Fronteira kernel/distribuição** por natureza, com o mantenedor como árbitro ([ADR 0002](docs/adr/0002-fronteira-kernel-distribuicao.md)).
 - **Arquitetura e padrões de código** em [ADR 0003](docs/adr/0003-arquitetura-e-padroes-de-codigo.md).
+- **Agentes e workflows:** Google ADK para agentes; Temporal como único motor de processos duráveis. ADK roda em Activities quando participa de um workflow. Aprovação, identidade e execução autorizada permanecem no kernel; o histórico dos motores não substitui a memória corporativa. [Evidência do spike](spikes/adk-temporal/reports/ADR-001.md): 13 testes passaram, incluindo Gemini real, retomada e execução incerta. Integração e operação de produção ainda precisam ser entregues.
+- **Experiência de construção:** criar, configurar, testar, versionar, publicar e acompanhar agentes e workflows na plataforma. O FDE fornece ontologia, ferramentas e conectores do domínio, como o portal BRQ. APIs e MCP permitem integrar outras plataformas sob as mesmas permissões e política. A biblioteca e o formato do editor visual ainda não foram escolhidos.
+- **Experiência unificada:** uma única área web do pxOS, com login, navegação e identidade visual próprios, reúne memória corporativa, agentes, workflows, execuções e aprovações. O backend aplica permissões e integra os motores. Canais como Teams continuam disponíveis; web e canais compartilham fatos, decisões e fila de revisão.
 - **Implantação:** instalação dedicada por cliente é o padrão, e dentro dela valem as permissões internas. O modo compartilhado fica adiado.
 - **Time:** você e eu. O gargalo é o seu tempo de revisão e os acessos externos (TI, jurídico, GCP), não a escrita de código. Por isso o plano é sequenciado por critério de saída, sem datas.
 
@@ -23,9 +26,9 @@ Assim cada fase tem um critério executável.
 
 ## Princípios de execução
 
-- **Local primeiro** (CLAUDE.md): Docker Compose com portas só em loopback, Postgres 16 + pgvector local e emuladores (Pub/Sub, Firestore/Datastore se preciso). Cada serviço GCP (Vertex, Agent Gateway, Agent Engine, BigQuery, Secret Manager, Workflows) fica atrás de um **adaptador** com uma implementação local e uma GCP. Isso também atende o requisito 12 (portabilidade).
+- **Local primeiro** (CLAUDE.md): Docker Compose com portas só em loopback, Postgres 16 + pgvector local e emuladores (Pub/Sub, Firestore/Datastore se preciso). Cada serviço GCP (Vertex, Agent Gateway, eventual Agent Engine, BigQuery, Secret Manager) fica atrás de um **adaptador** com implementação local e GCP. ADK e Temporal rodam localmente; a implantação de produção será validada sem trocar o motor de workflows. Isso também atende o requisito 12 (portabilidade).
 - **Monorepo:** workspace uv na raiz com `pxos-kernel/` (kernel) e `brq-at-work/` (distribuição), `docs/adr/` e `spikes/`. Outras pastas (`infra/`, `evals/`, Constituição) nascem com a issue que as usa.
-- **Stack:** Python 3.12, LinkML, Pydantic, asyncpg com SQL explícito, Alembic, PostgreSQL/AlloyDB, Hindsight, pytest e Terraform (ADR 0003). Framework HTTP/MCP e motor de fluxos são decididos nas suas issues.
+- **Stack:** Python 3.12, LinkML, Pydantic, asyncpg com SQL explícito, Alembic, PostgreSQL/AlloyDB, Hindsight, Google ADK, Temporal, pytest e Terraform (ADR 0003). O MCP básico já foi entregue na fatia 3. A Fase 8 implementa a integração dos motores escolhidos; as versões do spike são evidência, não uma política de versões de produção.
 - **Requisitos viram testes:** cada um dos 13 requisitos do §4 vira um teste automatizado de aceitação, que roda no CI desde que existe.
 - **Medição desde o começo:** traces (OpenTelemetry) e conjuntos de avaliação começam na primeira chamada de modelo, não no fim.
 - **Git:** integração direta na `main` enquanto o time for o mantenedor e o agente (AGENTS.md).
@@ -35,7 +38,7 @@ Assim cada fase tem um critério executável.
 ### Fase 0: Fundação e destravamentos
 - Estrutura do monorepo, Compose de desenvolvimento e CI de produto (lint, tipos, testes, contrato de importação e neutralidade).
 - Fixtures de referência (descritas acima) e o esqueleto dos 13 testes de requisito, marcados como `xfail`.
-- **Serviços gerenciados** (Agent Gateway com Service Extensions, regiões do Agent Engine, Claude no Vertex, Gemini em southamerica-east1): não houve spike. A validação acontece nas issues que os usam (K11, K31, K34). Se algo não se confirmar, o adaptador local passa a ser o caminho principal.
+- **Serviços gerenciados** (Agent Gateway com Service Extensions, eventual Agent Engine, Claude no Vertex, Gemini em southamerica-east1): a validação acontece nas issues que os usam (K11, K31, K34). O spike ADK + Temporal usou Gemini no Vertex global, sem validar esses serviços ou residência no Brasil. Hospedagem do Temporal, disponibilidade, custo e atualização dos workers ficam como gates de produção na Fase 10.
 - **Memória:** decidida no ADR 0001 (concluído).
 - **Abrir já as frentes externas** (prazo longo, só bloqueiam a Parte B): permissões no Entra ID e contas de serviço, API do portal de alocação e horas, modelo de acesso ao Granola, política de transcrições com cliente e residência de dados (jurídico).
 - **Saída:** `docker compose up` sobe a base, o CI roda, os ADRs 0001–0003 estão aceitos e as frentes externas têm dono e status.
@@ -63,7 +66,7 @@ Assim cada fase tem um critério executável.
 - **Saída:** uma instalação que exige residência no Brasil nunca chega ao endpoint global (teste). Dados pessoais saem pseudonimizados. Toda chamada gera trace.
 
 ### Fase 4: Ingestão e framework de conectores
-- Contrato de conector: leitura, mapeamento, ações, acesso e instalação.
+- Contrato de conector: leitura, mapeamento, ações, acesso e instalação; para escrita, declarar suporte a idempotência, controle de versão e consulta de comprovante. O FDE implementa os detalhes do sistema de destino.
 - Três modos de leitura: aviso de mudança com leitura incremental, captura de mudanças (Datastream ou um adaptador local com logical replication/Debezium) e leitura periódica com diff.
 - Fila de eventos, idempotência, reconciliação periódica, carga inicial e descarte do que não tem vínculo.
 - Registros operacionais vão direto para o estado vivo e para a base analítica, sem modelo.
@@ -84,13 +87,19 @@ Assim cada fase tem um critério executável.
 - Catálogo de tools gerado: leitura (search, get_context, timeline, list_commitments, get_page) e uma tool por ação.
 - Serviço de política: ação × papel × parâmetros × fase de autonomia × regras do módulo.
 - Encaminhador para a fila, executor como único caminho de escrita, caminho síncrono para ações pré-aprovadas, log de auditoria e credenciais (Secret Manager ou um adaptador local).
+- Conectores externos e servidores MCP registrados com escopo e política; agentes de outras plataformas acessam contexto e solicitam ações pelas mesmas APIs/MCP. Credenciais de escrita permanecem no caminho autorizado do gateway.
+- Execução confere conteúdo aprovado, autorização vigente e versão do recurso. Repetição só conforme o contrato do destino; resultado incerto exige consulta de comprovante ou reconciliação, sem registrar sucesso prematuro.
 - **Saída:** passam os testes dos requisitos 1 (o mesmo MCP serve pessoa e agente), 6 (ação irreversível sempre aprovada) e 7 (latência p95 do caminho síncrono dentro da meta definida no ADR).
 
-### Fase 8: Agentes, gatilhos e fluxos
-- Runtime de agentes (ADK, com Agent Engine ou execução local), identidade por agente, fases de autonomia e métricas de progressão. Leitura com a delegação da pessoa.
-- Gatilhos por agenda (horário da pessoa ou do papel) e por evento (mudanças no estado vivo). Fluxos longos com etapas, prazos e checagens humanas.
-- Agente de referência sobre as fixtures.
-- **Saída:** o agente de referência é acionado por agenda e por evento, lê via MCP e age via gateway na fase 1. A progressão de fase só acontece por métrica.
+### Fase 8: Construção e operação de agentes e workflows
+- **Área web integrada:** entregar a navegação e autenticação comuns para memória, agentes, workflows, execuções e aprovações, consumindo os serviços das Fases 2, 5 e 7. A memória permite consultar contexto, fatos, fontes e histórico; a área de aprovações oferece a mesma fila dos canais, com decisão única e estado consistente em ambas as superfícies.
+- **Motores:** ADK executa interpretação e ferramentas; Temporal controla processos duráveis, espera, prazos e retomada. Chamadas ADK ficam em Activities. Não duplicar o ciclo de aprovação nos dois motores nem construir motor próprio. Sessões e histórico de execução não substituem Hindsight e estado canônico.
+- **Definições versionadas:** agente declara função, instruções, contexto, modelo, ferramentas, saída esperada, responsável e autonomia; workflow declara gatilho, etapas, condições, aprovações, prazos e tratamento de falhas. A execução referencia versões publicadas; mudanças não alteram silenciosamente processos em andamento.
+- **Área de agentes:** configurar sobre o catálogo de módulos, testar com exemplos e resultados esperados, avaliar e publicar. Identidade própria e leitura com a delegação da pessoa.
+- **Área de workflows:** compor etapas de agente, ações e aprovação sobre blocos registrados; validar entradas e saídas, testar falhas e publicar. Ferramentas e conectores específicos são escritos pelo FDE; a interface oferece a composição sobre esses contratos. Escolher a tecnologia de interface nesta entrega.
+- **Área de execuções:** listar por instalação, função, período e estado; mostrar etapa, versão, evidência, ferramentas, aprovação, resultado, custo e erro. Correlacionar IDs Temporal/ADK com proposta e ação do gateway. Expor somente intervenções autorizadas, com cancelamento, esclarecimento e reconciliação previstos pelo processo. Não oferecer retry cego para efeitos incertos.
+- **Gatilhos:** Temporal Schedules para agenda e entrada de eventos do estado vivo. Integração com fila de revisão e política do kernel, incluindo expiração e revogação. ADK Web e Temporal Web UI apoiam desenvolvimento e diagnóstico; o painel de produto aplica as permissões do pxOS.
+- **Saída:** o FDE registra uma ferramenta e configura um agente/workflow sem alterar o mecanismo comum; publica uma versão, aciona por agenda e evento e acompanha a execução no painel. O agente consulta contexto via MCP e age via gateway em fase de autonomia 1. Testes de produto demonstram espera por esclarecimento/aprovação, retomada após queda, aprovação exata, resultado incerto sem duplicação e retorno de confirmação ao estado vivo. Uma função de referência produz uma entrega baseada no contexto e identifica lacunas sem exigir que a pessoa reconstrua todo o histórico. A progressão de autonomia só acontece por métrica.
 
 ### Fase 9: Manutenção, base analítica e medição de resultado
 - Job diário: deduplicação, conflitos, envelhecimento, páginas narrativas regeneradas com citação dos fatos, propostas de PR à Constituição.
@@ -102,6 +111,7 @@ Assim cada fase tem um critério executável.
 - Hospedagem de apps: banco próprio por app, espelhamento de fatos no estado vivo e acesso só por MCP, API e canais. Kit de construção de apps com um app de referência.
 - Ciclo de vida de módulos e distribuições por instalação (instalar, atualizar, remover, regenerar), testes de distribuição contra uma versão nova do kernel e permissões por módulo.
 - Terraform para a instalação dedicada (projeto GCP por cliente). O modo compartilhado fica adiado.
+- Implantação dos workers ADK e serviço Temporal (próprio ou gerenciado): validar residência, isolamento, disponibilidade, recuperação, custo, retenção do histórico e atualização compatível com workflows em andamento. A escolha dos motores não define antecipadamente o provedor de hospedagem.
 - **Saída:**
   - os 13 testes de requisito passam;
   - a "distribuição de referência" instala do zero em local e em um projeto GCP de homologação;
@@ -113,8 +123,8 @@ Para começar, precisa dos gates de TI e jurídico da Fase 0 resolvidos.
 2. Conector do Granola (conforme o modelo de acesso decidido) e mapeamento de reunião para projeto por calendário e série.
 3. Canal Teams (bot e cards) e Claude Enterprise via MCP, com Entra ID.
 4. Escriba pós-reunião, em fase 1. **Piloto com 1 ou 2 projetos.**
-5. Conector do Bud e conector do portal (se houver API; sem API, o agente só sugere).
-6. Briefing do dia e pré-reunião, status semanal e programação de alocação.
+5. Conector do Bud e conector do portal pelo FDE (se houver API; sem API, o agente só sugere). Validar idempotência, controle de versão e comprovantes antes de autorizar movimentações de alocação.
+6. Configurar e publicar agentes/workflows de briefing do dia e pré-reunião, status semanal e programação de alocação; acompanhar suas execuções na plataforma. Validar o status semanal com os acontecimentos do período e esclarecimento de lacunas; validar movimentação com proposta, aprovação, escrita no portal e confirmação no contexto.
 7. App de visão de carteira. Expansão para cerca de 250 pessoas de PX, acompanhando as métricas do §14.
 
 ## Rastreabilidade
@@ -157,8 +167,11 @@ Para começar, precisa dos gates de TI e jurídico da Fase 0 resolvidos.
 | Residência de inferência | F0 (spike + jurídico) | F3 (desenho), F11 (produção) |
 | Compartilhada vs. dedicada | dedicada como padrão; compartilhada adiada | F10 (só se surgir demanda) |
 | Governança da fronteira do kernel | resolvida (ADR 0002) | — |
+| Motores de agentes e workflows | ADK + Temporal adotados em 14/11/2026 | F8 (integração, construção e operação) |
+| Hospedagem Temporal e workers ADK | F8 (local e desenho) | F10 (produção: disponibilidade, residência, custo e upgrades) |
+| Interface de criação e acompanhamento | F8 (tecnologia e experiência) | saída da F8 |
 | Permissões do Entra ID e contas de serviço | F0 (TI) | F11.3 |
-| API do portal | F0 (TI) | F11.5 |
+| API do portal e contrato de execução/reconciliação | F0 (TI), detalhamento F4/F7 | F11.5 |
 | Modelo de acesso ao Granola | F0 | F11.2 |
 | Política de transcrições com cliente (LGPD) | F0 (jurídico) | F11.2 / piloto |
 | Camada conversacional de atendimento | adiada | fora deste plano (outra distribuição) |
@@ -169,6 +182,7 @@ Para começar, precisa dos gates de TI e jurídico da Fase 0 resolvidos.
 - O CI roda lint, tipos, testes unitários e a **suíte dos 13 requisitos** contra as fixtures, a cada commit.
 - Avaliação contínua: os conjuntos de referência de extração e junção rodam a cada mudança de prompt, modelo ou ontologia, com limiares.
 - Ponta a ponta local: `docker compose up`, injetar eventos dos conectores falsos e verificar fatos no estado vivo, card no canal falso, aprovação, ação executada e auditoria registrada.
+- Agentes/workflows: testes de produto para publicação, contexto suficiente, esclarecimento, retomada, permissão no painel e execução segura. O spike fica isolado em `spikes/adk-temporal/`; seus 13 testes não substituem esses critérios nem entram no CI de produto.
 - O marco do kernel é validado instalando a distribuição de referência num projeto GCP de homologação. Isso só acontece com o seu pedido explícito.
 
 ## Próximo passo

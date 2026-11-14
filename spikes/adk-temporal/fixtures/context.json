@@ -1,0 +1,9 @@
+{
+  "source": "fixture:portal-and-account-context:v1",
+  "people": [
+    {"id": "ana-design", "name": "Ana Silva", "role": "designer", "project": "alfa", "percentage": 100, "version": 1},
+    {"id": "ana-research", "name": "Ana Souza", "role": "researcher", "project": "gama", "percentage": 100, "version": 1}
+  ],
+  "projects": ["alfa", "beta", "gama"],
+  "capacity": {"beta": 50, "alfa": 100, "gama": 100}
+}

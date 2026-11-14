@@ -1,0 +1,89 @@
+{
+  "verified_at_utc": "2026-11-14T15:17:59.389878+00:00",
+  "versions": {
+    "google-adk": "2.14.1",
+    "temporalio": "1.36.1",
+    "google-genai": "2.34.0",
+    "pytest": "9.2.0"
+  },
+  "temporal_cli": "1.10.1",
+  "temporal_server": "1.32.2",
+  "suite": {
+    "tests": "13",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "92.213"
+  },
+  "cases": [
+    {
+      "name": "test_live_clarifies[Decidido: mover 50% da aloca\\xe7\\xe3o de Ana Silva do projeto alfa para beta.]",
+      "seconds": "7.459"
+    },
+    {
+      "name": "test_live_clarifies[Decidido: mover 50% da aloca\\xe7\\xe3o de Ana para beta a partir de 2026-11-23.]",
+      "seconds": "6.538"
+    },
+    {
+      "name": "test_live_end_to_end",
+      "seconds": "22.002"
+    },
+    {
+      "name": "test_portal_really_duplicates_without_idempotency[True-1]",
+      "seconds": "0.695"
+    },
+    {
+      "name": "test_portal_really_duplicates_without_idempotency[False-2]",
+      "seconds": "0.794"
+    },
+    {
+      "name": "test_executor_refuses_changed_approval",
+      "seconds": "0.016"
+    },
+    {
+      "name": "test_lost_response[True-True-confirmed-2]",
+      "seconds": "4.036"
+    },
+    {
+      "name": "test_lost_response[False-True-confirmed-1]",
+      "seconds": "3.134"
+    },
+    {
+      "name": "test_lost_response[False-False-reconciliation_required-1]",
+      "seconds": "3.013"
+    },
+    {
+      "name": "test_restart_exact_approval_and_fde_extension",
+      "seconds": "12.995"
+    },
+    {
+      "name": "test_invalid_approvals_and_rejection",
+      "seconds": "3.019"
+    },
+    {
+      "name": "test_clarification_survives_restart[Decidido: mover 50% da aloca\\xe7\\xe3o de Ana Silva do projeto alfa para beta.]",
+      "seconds": "13.505"
+    },
+    {
+      "name": "test_clarification_survives_restart[Decidido: mover 50% da aloca\\xe7\\xe3o de Ana para beta a partir de 2026-11-23.]",
+      "seconds": "13.714"
+    }
+  ],
+  "model": "gemini-3.8-flash",
+  "project": "pxos-spikes",
+  "region": "global",
+  "lint": "ruff check passed",
+  "format": "ruff format --check passed",
+  "demo": {
+    "result": "confirmed",
+    "effects": 1,
+    "http_attempts": 2,
+    "tools_used": [
+      "get_work_context",
+      "get_capacity"
+    ],
+    "replay": "passed",
+    "artifact": "demo-live.json"
+  },
+  "scope": "Synthetic context and HTTP portal; real ADK, Temporal, subprocess SIGKILL and opt-in Gemini. No production adoption."
+}
