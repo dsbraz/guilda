@@ -2,7 +2,8 @@
 transcript, and how it reads each extracted fact back into a commitment candidate.
 
 The kernel checks the quote against the transcript and the payload against the package
-schema; this module only parses.
+schema; this module parses, and wires the scribe's Activities for a Temporal worker
+(PXOS-71).
 """
 
 import re
