@@ -7,6 +7,7 @@ placeholder that starts passing fails the suite.
 
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 import asyncpg
 import pytest
@@ -193,9 +194,64 @@ async def test_req_05_identity_for_people_agents_and_external_actors(
             await connection.fetch("SELECT * FROM pxos.proposals")
 
 
-@pending("PXOS-31", "política e autonomia; ação irreversível sempre aprovada")
-def test_req_06_action_with_policy_and_approval() -> None:
-    raise NotImplementedError
+async def test_req_06_action_with_policy_and_approval(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    """An agent changes the world only through typed actions; the policy combines its
+    autonomy phase with the module's rules, and an irreversible action always passes
+    through a person, also against raw SQL and an agent acting for an approver (PXOS-84,
+    PXOS-85; external writes and the Agent Gateway are still PXOS-32)."""
+    idp = LocalIssuer.generate(issuer="http://idp.req06", audience="pxos")
+    verifier = JwtVerifier(issuer=idp.issuer, audience=idp.audience, jwks=idp.jwks())
+    app = http_app(
+        build_server(pool, registry),
+        verifier,
+        pool=pool,
+        issuer_url=idp.issuer,
+        resource_url=f"{BASE}/mcp",
+    )
+    order = {"sku": "R-6", "quantity": 2, "occurred_at": "2026-11-14T09:00:00Z"}
+
+    async def ask(agent: str, tool: str, quantity: int = 2) -> dict[str, Any]:
+        arguments = {"payload": {**order, "quantity": quantity}, "quote": "R-6"}
+        result: dict[str, Any] = await call(app, idp.token("erin", agent=agent), tool, arguments)
+        return result
+
+    async with running(app):
+        statuses = [
+            (await ask("restock-agent", "create_restock_order"))["status"],
+            (await ask("planner-agent", "create_restock_order"))["status"],
+            (await ask("planner-agent", "create_restock_order", 11))["status"],
+        ]
+        irreversible = await ask("night-agent", "confirm_restock_order")
+    assert statuses == ["pending", "executed", "pending"]
+    assert irreversible["status"] == "pending"
+
+    async with session(pool, "night-agent", "erin") as connection:
+        with pytest.raises(asyncpg.PostgresError, match="irreversible"):
+            await connection.execute(
+                "INSERT INTO pxos.executions (proposal_id, proposal_digest, executor)"
+                " VALUES ($1, $2, '')",
+                UUID(irreversible["proposal_id"]),
+                irreversible["digest"],
+            )
+    async with session(pool, "restock-agent", "carla") as connection:
+        with pytest.raises(asyncpg.PostgresError, match="needs the review of a person"):
+            await connection.execute(
+                "INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest)"
+                " VALUES ($1, 'approved', $2)",
+                UUID(irreversible["proposal_id"]),
+                irreversible["digest"],
+            )
+    async with session(pool, "carla") as connection:
+        approved = await review(
+            connection,
+            registry,
+            UUID(irreversible["proposal_id"]),
+            "approved",
+            digest=irreversible["digest"],
+        )
+    assert approved.reviewer == "carla"
 
 
 @pending("PXOS-33", "caminho síncrono para ação pré-aprovada")

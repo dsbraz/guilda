@@ -237,5 +237,16 @@ grava e um novo deploy os substitui. As rotas `br` e `global` e o padrão `br` d
 saíram; qual região atende a residência de cada cliente é decisão do deploy (K44), com os
 achados do PXOS-75 como insumo. Com isso o PXOS-75 foi fechado (PXOS-81) e a fatia 6
 está concluída.
+A fatia 8 foi concluída em 14/11/2026 (PXOS-82 a 86): a chamada de um agente a uma tool de
+ação passa pela política, que permite (o fato é gravado na mesma chamada), encaminha para
+aprovação ou nega, a partir da ação, dos papéis de quem o agente representa, dos parâmetros,
+da fase de autonomia do agente (na instalação, padrão 1) e das regras do módulo (`max` e
+`within_days` sobre os `rule_parameters`). A fase 2 só age direto em ação cujo módulo declara
+regras; a fase 3 também nas demais; as regras declaradas sempre limitam. O banco recusa a
+execução direta fora disso, a revisão de proposta já executada e a aprovação de ação
+irreversível por agente com delegação. Toda chamada fica na auditoria; pessoas continuam
+propondo. O req. 6 saiu de `xfail`. Ficaram fora o executor em sistemas externos, cofre de
+credenciais e Agent Gateway (PXOS-32), o caminho síncrono com meta de latência (PXOS-33,
+req. 7) e expiração e delegação de aprovação.
 O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com confirmação
 explícita.

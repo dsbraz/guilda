@@ -3,8 +3,9 @@
 The catalog is generated from the registry: ``list_<type>s`` per canonical type,
 ``timeline`` per entity and one tool per action type. Every call runs in the database
 session of the token's actor, so RLS decides what each caller sees. An action tool only
-creates a proposal, which goes to the approver the package declares; its evidence source
-is the caller (``mcp:<actor>``), never a document the kernel did not check.
+goes through the policy (``api.actions``): people propose for the approver the package
+declares, and an agent's call is allowed, sent for approval or denied, always audited. Its
+evidence source is the caller (``mcp:<actor>``), never a document the kernel did not check.
 
 A signed token is not enough: the database must accept its actor and delegation before
 the caller sees the catalog, so an unknown actor, an agent without delegation and an
@@ -27,11 +28,12 @@ from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from starlette.applications import Starlette
 
+from pxos_kernel.api.actions import act
 from pxos_kernel.api.auth import Caller
 from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import Connection, NotAuthorized, session
 from pxos_kernel.ontology import RegisteredPackage, Registry
-from pxos_kernel.state import Evidence, Fact, current, history, propose
+from pxos_kernel.state import Evidence, Fact, current, history
 
 Run = Callable[[Connection, Caller, dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -67,6 +69,8 @@ def build_server(pool: asyncpg.Pool, registry: Registry, *, name: str = "pxos") 
                 result = await entry.run(connection, caller, dict(params.arguments or {}))
         except PxosError as error:
             return _error(str(error))
+        if result.get("status") == "denied":
+            return _error(f"denied: {result['reason']}")
         text = json.dumps(result, default=_json, ensure_ascii=False)
         return types.CallToolResult(
             content=[types.TextContent(type="text", text=text)],
@@ -227,8 +231,9 @@ def _action(registered: RegisteredPackage, action_name: str) -> Entry:
             name=action.name,
             title=f"Propor {title}",
             description=(
-                f"Propõe {title}. Não grava o fato: a proposta segue para aprovação de "
-                f"{action.approver}. A evidência registra quem chamou e o trecho informado."
+                f"Propõe {title}. Pessoas propõem para aprovação de {action.approver}; para "
+                "um agente, a política grava direto, encaminha para aprovação ou nega. A "
+                "evidência registra quem chamou e o trecho informado."
             ),
             input_schema=schema,
         ),
@@ -250,10 +255,11 @@ async def _propose_call(
     valid_from = (
         _datetime(arguments["valid_from"]) if "valid_from" in arguments else datetime.now(UTC)
     )
-    proposal = await propose(
+    return await act(
         connection,
         registered,
         action_name,
+        caller,
         payload=payload,
         evidence=Evidence(
             source=f"mcp:{caller.actor}",
@@ -264,13 +270,6 @@ async def _propose_call(
         entity_id=_entity(arguments["entity_id"]) if "entity_id" in arguments else None,
         base_revision=_revision(arguments.get("base_revision", 0)),
     )
-    return {
-        "proposal_id": proposal.id,
-        "entity_id": proposal.entity_id,
-        "digest": proposal.digest,
-        "status": "pending",
-        "approver_role": registered.package.action(action_name).approver,
-    }
 
 
 def _fact(fact: Fact) -> dict[str, Any]:

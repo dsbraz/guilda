@@ -36,6 +36,31 @@ classes:
         title: parâmetros sujeitos a regra
         description: Atributos do tipo criado que regras de módulo podem limitar.
         multivalued: true
+      rules:
+        title: regras
+        description: >-
+          Limites dentro dos quais um agente pode executar a ação sem aprovação, se a
+          fase de autonomia permitir.
+        range: Rule
+        multivalued: true
+        inlined_as_list: true
+
+  Rule:
+    title: Regra de módulo
+    attributes:
+      parameter:
+        title: parâmetro
+        required: true
+      max:
+        title: máximo
+        description: Valor numérico máximo do parâmetro.
+        range: decimal
+        minimum_value: 0
+      within_days:
+        title: dentro de dias
+        description: Data do parâmetro até este número de dias após o início da validade.
+        range: integer
+        minimum_value: 0
 
   TypeDeclaration:
     title: Declaração de tipo

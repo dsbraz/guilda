@@ -10,3 +10,13 @@ actions:
     approver: store-manager
     reversible: true
     rule_parameters: [quantity]
+    rules:
+      - {parameter: quantity, max: 10}
+  # Confirmar o pedido ao fornecedor não tem volta: sempre passa por uma pessoa (PXOS-84).
+  - name: confirm_restock_order
+    creates: RestockOrder
+    approver: store-manager
+    reversible: false
+    rule_parameters: [quantity]
+    rules:
+      - {parameter: quantity, max: 10}

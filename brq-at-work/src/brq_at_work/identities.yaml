@@ -25,6 +25,7 @@ actors:
     kind: agent
     name: Agente de reuniões
     roles: [agent]
+    autonomy: 2
   - id: scribe-agent
     kind: agent
     name: Escriba pós-reunião

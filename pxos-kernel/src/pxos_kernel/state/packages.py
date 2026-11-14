@@ -1,4 +1,5 @@
-"""Registered packages in the database (PXOS-49): approvers and readers per type."""
+"""Registered packages in the database (PXOS-49, PXOS-82): approvers, reversibility, module
+rules and readers per type."""
 
 import asyncpg
 
@@ -22,12 +23,25 @@ async def install_packages(owner: asyncpg.Connection, registry: Registry) -> Non
             )
             await owner.executemany(
                 """
-                INSERT INTO pxos.package_actions (package, digest, action, creates, approver_role)
-                VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING
+                INSERT INTO pxos.package_actions
+                    (package, digest, action, creates, approver_role, reversible)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (package, digest, action) DO UPDATE SET reversible = EXCLUDED.reversible
                 """,
                 [
-                    (package.name, package.digest, a.name, a.creates, a.approver)
+                    (package.name, package.digest, a.name, a.creates, a.approver, a.reversible)
                     for a in package.actions
+                ],
+            )
+            await owner.executemany(
+                """
+                INSERT INTO pxos.package_rules (package, digest, action, parameter, operator, value)
+                VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING
+                """,
+                [
+                    (package.name, package.digest, a.name, r.parameter, r.operator, r.value)
+                    for a in package.actions
+                    for r in a.rules
                 ],
             )
             await owner.execute("DELETE FROM pxos.type_readers WHERE package = $1", package.name)

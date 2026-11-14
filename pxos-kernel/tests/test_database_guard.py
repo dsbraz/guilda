@@ -54,7 +54,14 @@ async def test_application_login_has_no_owner_powers(database: Database) -> None
             WHERE relnamespace = 'pxos'::regnamespace AND relforcerowsecurity
             """
         )
-        assert {row["relname"] for row in forced} == {"proposals", "reviews", "facts", "agent_runs"}
+        assert {row["relname"] for row in forced} == {
+            "proposals",
+            "reviews",
+            "facts",
+            "agent_runs",
+            "executions",
+            "action_audit",
+        }
     finally:
         await connection.close()
 

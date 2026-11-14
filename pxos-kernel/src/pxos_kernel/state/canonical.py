@@ -49,6 +49,14 @@ class DecisionFinal(PxosError):
     """The proposal already has a different final decision."""
 
 
+class NotExecutable(NotAuthorized):
+    """The policy does not let this actor execute the proposal without review."""
+
+
+class PersonRequired(NotAuthorized):
+    """An irreversible action is approved only by the person, never by an agent."""
+
+
 @dataclass(frozen=True)
 class Evidence:
     source: str
@@ -314,21 +322,25 @@ async def _review(connection: Connection, proposal_id: UUID) -> Review:
     return Review(**dict(row))
 
 
+REFUSALS: dict[str, type[PxosError]] = {
+    "PX001": NotAuthorized,
+    "PX002": NotAuthorized,
+    "PX010": DigestMismatch,
+    "PX011": SelfApproval,
+    "PX012": StalePackage,
+    "PX013": NotApprover,
+    "PX014": InvalidProposal,
+    "PX016": NotExecutable,
+    "PX017": DecisionFinal,
+    "PX018": PersonRequired,
+}
+
+
 def _translate(error: asyncpg.PostgresError) -> PxosError:
     """Map database refusals by SQLSTATE and constraint name, never by message text."""
-    sqlstate = error.sqlstate
-    if sqlstate in {"PX001", "PX002"}:
-        return NotAuthorized(str(error))
-    if sqlstate == "PX010":
-        return DigestMismatch(str(error))
-    if sqlstate == "PX011":
-        return SelfApproval(str(error))
-    if sqlstate == "PX012":
-        return StalePackage(str(error))
-    if sqlstate == "PX013":
-        return NotApprover(str(error))
-    if sqlstate == "PX014":
-        return InvalidProposal(str(error))
+    refusal = REFUSALS.get(error.sqlstate)
+    if refusal is not None:
+        return refusal(str(error))
     if isinstance(error, asyncpg.UniqueViolationError) and error.constraint_name == "facts_pkey":
         return StaleRevision(str(error))
     if isinstance(error, asyncpg.CheckViolationError):

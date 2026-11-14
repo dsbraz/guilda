@@ -31,7 +31,8 @@ def registry() -> Registry:
 
 
 @pytest.fixture(scope="session")
-def database(registry: Registry, tmp_path_factory: pytest.TempPathFactory) -> Database:
+def identities(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The installation's identities: BRQ@work's plus the retail fixture's."""
     brq = yaml.safe_load(IDENTITIES.read_text(encoding="utf-8"))
     retail = yaml.safe_load((RETAIL / "identities.yaml").read_text(encoding="utf-8"))
     identities = tmp_path_factory.mktemp("identities") / "identities.yaml"
@@ -45,6 +46,11 @@ def database(registry: Registry, tmp_path_factory: pytest.TempPathFactory) -> Da
         ),
         encoding="utf-8",
     )
+    return identities
+
+
+@pytest.fixture(scope="session")
+def database(registry: Registry, identities: Path) -> Database:
     database = create_test_database("pxos_test_brq")
     bootstrap(database.owner_dsn, registry, identities, route=ROUTE)
 

@@ -32,8 +32,26 @@ actors:
     kind: agent
     name: Agente de reposição
     roles: [agent]
+  # Fases de autonomia (PXOS-83): o restock-agent fica na fase 1, o padrão.
+  - id: planner-agent
+    kind: agent
+    name: Agente de planejamento
+    roles: [agent]
+    autonomy: 2
+  - id: night-agent
+    kind: agent
+    name: Agente noturno
+    roles: [agent]
+    autonomy: 3
 delegations:
   - agent: restock-agent
     person: carla
   - agent: restock-agent
     person: erin
+  - agent: planner-agent
+    person: erin
+  - agent: night-agent
+    person: erin
+  # Frank não lê pedidos: o que o agente pedir por ele é negado pela política (PXOS-84).
+  - agent: planner-agent
+    person: frank

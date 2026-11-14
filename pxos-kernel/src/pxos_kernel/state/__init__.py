@@ -1,5 +1,7 @@
 """Governed canonical state: proposals, reviews, facts and the outbox publisher."""
 
+from pxos_kernel.state.audit import Result as AuditResult
+from pxos_kernel.state.audit import record_audit
 from pxos_kernel.state.canonical import (
     Decision,
     DecisionFinal,
@@ -7,6 +9,8 @@ from pxos_kernel.state.canonical import (
     Evidence,
     InvalidProposal,
     NotApprover,
+    NotExecutable,
+    PersonRequired,
     Proposal,
     Review,
     SelfApproval,
@@ -20,12 +24,14 @@ from pxos_kernel.state.canonical import (
     review,
 )
 from pxos_kernel.state.db import create_pool, grant_connect
+from pxos_kernel.state.executions import execute
 from pxos_kernel.state.facts import Fact, as_of, current, history
 from pxos_kernel.state.migrate import upgrade
 from pxos_kernel.state.outbox import Event, Handler, publish
 from pxos_kernel.state.packages import install_packages
 
 __all__ = [
+    "AuditResult",
     "Decision",
     "DecisionFinal",
     "DigestMismatch",
@@ -35,6 +41,8 @@ __all__ = [
     "Handler",
     "InvalidProposal",
     "NotApprover",
+    "NotExecutable",
+    "PersonRequired",
     "Proposal",
     "Review",
     "SelfApproval",
@@ -43,6 +51,7 @@ __all__ = [
     "as_of",
     "create_pool",
     "current",
+    "execute",
     "get_proposal",
     "get_review",
     "proposals_from",
@@ -52,6 +61,7 @@ __all__ = [
     "propose",
     "propose_invalidation",
     "publish",
+    "record_audit",
     "review",
     "upgrade",
 ]

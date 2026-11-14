@@ -12,6 +12,7 @@ import pytest
 from pydantic import BaseModel
 from starlette.applications import Starlette
 
+from db_testing import Database
 from mcp_testing import BASE, ToolError, call, connect, post_status, running
 from pxos_kernel.api.auth import JwtVerifier, LocalIssuer
 from pxos_kernel.api.server import _catalog, build_server, http_app
@@ -59,6 +60,7 @@ async def test_catalog_is_generated_from_the_registry(app: Starlette, issuer: Lo
         "list_restock_orders",
         "timeline",
         "create_restock_order",
+        "confirm_restock_order",
         "list_agent_versions",
         "publish_agent_version",
     }
@@ -231,3 +233,97 @@ def test_two_tools_with_the_same_name_are_refused(registry: Registry) -> None:
     retail = registry.get("retail")
     with pytest.raises(PxosError, match="two tools named"):
         _catalog([retail, retail])  # type: ignore[arg-type]
+
+
+async def audit(database: Database) -> list[dict[str, object]]:
+    owner = await asyncpg.connect(database.owner_dsn)
+    try:
+        rows = await owner.fetch(
+            "SELECT actor, principal, action, decision, reason, proposal_id, result"
+            " FROM pxos.action_audit ORDER BY id DESC LIMIT 1"
+        )
+    finally:
+        await owner.close()
+    return [dict(row) for row in rows]
+
+
+@pytest.mark.parametrize(
+    ("agent", "tool", "quantity", "status", "decision", "reason"),
+    [
+        ("planner-agent", "create_restock_order", 2, "executed", "allow", "within module rules"),
+        ("planner-agent", "create_restock_order", 11, "pending", "approval", "quantity above 10"),
+        ("restock-agent", "create_restock_order", 2, "pending", "approval", "autonomy phase 1"),
+        ("night-agent", "confirm_restock_order", 2, "pending", "approval", "irreversible action"),
+    ],
+    ids=["allow", "outside-rule", "phase-1", "irreversible"],
+)
+async def test_an_agent_action_goes_through_the_policy_and_the_audit(
+    app: Starlette,
+    issuer: LocalIssuer,
+    pool: asyncpg.Pool,
+    database: Database,
+    agent: str,
+    tool: str,
+    quantity: int,
+    status: str,
+    decision: str,
+    reason: str,
+) -> None:
+    created = await call(
+        app,
+        issuer.token("erin", agent=agent),
+        tool,
+        {"payload": {**ORDER, "quantity": quantity}, "quote": "Faltam peças."},
+    )
+    assert created["status"] == status
+    assert reason in created["reason"]
+    async with session(pool, "erin") as connection:
+        facts = await connection.fetchval(
+            "SELECT count(*) FROM pxos.facts WHERE proposal_id = $1", created["proposal_id"]
+        )
+    assert facts == (1 if status == "executed" else 0)
+    [row] = await audit(database)
+    assert (row["actor"], row["principal"], row["action"], row["decision"]) == (
+        agent,
+        "erin",
+        tool,
+        decision,
+    )
+    assert str(row["proposal_id"]) == created["proposal_id"]
+    assert row["result"] == ("executed" if status == "executed" else "queued")
+
+
+async def test_a_denied_agent_call_is_an_error_and_stays_audited(
+    app: Starlette, issuer: LocalIssuer, database: Database
+) -> None:
+    with pytest.raises(ToolError, match="principal cannot read RestockOrder"):
+        await call(
+            app,
+            issuer.token("frank", agent="planner-agent"),
+            "create_restock_order",
+            {"payload": ORDER, "quote": "Faltam peças."},
+        )
+    [row] = await audit(database)
+    assert (row["actor"], row["principal"], row["decision"], row["result"]) == (
+        "planner-agent",
+        "frank",
+        "deny",
+        "denied",
+    )
+    assert row["proposal_id"] is None
+
+
+async def test_a_person_still_proposes_and_is_audited(
+    app: Starlette, issuer: LocalIssuer, database: Database
+) -> None:
+    created = await call(
+        app, issuer.token("erin"), "create_restock_order", {"payload": ORDER, "quote": "Faltam."}
+    )
+    assert created["status"] == "pending"
+    [row] = await audit(database)
+    assert (row["actor"], row["decision"], row["reason"], row["result"]) == (
+        "erin",
+        "approval",
+        "people propose for review",
+        "queued",
+    )

@@ -38,8 +38,13 @@ delegations:
             "delegations: [{agent: bia, person: ana}]",
             "bia is not an agent",
         ),
+        (
+            "actors: [{id: ana, kind: internal_person, name: Ana, autonomy: 2}]",
+            "only agents have an autonomy phase: ana",
+        ),
+        ("actors: [{id: bot, kind: agent, name: Bot, autonomy: 4}]", "identities.yaml"),
     ],
-    ids=["unknown-kind", "duplicated-id", "person-as-agent"],
+    ids=["unknown-kind", "duplicated-id", "person-as-agent", "person-autonomy", "phase-4"],
 )
 def test_an_invalid_identity_file_is_refused(tmp_path: Path, content: str, message: str) -> None:
     path = tmp_path / "identities.yaml"
