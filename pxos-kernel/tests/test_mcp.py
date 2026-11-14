@@ -61,7 +61,13 @@ async def test_catalog_is_generated_from_the_registry(app: Starlette, issuer: Lo
         "publish_agent_version",
     }
     schema = tools["create_restock_order"].input_schema
-    assert set(schema["properties"]) == {"payload", "quote", "valid_from"}
+    assert set(schema["properties"]) == {
+        "payload",
+        "quote",
+        "valid_from",
+        "entity_id",
+        "base_revision",
+    }
     assert {"payload", "quote"} <= set(schema["required"])
     assert schema["additionalProperties"] is False
     assert {"sku", "quantity"} <= set(schema["properties"]["payload"]["properties"])
@@ -103,6 +109,33 @@ async def test_an_agent_version_is_proposed_like_any_fact(
         {"payload": definition, "quote": "Primeira versão."},
     )
     assert (created["status"], created["approver_role"]) == ("pending", "platform-admin")
+
+
+async def test_an_action_tool_proposes_a_change_to_an_existing_entity(
+    app: Starlette, pool: asyncpg.Pool, registry: Registry, issuer: LocalIssuer
+) -> None:
+    """A new version is a revision of the same entity, not a second one."""
+    created = await call(
+        app, issuer.token("erin"), "create_restock_order", {"payload": ORDER, "quote": "Faltam 2."}
+    )
+    async with session(pool, "carla") as connection:
+        await review(
+            connection, registry, created["proposal_id"], "approved", digest=created["digest"]
+        )
+    changed = await call(
+        app,
+        issuer.token("erin"),
+        "create_restock_order",
+        {
+            "payload": {**ORDER, "quantity": 3},
+            "quote": "Faltam 3.",
+            "entity_id": str(created["entity_id"]),
+            "base_revision": 1,
+        },
+    )
+    assert changed["entity_id"] == created["entity_id"]
+    async with session(pool, "erin") as connection:
+        assert (await get_proposal(connection, changed["proposal_id"])).base_revision == 1
 
 
 @pytest.mark.parametrize(

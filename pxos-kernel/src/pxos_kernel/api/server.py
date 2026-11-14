@@ -195,7 +195,7 @@ def _action(registered: RegisteredPackage, action_name: str) -> Entry:
     definitions = payload_schema.pop("$defs", {})
 
     async def run(connection: Connection, caller: Caller, arguments: dict[str, Any]) -> Any:
-        _only(arguments, {"payload", "quote", "valid_from"})
+        _only(arguments, {"payload", "quote", "valid_from", "entity_id", "base_revision"})
         payload = arguments.get("payload")
         if not isinstance(payload, dict):
             raise InvalidCall("payload must be an object")
@@ -213,6 +213,8 @@ def _action(registered: RegisteredPackage, action_name: str) -> Entry:
                 context_ref=f"mcp:call/{uuid4()}",
             ),
             valid_from=valid_from,
+            entity_id=_entity(arguments["entity_id"]) if "entity_id" in arguments else None,
+            base_revision=_revision(arguments.get("base_revision", 0)),
         )
         return {
             "proposal_id": proposal.id,
@@ -231,6 +233,16 @@ def _action(registered: RegisteredPackage, action_name: str) -> Entry:
                 "description": "O que sustenta a proposta, nas palavras de quem chama.",
             },
             "valid_from": {"type": "string", "format": "date-time"},
+            "entity_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "A entidade que a proposta muda; omita para criar uma nova.",
+            },
+            "base_revision": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "A revisão sobre a qual a mudança foi feita.",
+            },
         },
         "required": ["payload", "quote"],
         "additionalProperties": False,
@@ -269,6 +281,19 @@ def _only(arguments: dict[str, Any], allowed: set[str]) -> None:
     unexpected = sorted(set(arguments) - allowed)
     if unexpected:
         raise InvalidCall(f"unexpected arguments {unexpected}")
+
+
+def _entity(value: Any) -> UUID:
+    try:
+        return UUID(str(value))
+    except ValueError:
+        raise InvalidCall("entity_id must be a UUID") from None
+
+
+def _revision(value: Any) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise InvalidCall("base_revision must be a positive integer")
+    return value
 
 
 def _datetime(value: Any) -> datetime:
