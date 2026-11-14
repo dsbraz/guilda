@@ -11,7 +11,8 @@ from typing import Any
 import asyncpg
 import pytest
 
-from mcp_testing import BASE, call, connect, running
+from db_testing import Database, on_database
+from mcp_testing import BASE, call, connect, post_status, running
 from pxos_kernel.api.auth import JwtVerifier, LocalIssuer
 from pxos_kernel.api.server import build_server, http_app
 from pxos_kernel.identity import session
@@ -109,9 +110,44 @@ async def test_req_03_every_fact_has_a_source(pool: asyncpg.Pool, registry: Regi
             )
 
 
-@pending("PXOS-8", "instalação dedicada; credencial de outra instalação recusada")
-def test_req_04_full_isolation_per_client() -> None:
-    raise NotImplementedError
+async def test_req_04_full_isolation_per_client(
+    database: Database, other_database: Database, pool: asyncpg.Pool, registry: Registry
+) -> None:
+    """Each installation has its own database logins and identity provider; inside one, the
+    database denies a restricted read even when the code forgets to filter (PXOS-63; the
+    installation policy is still PXOS-8)."""
+    with pytest.raises(asyncpg.InsufficientPrivilegeError):
+        await asyncpg.connect(on_database(other_database.app_dsn, database.name))
+
+    ours = LocalIssuer.generate(issuer="http://idp.ours", audience="pxos-ours")
+    theirs = LocalIssuer.generate(issuer="http://idp.theirs", audience="pxos-theirs")
+    verifier = JwtVerifier(issuer=ours.issuer, audience=ours.audience, jwks=ours.jwks())
+    app = http_app(
+        build_server(pool, registry), verifier, issuer_url=ours.issuer, resource_url=f"{BASE}/mcp"
+    )
+    async with running(app):
+        assert await post_status(app, theirs.token("carla")) == 401
+        assert "items" in await call(app, ours.token("carla"), "list_restock_orders", {})
+
+    async def raw_count(actor: str, table: str) -> int:
+        async with pool.acquire() as connection, connection.transaction():
+            await connection.execute("SELECT set_config('pxos.actor', $1, true)", actor)
+            return int(await connection.fetchval(f"SELECT count(*) FROM pxos.{table}"))
+
+    async with session(pool, "erin") as connection:
+        proposal = await propose(
+            connection,
+            registry.get("retail"),
+            "create_restock_order",
+            payload={"sku": "R-4", "quantity": 1, "occurred_at": "2026-11-14T09:00:00Z"},
+            evidence=Evidence(source="fixture:req-04", quote="R-4", context_ref="fixture:req-04"),
+            valid_from=datetime(2026, 11, 14, tzinfo=UTC),
+        )
+    async with session(pool, "carla") as connection:
+        await review(connection, registry, proposal.id, "approved", digest=proposal.digest)
+    assert await raw_count("carla", "facts") > 0
+    assert await raw_count("frank", "facts") == 0
+    assert await raw_count("frank", "proposals") == 0
 
 
 @pending("PXOS-9", "atores externos sem acesso ao contexto interno")

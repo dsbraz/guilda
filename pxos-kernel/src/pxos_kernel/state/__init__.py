@@ -22,7 +22,7 @@ from pxos_kernel.state.canonical import (
     propose_invalidation,
     review,
 )
-from pxos_kernel.state.db import create_pool
+from pxos_kernel.state.db import create_pool, grant_connect
 from pxos_kernel.state.migrate import upgrade
 from pxos_kernel.state.outbox import Event, Handler, publish
 
@@ -45,6 +45,7 @@ __all__ = [
     "create_pool",
     "current",
     "get_proposal",
+    "grant_connect",
     "history",
     "install_packages",
     "propose",

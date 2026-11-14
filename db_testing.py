@@ -1,8 +1,9 @@
 """Shared test database helpers for pxos-kernel and brq-at-work tests.
 
 Integration tests need the Compose Postgres (or PXOS_TEST_DATABASE_URL). They fail, not
-skip, when it is absent. The schema is migrated by the owner; tests connect as a login
-that is only a member of pxos_app, so RLS and grants are what production sees.
+skip, when it is absent. The schema is migrated by the owner; tests connect as logins
+of that database only, members of pxos_app, so RLS and grants are what production sees.
+Each database stands for an installation and has its own logins (PXOS-63).
 """
 
 import asyncio
@@ -12,19 +13,17 @@ from urllib.parse import urlsplit, urlunsplit
 
 import asyncpg
 
-from pxos_kernel.state import upgrade
+from pxos_kernel.state import grant_connect, upgrade
 
 ADMIN_DSN = os.environ.get(
     "PXOS_TEST_DATABASE_URL", "postgresql://pxos:pxos-local@127.0.0.1:25432/postgres"
 )
-APP_LOGIN = "pxos_app_test"
-APP_PASSWORD = "pxos-app-test"
-PUBLISHER_LOGIN = "pxos_publisher_test"
-PUBLISHER_PASSWORD = "pxos-publisher-test"
+PASSWORD = "pxos-test"
 
 
 @dataclass(frozen=True)
 class Database:
+    name: str
     owner_dsn: str
     app_dsn: str
     publisher_dsn: str
@@ -54,20 +53,21 @@ def create_test_database(name: str) -> Database:
     async def logins(owner_dsn: str) -> None:
         owner = await asyncpg.connect(owner_dsn)
         try:
-            for login, password, role in [
-                (APP_LOGIN, APP_PASSWORD, "pxos_app"),
-                (PUBLISHER_LOGIN, PUBLISHER_PASSWORD, "pxos_publisher"),
+            for login, role in [
+                (app_login(name), "pxos_app"),
+                (publisher_login(name), "pxos_publisher"),
             ]:
                 await owner.execute(
                     f"""
                     DO $$ BEGIN
                         IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{login}') THEN
-                            CREATE ROLE {login} LOGIN PASSWORD '{password}'
+                            CREATE ROLE {login} LOGIN PASSWORD '{PASSWORD}'
                                 NOSUPERUSER NOBYPASSRLS IN ROLE {role};
                         END IF;
                     END $$
                     """
                 )
+            await grant_connect(owner, app_login(name), publisher_login(name))
         finally:
             await owner.close()
 
@@ -81,9 +81,23 @@ def create_test_database(name: str) -> Database:
 def existing_database(name: str) -> Database:
     """Connection strings of a database created by ``create_test_database``."""
     return Database(
+        name=name,
         owner_dsn=_with(ADMIN_DSN, database=name),
-        app_dsn=_with(ADMIN_DSN, database=name, user=APP_LOGIN, password=APP_PASSWORD),
+        app_dsn=_with(ADMIN_DSN, database=name, user=app_login(name), password=PASSWORD),
         publisher_dsn=_with(
-            ADMIN_DSN, database=name, user=PUBLISHER_LOGIN, password=PUBLISHER_PASSWORD
+            ADMIN_DSN, database=name, user=publisher_login(name), password=PASSWORD
         ),
     )
+
+
+def app_login(name: str) -> str:
+    return f"{name}_app"
+
+
+def publisher_login(name: str) -> str:
+    return f"{name}_publisher"
+
+
+def on_database(dsn: str, name: str) -> str:
+    """``dsn`` with the same login, pointed at database ``name``."""
+    return _with(dsn, database=name)

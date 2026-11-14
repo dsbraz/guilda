@@ -21,9 +21,8 @@ def registry() -> Registry:
     return registry
 
 
-@pytest.fixture(scope="session")
-def database(registry: Registry) -> Database:
-    database = create_test_database("pxos_test_kernel")
+def installation(name: str, registry: Registry) -> Database:
+    database = create_test_database(name)
 
     async def bootstrap() -> None:
         owner = await asyncpg.connect(database.owner_dsn)
@@ -35,6 +34,17 @@ def database(registry: Registry) -> Database:
 
     asyncio.run(bootstrap())
     return database
+
+
+@pytest.fixture(scope="session")
+def database(registry: Registry) -> Database:
+    return installation("pxos_test_kernel", registry)
+
+
+@pytest.fixture(scope="session")
+def other_database(registry: Registry) -> Database:
+    """A second installation with the same actors, to show they share nothing (PXOS-63)."""
+    return installation("pxos_test_other", registry)
 
 
 @pytest.fixture
