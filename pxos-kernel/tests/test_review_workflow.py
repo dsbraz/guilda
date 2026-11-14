@@ -7,12 +7,12 @@ proposal nobody waits for must not block the outbox.
 
 import asyncio
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import asyncpg
 import pytest
-from temporalio.client import Client, WorkflowFailureError
+from temporalio.client import Client, WorkflowFailureError, WorkflowHandle
 from temporalio.worker import Worker
 
 from db_testing import Database
@@ -22,6 +22,7 @@ from pxos_kernel.state import Evidence, Proposal, create_pool, get_review, propo
 from pxos_kernel.workflows import (
     AwaitReview,
     ReviewActivities,
+    definitions,
     review_signals,
     review_workflow_id,
     workflow_runner,
@@ -88,6 +89,15 @@ async def start(temporal: Client, queue: str, proposal_id: UUID):  # type: ignor
     )
 
 
+async def first_read_done(handle: WorkflowHandle[AwaitReview, str]) -> None:
+    for _ in range(300):
+        history = await handle.fetch_history()
+        if any(e.HasField("activity_task_completed_event_attributes") for e in history.events):
+            return
+        await asyncio.sleep(0.1)
+    raise AssertionError("the workflow never read the decision")
+
+
 async def test_get_review_reads_the_decision_once_there_is_one(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
@@ -139,6 +149,21 @@ async def test_a_decision_taken_before_anyone_waits_is_seen(
     await decided(pool, registry, proposal, "approved")
     await publish(publisher, review_signals(temporal))  # nobody waits yet: ignored
     handle = await start(temporal, worker, proposal.id)
+    assert await asyncio.wait_for(handle.result(), timeout=30) == "approved"
+
+
+async def test_a_lost_signal_costs_only_the_recheck(
+    temporal: Client,
+    worker: str,
+    pool: asyncpg.Pool,
+    registry: Registry,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(definitions, "RECHECK", timedelta(seconds=1))
+    proposal = await proposed(pool, registry)
+    handle = await start(temporal, worker, proposal.id)
+    await first_read_done(handle)  # the workflow saw no decision and waits
+    await decided(pool, registry, proposal, "approved")  # and the outbox never runs
     assert await asyncio.wait_for(handle.result(), timeout=30) == "approved"
 
 
