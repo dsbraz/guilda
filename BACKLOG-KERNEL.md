@@ -1,6 +1,6 @@
 > Linear: projeto pxOS (brq-px), https://linear.app/brq-px/project/pxos-38c291a57da8. O issue Kn deste arquivo é o PXOS-n.
 
-# Backlog do kernel do pxOS (F0–F10), revisão 3
+# Backlog do kernel do pxOS (F0–F10), revisão 4
 
 **Escopo:** só o kernel, ou seja, a Parte A do PRD, o §4 e o §13 no que for do kernel. A BRQ@work (F11) fica fora, no projeto BRQ@work do Linear.
 
@@ -13,6 +13,8 @@
 - [ADR 0002](docs/adr/0002-fronteira-kernel-distribuicao.md): fronteira por natureza; o kernel fica em `pxos-kernel/` e a BRQ@work em `brq-at-work/`. Itens de domínio vão para o projeto BRQ@work no Linear.
 - [ADR 0003](docs/adr/0003-arquitetura-e-padroes-de-codigo.md): monólito modular, banco como guardião, núcleo funcional, adaptadores só nas bordas.
 - **Instalação dedicada por cliente** é o padrão. Dentro dela continuam valendo as permissões internas. O modo compartilhado fica adiado.
+
+**Revisão 4** (14/11/2026, PRD v0.26): [ADR 0004](docs/adr/0004-agentes-workflows-e-plataforma-de-construcao.md) adota Google ADK para agentes e Temporal como único motor de processos duráveis, e faz da área web do pxOS o lugar único para configurar a instalação, construir agentes, compor workflows, publicar e acompanhar. Toda mudança feita na plataforma vira versão publicada, imutável, com digest e aprovada por um papel; definições de agentes e workflows deixam de ficar no Git. Código de conectores e ferramentas e a ontologia continuam em código; editar a ontologia pela interface fica fora do escopo atual. K34 e K36 foram reescritos, e K65 a K68 entram na F8. Os itens novos usam o número do Linear (PXOS-65 a 68), para manter Kn = PXOS-n.
 
 **Fatia 1** (primeira entrega de código): K01 (PXOS-1), K04 base mínima e metamodelo (PXOS-47), K05 Pydantic e JSON Schema (PXOS-48), K06 manifesto e registro de pacote (PXOS-49), RLS do K08 (PXOS-50), identidades fixas do K09 (PXOS-51) e K07 inteiro (PXOS-7); na BRQ@work, o pacote de contexto de trabalho (PXOS-46), cujo teste de integração é o critério de saída. K03 já está fechado pelo ADR 0001. Saída: o pacote de contexto de trabalho da BRQ@work e um pacote fixture de outro domínio fazem o ciclo proposta → aprovação → fato → correção, com leitura em duas datas, e nenhum tipo de domínio aparece em `pxos-kernel/`.
 
@@ -41,10 +43,10 @@
 - **K07 Estado canônico governado.** Contrato do spike de governança promovido a produto: proposta imutável (payload validado pelo pacote, autor, entidade, início de vigência, evidência `source`/`quote`/`context_ref`, versão-base); aprovação presa ao digest, por aprovador declarado pelo pacote e diferente do autor, gravando decisão e fato na mesma transação; rejeição sem publicar; propostas concorrentes com um vencedor; consulta por data de validade e instante de conhecimento. A construir além do spike: intervalos de validade finitos, invalidação com data e a tabela outbox gravada na mesma transação (o publicador fica no K19). A tabela de aliases fica no K27 e a função de expurgo no K10. Imutabilidade garantida pelo banco (ADR 0003). Aceite: o req. 3 fica verde, nenhuma alteração destrutiva acontece fora do expurgo e cada mudança grava um evento na outbox.
 - **K08 Instalação, política da instalação e permissões internas.** Provisionamento de uma instalação dedicada (serviços, credenciais e dados próprios) com a sua política: residência, pseudonimização, retenção, consentimento e IdP. Dentro da instalação, permissões internas por RLS para pessoas e agentes (validado no spike de execução). O Hindsight não tem RLS: o isolamento entre clientes vem da instalação, e o escopo interno vem do servidor. Aceite: o req. 4 fica verde (credencial de outra instalação é recusada e leitura restrita é negada pelo banco mesmo com bug no código).
 - **K09 Identidade de atores.** Pessoas, agentes e atores externos; papéis e delegações; delegação (o agente lê como a pessoa, e o acesso amplo fica restrito à ingestão). Externos sem acesso às tools de leitura internas. Aceite: o req. 5 fica verde.
-- **K10 Consentimento, exclusão, retenção e saída do cliente.** Consentimento por instalação controla o que pode ser ingerido. A exclusão, seja apagada na origem ou pedida pelo titular, remove de fato no índice, nos fatos derivados e nas páginas, usando uma função de expurgo restrita e auditada, criada aqui, no estado canônico e a exclusão nativa no Hindsight (com persistência de traces de modelo desligada), e deixando um registro da exclusão. Retenção por instalação. Exportação dos dados da instalação em formato aberto e remoção da instalação. Aceite: os testes de exclusão, retenção e exportação ficam verdes.
+- **K10 Consentimento, exclusão, retenção e saída do cliente.** Consentimento por instalação controla o que pode ser ingerido. A exclusão, seja apagada na origem ou pedida pelo titular, remove de fato no índice, nos fatos derivados e nas páginas, usando uma função de expurgo restrita e auditada, criada aqui, no estado canônico e a exclusão nativa no Hindsight (com persistência de traces de modelo desligada), e deixando um registro da exclusão. O histórico do Temporal e as sessões do ADK não se editam, por isso só carregam referências (ADR 0004) e ficam fora do expurgo. Retenção por instalação. Exportação dos dados da instalação em formato aberto e remoção da instalação. Aceite: os testes de exclusão, retenção e exportação ficam verdes.
 
 ## F3 · Acesso a modelos, medição base e busca
-- **K11 Gateway de modelos e roteamento por residência.** Ponto único para toda chamada a modelo de linguagem. Escolhe modelo e região pela política da instalação (Gemini em São Paulo quando exige residência, Claude no endpoint global nos demais casos). A disponibilidade de regiões é validada aqui. Aceite: uma instalação com residência BR nunca chega ao endpoint global.
+- **K11 Gateway de modelos e roteamento por residência.** Ponto único para toda chamada a modelo de linguagem, inclusive as do ADK (ADR 0004). Escolhe modelo e região pela política da instalação (Gemini em São Paulo quando exige residência, Claude no endpoint global nos demais casos). A disponibilidade de regiões é validada aqui. Aceite: uma instalação com residência BR nunca chega ao endpoint global.
 - **K12 Pseudonimização.** Troca dados pessoais por marcadores antes da chamada e restaura na resposta, conforme a política da instalação (SDP, ou adaptador local). Aceite: nenhum dado pessoal das fixtures sai sem marcador. O req. 11 fica verde, junto com o K10 e o K11.
 - **K13 Inspeção nas chamadas a modelo.** Model Armor (ou stub local): instruções escondidas em conteúdo ingerido, vazamento de dado sensível e resposta fora da política. Aceite: as fixtures de prompt injection são bloqueadas ou sinalizadas.
 - **K14 Telemetria de chamadas.** Trace com custo, modelo, região e instalação (OpenTelemetry → Cloud Trace e base analítica). Aceite: 100% das chamadas têm trace completo.
@@ -78,10 +80,14 @@ A extração de contexto é do Hindsight (ADR 0001). Esta fase não reconstrói 
 - **K32 Executor de ações, credenciais e auditoria.** Único caminho de escrita, via conectores ou servidor MCP do fornecedor atrás do Agent Gateway. Consome aprovações do K24. Credenciais OAuth de saída por agente (Secret Manager). Log de quem pediu, o que pediu, decisão, aprovação e resultado. Validado localmente no spike de execução e mantido como aceite: executa só o conteúdo exatamente aprovado, confere revogação na hora de executar, reentrega concorrente gera um único efeito. Aceite: toda ação das fixtures tem auditoria completa.
 - **K33 Caminho síncrono.** Ação pré-aprovada avaliada e executada na mesma chamada, sem fila; nada que exija aprovação entra nesse caminho. A meta de p95 é definida e medida aqui. Aceite: o req. 7 fica verde.
 
-## F8 · Agentes, gatilhos e fluxos
-- **K34 Runtime de agentes.** ADK (Agent Engine ou local). Definições de agentes e skills no Git. Identidade própria por agente, fase de autonomia, leitura com delegação e métricas de progressão (aprovação sem ajuste, incidentes) para decisão do sponsor. Agente falso de referência. Aceite: o agente de referência lê via MCP e age via gateway na fase 1.
-- **K35 Gatilhos por agenda e por evento.** Agenda no horário de cada pessoa ou papel; evento a partir das mudanças publicadas pelo K07. Aceite: os dois gatilhos acionam o agente de referência.
-- **K36 Fluxos de longa duração.** Etapas, prazos e checagens humanas sobre um único motor (Temporal ou Cloud Workflows, decidido aqui; sem motor próprio), usando a mesma fila e a mesma política. Aceite: um fluxo de fixture com etapa humana completa e expira corretamente.
+## F8 · Construção e operação de agentes e workflows
+- **K34 Runtime de agentes.** Google ADK (ADR 0004). A definição do agente é uma versão publicada no banco da plataforma, imutável, com digest e aprovada por um papel: função, instruções, contexto permitido, modelo, ferramentas, saída esperada, responsável e autonomia. Antes da interface (K66), publica-se pela API ou pelo MCP; as definições não ficam no Git. A execução registra a versão que rodou. Identidade própria por agente, fase de autonomia, leitura com delegação, chamadas de modelo pelo K11 e métricas de progressão (aprovação sem ajuste, incidentes) para decisão do sponsor. Agente falso de referência. Aceite: o agente de referência, a partir de uma versão publicada, lê via MCP e age via gateway na fase 1.
+- **K35 Gatilhos por agenda e por evento.** Agenda por Temporal Schedules, no horário de cada pessoa ou papel; evento a partir das mudanças publicadas pelo K07 (outbox). Aceite: os dois gatilhos acionam o agente de referência.
+- **K36 Fluxos de longa duração.** Temporal como único motor (ADR 0004; sem motor próprio). A chamada ADK roda numa Activity. A decisão de revisão é registrada no kernel (K24) e chega ao workflow como sinal a partir da outbox, sem segunda fila; expiração e revogação são conferidas no kernel. O workflow carrega só referências, nunca conteúdo ou dados pessoais. Namespace Temporal e credenciais de worker por instalação; o worker abre a sessão no banco como o agente, agindo pela pessoa. Aceite: um fluxo de fixture com etapa humana completa quando aprovado, expira no prazo e retoma após queda do worker sem repetir etapas concluídas.
+- **K65 Área web: aprovações, execuções e memória.** Primeiro passo da plataforma (ADR 0004). Login pelo IdP da instalação. Aprovações sobre a mesma fila do K24, com decisão única entre web e canais. Painel de execuções por instalação, função, período e estado, com etapa, versão, evidência, ferramentas, aprovação, resultado, custo e erro, correlacionando Temporal e ADK com proposta e ação do gateway; só intervenções autorizadas, sem retry cego para efeito incerto. Consulta à memória: contexto, fatos vigentes, fontes e histórico. A biblioteca de interface é escolhida aqui. Aceite: uma decisão tomada no canal falso aparece na web, e vice-versa; um usuário não vê execução ou fato que o banco não lhe permite.
+- **K66 Agentes por formulário.** Formulário sobre o catálogo, teste com exemplos e resultados esperados, publicação pela API de versões do K34. Aceite: um agente é configurado, testado e publicado sem código; editar o rascunho não muda a versão publicada.
+- **K67 Workflows compostos na plataforma.** Gatilho, etapas de agente, ações, condições, aprovações, prazos e falhas por formulário ou modelo sobre blocos registrados pelo FDE; composição visual só se a necessidade aparecer. Mesma publicação governada; a execução referencia a versão publicada. Aceite: um workflow publicado roda no K36, e uma versão nova não altera processos em andamento.
+- **K68 Configuração da instalação na plataforma.** Conectores já existentes (credencial no cofre, escopo, mapeamento para a entidade âncora, estado da ingestão), papéis, aprovadores e fases de autonomia, publicados como versão aprovada. Código de conectores fica com o FDE; editar a ontologia pela interface fica fora. Aceite: instalar um conector falso e mudar um aprovador pela plataforma gera versões aprovadas que o kernel passa a usar.
 
 ## F9 · Manutenção, analíticos e resultado
 - **K37 Job de manutenção.** Execução diária: deduplicação, detecção de conflitos e envelhecimento pelo registro de uso, com fila de revisão. Aceite: o req. 9 fica verde.
@@ -93,7 +99,7 @@ A extração de contexto é do Hindsight (ADR 0001). Esta fase não reconstrói 
 ## F10 · Ciclo de vida, apps e implantação → marco kernel completo
 - **K42 Ciclo de vida de módulos e distribuições.** Instalar, atualizar e remover por instalação, com regeneração de schemas, tools e views. Permissões por módulo: ler tipos de outro módulo exige permissão no manifesto. Versões compatíveis com aviso e período de transição. Aceite: o req. 13 fica verde (nenhum tipo de domínio no código do kernel; a distribuição de referência é feita só de módulos).
 - **K43 Apps e kit de construção.** Banco transacional por app (Cloud SQL), fatos e referências espelhados no estado vivo, acesso só por MCP, API e canais, componentes de interface, fluxos sobre o K36. App falso de referência. Aceite: o app roda e seus fatos aparecem no MCP.
-- **K44 Infraestrutura como código: instalação dedicada.** Terraform para os serviços do kernel em modo dedicado (projeto GCP por cliente), a partir do mesmo código e de imagens versionadas, sem fork por cliente; dados nunca circulam entre instalações. O modo compartilhado fica adiado. Aceite: plan válido; apply em homologação só mediante pedido explícito.
+- **K44 Infraestrutura como código: instalação dedicada.** Terraform para os serviços do kernel em modo dedicado (projeto GCP por cliente), a partir do mesmo código e de imagens versionadas, sem fork por cliente; dados nunca circulam entre instalações. Inclui a hospedagem do Temporal (própria ou gerenciada) e dos workers ADK, com residência, disponibilidade, recuperação, custo, retenção do histórico e atualização compatível com processos em andamento. O modo compartilhado fica adiado. Aceite: plan válido; apply em homologação só mediante pedido explícito.
 - **K45 Atualização do kernel e marco.** Suíte por distribuição rodada contra a versão nova do kernel antes da atualização, com o mesmo processo para instalações dedicadas. A distribuição de referência é instalada do zero. Auditoria de portabilidade: LinkML, Postgres, OpenTelemetry, e serviços gerenciados só atrás de adaptadores. Aceite: os 13 requisitos verdes (o req. 12 fica verde aqui) e um upgrade simulado aprovado.
 
 ## Matriz de cobertura (PRD → issue)
@@ -132,9 +138,9 @@ A extração de contexto é do Hindsight (ADR 0001). Esta fase não reconstrói 
 | §6.3 política e autonomia | K31 |
 | §6.3 executor, credenciais, auditoria; §6.1 MCP do fornecedor | K32 |
 | §6.3 caminho síncrono; req. 7 | K33 |
-| §5 agentes; §8 como nasce um agente | K34 |
+| §5 agentes; §8 como nasce um agente; versão publicada do agente (ADR 0004) | K34 |
 | §5 gatilhos | K35 |
-| §5 fluxos | K36 |
+| §5 fluxos (Temporal) | K36 |
 | §5 manutenção; req. 9 | K37 |
 | §3 páginas narrativas | K38 |
 | §3 Constituição e propostas | K39 |
@@ -144,3 +150,7 @@ A extração de contexto é do Hindsight (ADR 0001). Esta fase não reconstrói 
 | §8 apps, kit, dados do app | K43 |
 | §5 implantação dedicada (compartilhada adiada) | K44 |
 | §8 atualização do kernel; req. 12 (verificação) | K45 |
+| Construção e acompanhamento: área web, aprovações, execuções, memória | K65 |
+| Construção: agentes por formulário, teste e publicação | K66 |
+| Construção: workflows compostos e publicados | K67 |
+| Construção: configuração da instalação | K68 |

@@ -2,7 +2,7 @@
 
 ## Contexto
 
-O PRD `pxos-brq-work-prd.html` (v0.25) descreve o **kernel do pxOS** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B), em construção por fatias verticais. Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026. O spike ADK + Temporal foi concluído em 14/11/2026; o mantenedor aprovou a adoção dos dois motores e a criação e operação de agentes e workflows dentro da plataforma.
+O PRD `pxos-brq-work-prd.html` (v0.26) descreve o **kernel do pxOS** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B), em construção por fatias verticais. Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026. O spike ADK + Temporal foi concluído em 14/11/2026; o mantenedor aprovou a adoção dos dois motores e a criação e operação de agentes e workflows dentro da plataforma.
 
 Decisões já tomadas:
 - **Entregável:** roadmap em fases, com marcos, dependências, gates e critérios de saída.
@@ -10,8 +10,8 @@ Decisões já tomadas:
 - **Memória:** contexto no Hindsight sobre AlloyDB; estado canônico tipado e governado próprio em PostgreSQL ([ADR 0001](docs/adr/0001-memoria-contexto-e-estado-canonico.md)). Graphiti, Neo4j, Mem0 e LangExtract rejeitados.
 - **Fronteira kernel/distribuição** por natureza, com o mantenedor como árbitro ([ADR 0002](docs/adr/0002-fronteira-kernel-distribuicao.md)).
 - **Arquitetura e padrões de código** em [ADR 0003](docs/adr/0003-arquitetura-e-padroes-de-codigo.md).
-- **Agentes e workflows:** Google ADK para agentes; Temporal como único motor de processos duráveis. ADK roda em Activities quando participa de um workflow. Aprovação, identidade e execução autorizada permanecem no kernel; o histórico dos motores não substitui a memória corporativa. [Evidência do spike](spikes/adk-temporal/reports/ADR-001.md): 13 testes passaram, incluindo Gemini real, retomada e execução incerta. Integração e operação de produção ainda precisam ser entregues.
-- **Experiência de construção:** criar, configurar, testar, versionar, publicar e acompanhar agentes e workflows na plataforma. O FDE fornece ontologia, ferramentas e conectores do domínio, como o portal BRQ. APIs e MCP permitem integrar outras plataformas sob as mesmas permissões e política. A biblioteca e o formato do editor visual ainda não foram escolhidos.
+- **Agentes e workflows:** Google ADK para agentes; Temporal como único motor de processos duráveis. ADK roda em Activities quando participa de um workflow. Aprovação, identidade e execução autorizada permanecem no kernel; o histórico dos motores não substitui a memória corporativa. [Evidência do spike](spikes/adk-temporal/reports/ADR-001.md): 13 testes passaram, incluindo Gemini real, retomada e execução incerta. Integração e operação de produção ainda precisam ser entregues ([ADR 0004](docs/adr/0004-agentes-workflows-e-plataforma-de-construcao.md)).
+- **Experiência de construção:** a plataforma é o lugar único para configurar a instalação, construir agentes, compor workflows, publicar e acompanhar ([ADR 0004](docs/adr/0004-agentes-workflows-e-plataforma-de-construcao.md)). Configuração fica na plataforma (conectores já existentes, papéis, aprovadores, autonomia, agentes, workflows); código de conectores e ferramentas e a ontologia continuam em código, escritos pelo FDE. Toda mudança feita na plataforma vira versão publicada, imutável, com digest e aprovada por um papel; o Git deixa de ser a fonte de verdade das definições de agentes e workflows. Editar a ontologia pela interface fica fora do escopo atual. APIs e MCP permitem integrar outras plataformas sob as mesmas permissões e política. A biblioteca de interface ainda não foi escolhida.
 - **Experiência unificada:** uma única área web do pxOS, com login, navegação e identidade visual próprios, reúne memória corporativa, agentes, workflows, execuções e aprovações. O backend aplica permissões e integra os motores. Canais como Teams continuam disponíveis; web e canais compartilham fatos, decisões e fila de revisão.
 - **Implantação:** instalação dedicada por cliente é o padrão, e dentro dela valem as permissões internas. O modo compartilhado fica adiado.
 - **Time:** você e eu. O gargalo é o seu tempo de revisão e os acessos externos (TI, jurídico, GCP), não a escrita de código. Por isso o plano é sequenciado por critério de saída, sem datas.
@@ -92,13 +92,19 @@ Assim cada fase tem um critério executável.
 - **Saída:** passam os testes dos requisitos 1 (o mesmo MCP serve pessoa e agente), 6 (ação irreversível sempre aprovada) e 7 (latência p95 do caminho síncrono dentro da meta definida no ADR).
 
 ### Fase 8: Construção e operação de agentes e workflows
-- **Área web integrada:** entregar a navegação e autenticação comuns para memória, agentes, workflows, execuções e aprovações, consumindo os serviços das Fases 2, 5 e 7. A memória permite consultar contexto, fatos, fontes e histórico; a área de aprovações oferece a mesma fila dos canais, com decisão única e estado consistente em ambas as superfícies.
+Uma única área web do pxOS, construída nesta ordem, cada etapa útil sozinha:
+
+1. **Aprovações e execuções:** navegação e autenticação comuns; a fila de aprovações é a mesma dos canais, com decisão única e estado consistente nas duas superfícies; a memória permite consultar contexto, fatos, fontes e histórico; o painel lista execuções por instalação, função, período e estado e mostra etapa, versão, evidência, ferramentas, aprovação, resultado, custo e erro, correlacionando IDs Temporal/ADK com proposta e ação do gateway. Intervenções só as autorizadas pelo processo (esclarecer, aprovar, cancelar, reconciliar); nada de retry cego para efeito incerto.
+2. **Agentes por formulário:** função, instruções, contexto, modelo, ferramentas do catálogo, saída esperada, responsável e autonomia; teste com exemplos e resultados esperados; publicação como versão imutável com digest, aprovada por um papel. Identidade própria e leitura com a delegação da pessoa.
+3. **Workflows:** gatilho, etapas de agente, ações, condições, aprovações, prazos e falhas, por formulário ou modelo pronto sobre blocos registrados pelo FDE; composição visual só se a necessidade aparecer. Mesma regra de publicação; a execução referencia versões publicadas e rascunhos não alteram processos em andamento.
+4. **Configuração da instalação:** conectores já existentes (credencial, escopo, mapeamento para a entidade âncora, estado da ingestão), papéis, aprovadores e fases de autonomia, também publicados como versão aprovada.
+
+Edição da ontologia pela interface fica fora desta fase e do marco do kernel; a ontologia continua em pacotes LinkML por pull request.
+
 - **Motores:** ADK executa interpretação e ferramentas; Temporal controla processos duráveis, espera, prazos e retomada. Chamadas ADK ficam em Activities. Não duplicar o ciclo de aprovação nos dois motores nem construir motor próprio. Sessões e histórico de execução não substituem Hindsight e estado canônico.
-- **Definições versionadas:** agente declara função, instruções, contexto, modelo, ferramentas, saída esperada, responsável e autonomia; workflow declara gatilho, etapas, condições, aprovações, prazos e tratamento de falhas. A execução referencia versões publicadas; mudanças não alteram silenciosamente processos em andamento.
-- **Área de agentes:** configurar sobre o catálogo de módulos, testar com exemplos e resultados esperados, avaliar e publicar. Identidade própria e leitura com a delegação da pessoa.
-- **Área de workflows:** compor etapas de agente, ações e aprovação sobre blocos registrados; validar entradas e saídas, testar falhas e publicar. Ferramentas e conectores específicos são escritos pelo FDE; a interface oferece a composição sobre esses contratos. Escolher a tecnologia de interface nesta entrega.
-- **Área de execuções:** listar por instalação, função, período e estado; mostrar etapa, versão, evidência, ferramentas, aprovação, resultado, custo e erro. Correlacionar IDs Temporal/ADK com proposta e ação do gateway. Expor somente intervenções autorizadas, com cancelamento, esclarecimento e reconciliação previstos pelo processo. Não oferecer retry cego para efeitos incertos.
+- **Regras de integração (ADR 0004):** chamadas de modelo do ADK passam pelo acesso a modelos (Fase 3); workflows carregam só referências, nunca conteúdo ou dados pessoais, para a exclusão continuar efetiva; namespace Temporal e credenciais de worker por instalação; o worker abre a sessão no banco como o agente, agindo pela pessoa; a decisão de revisão chega ao workflow como sinal a partir da outbox, sem segunda fila.
 - **Gatilhos:** Temporal Schedules para agenda e entrada de eventos do estado vivo. Integração com fila de revisão e política do kernel, incluindo expiração e revogação. ADK Web e Temporal Web UI apoiam desenvolvimento e diagnóstico; o painel de produto aplica as permissões do pxOS.
+- **Issues:** K34 (runtime e versão publicada do agente), K35 (gatilhos), K36 (Temporal), K65 (área web: aprovações, execuções, memória), K66 (agentes por formulário), K67 (workflows compostos), K68 (configuração da instalação).
 - **Saída:** o FDE registra uma ferramenta e configura um agente/workflow sem alterar o mecanismo comum; publica uma versão, aciona por agenda e evento e acompanha a execução no painel. O agente consulta contexto via MCP e age via gateway em fase de autonomia 1. Testes de produto demonstram espera por esclarecimento/aprovação, retomada após queda, aprovação exata, resultado incerto sem duplicação e retorno de confirmação ao estado vivo. Uma função de referência produz uma entrega baseada no contexto e identifica lacunas sem exigir que a pessoa reconstrua todo o histórico. A progressão de autonomia só acontece por métrica.
 
 ### Fase 9: Manutenção, base analítica e medição de resultado
@@ -169,7 +175,8 @@ Para começar, precisa dos gates de TI e jurídico da Fase 0 resolvidos.
 | Governança da fronteira do kernel | resolvida (ADR 0002) | — |
 | Motores de agentes e workflows | ADK + Temporal adotados em 14/11/2026 | F8 (integração, construção e operação) |
 | Hospedagem Temporal e workers ADK | F8 (local e desenho) | F10 (produção: disponibilidade, residência, custo e upgrades) |
-| Interface de criação e acompanhamento | F8 (tecnologia e experiência) | saída da F8 |
+| Interface de criação e acompanhamento | escopo decidido (ADR 0004); tecnologia na F8 | saída da F8 |
+| Edição da ontologia pela interface | fora do escopo atual | depois do marco do kernel, se houver demanda |
 | Permissões do Entra ID e contas de serviço | F0 (TI) | F11.3 |
 | API do portal e contrato de execução/reconciliação | F0 (TI), detalhamento F4/F7 | F11.5 |
 | Modelo de acesso ao Granola | F0 | F11.2 |
