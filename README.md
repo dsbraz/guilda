@@ -69,7 +69,9 @@ claude mcp add --transport http brq-at-work http://127.0.0.1:18000/mcp \
   --header "Authorization: Bearer $TOKEN"
 ```
 
-As tools são `list_commitments`, `timeline` e `create_commitment`. A proposta segue para a
+O token vale 12 horas; depois disso, emita outro e registre o servidor de novo (`claude mcp
+remove brq-at-work` antes do `add`). As tools são `list_commitments`, `timeline` e
+`create_commitment`. A proposta segue para a
 gerente de projeto; enquanto não há canal real, a aprovação do card é feita com
 `mcp_local.py approve <proposal_id> --as ana`.
 
