@@ -1,0 +1,25 @@
+{
+  "offline": {
+    "tests": "13",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "3",
+    "time": "60.312"
+  },
+  "live": {
+    "tests": "3",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "33.432"
+  },
+  "demo": {
+    "model": "gemini-4-hydrogen",
+    "portal": {
+      "effects": 1,
+      "attempts": 2
+    },
+    "replay": "passed",
+    "stage": "confirmed"
+  }
+}

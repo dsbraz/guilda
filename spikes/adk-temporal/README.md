@@ -79,6 +79,33 @@ ambientes podem fornecer seu próprio ADC, projeto e modelo, sem usar `spike.aut
 Os testes reais verificam esclarecimento para duas entradas e uma movimentação completa
 com payload esperado e reinício do worker. São amostras de viabilidade, não um benchmark.
 
+## Comparação Hydrogen × 3.8 Flash
+
+Com as mesmas variáveis de autenticação da seção anterior:
+
+```sh
+uv run --frozen python -m spike.compare_models --repetitions 3
+SPIKE_LIVE_MODEL=gemini-4-hydrogen uv run --frozen pytest -q tests/test_live.py
+uv run --frozen python -m spike.demo --model gemini-4-hydrogen
+```
+
+O comparador executa os três pedidos originais, três vezes por modelo (18 execuções),
+alternando a ordem. Cada execução abre uma sessão nova, com o mesmo contexto, instrução,
+ferramenta e temperatura zero. O nível de raciocínio permanece no padrão de cada modelo;
+comparamos a substituição direta no agente, não budgets de raciocínio equivalentes.
+A duração inclui o ciclo ADK, chamadas de modelo e ferramentas; não inclui Temporal.
+O JSON em `reports/hydrogen-comparison.json` guarda cada resposta, resultado da validação,
+duração e uso informado pelo provedor em cada chamada, além das versões e hashes das fixtures.
+Timeouts e erros contam como falhas, não são descartados nem substituídos por respostas offline.
+Tokens de raciocínio são registrados separadamente; não representam preço por si mesmos.
+
+O critério para o pedido completo é igualdade exata com a movimentação esperada. Nos
+outros dois, exige pedido de esclarecimento, pergunta não vazia e nenhuma movimentação.
+O próprio Proposer exige consulta ao contexto, evidência literal e compatibilidade dos
+campos com o contexto. A pertinência das perguntas deve ser revisada nas respostas salvas.
+São três casos pequenos repetidos, sem significância estatística, avaliação de relatórios,
+briefings, contexto longo ou residência de dados no Brasil. Ver [resultado](reports/hydrogen.md).
+
 ## O que o FDE constrói
 
 - `spike/domain.py`: contrato Pydantic de movimentação, exemplo mínimo de schema de domínio.

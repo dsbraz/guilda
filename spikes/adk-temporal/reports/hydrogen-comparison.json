@@ -1,0 +1,1151 @@
+{
+  "started_at": "2026-11-14T19:58:38.557827+00:00",
+  "python": "3.12.13",
+  "versions": {
+    "google-adk": "2.14.1",
+    "google-genai": "2.34.0"
+  },
+  "temperature": 0,
+  "thinking": "provider default for each model",
+  "repetitions": 3,
+  "timeout_seconds": 120,
+  "fixtures_sha256": {
+    "agent.json": "f32a522dd76893dcedf96cae1cfd5e835c097f748cebdce3d3cd82f54c29afdd",
+    "context.json": "14af14e3eeaa0e03305855ccdc2fee21fe5dec53b01806cf1a64fb4476df4bcb"
+  },
+  "cases": {
+    "complete": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+    "missing_date": "Decidido: mover 50% da alocação de Ana Silva do projeto alfa para beta.",
+    "ambiguous": "Decidido: mover 50% da alocação de Ana para beta a partir de 2026-11-23."
+  },
+  "runs": [
+    {
+      "model": "gemini-3.8-flash",
+      "case": "complete",
+      "repeat": 1,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 543,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 543
+              }
+            ],
+            "thoughts_token_count": 72,
+            "total_token_count": 627,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 116,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 116
+              }
+            ],
+            "prompt_token_count": 704,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 704
+              }
+            ],
+            "thoughts_token_count": 726,
+            "total_token_count": 1546,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "proposed",
+        "move": {
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "target_project": "beta",
+          "percentage": 50,
+          "start_date": "2026-11-23",
+          "expected_version": 1
+        },
+        "question": "",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "fb5a9fb0-d03f-46bf-b520-ea6fd97b825c"
+      },
+      "passed": true,
+      "seconds": 11.022
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "complete",
+      "repeat": 1,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 586,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 586
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 619,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 117,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 117
+              }
+            ],
+            "prompt_token_count": 764,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 764
+              }
+            ],
+            "thoughts_token_count": 510,
+            "total_token_count": 1391,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "proposed",
+        "move": {
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "target_project": "beta",
+          "percentage": 50,
+          "start_date": "2026-11-23",
+          "expected_version": 1
+        },
+        "question": "",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "99b206e5-d442-488c-83f7-0eb12664aa67"
+      },
+      "passed": true,
+      "seconds": 7.798
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "missing_date",
+      "repeat": 1,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 569,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 569
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 602,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 82,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 82
+              }
+            ],
+            "prompt_token_count": 747,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 747
+              }
+            ],
+            "thoughts_token_count": 410,
+            "total_token_count": 1239,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Qual é a data de início (em formato ISO, YYYY-MM-DD) para mover 50% da alocação de Ana Silva do projeto alfa para beta?",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva do projeto alfa para beta.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "22fe93a5-714b-49fc-9fe9-1b4a1e4ec1d3"
+      },
+      "passed": true,
+      "seconds": 5.84
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "missing_date",
+      "repeat": 1,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 526,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 526
+              }
+            ],
+            "thoughts_token_count": 56,
+            "total_token_count": 594,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 70,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 70
+              }
+            ],
+            "prompt_token_count": 671,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 671
+              }
+            ],
+            "thoughts_token_count": 328,
+            "total_token_count": 1069,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Qual é a data de início (no formato AAAA-MM-DD) para a movimentação da alocação?",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva do projeto alfa para beta.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "dd0a834c-23ad-4636-9ed4-43901cba367d"
+      },
+      "passed": true,
+      "seconds": 7.38
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "ambiguous",
+      "repeat": 1,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 536,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 536
+              }
+            ],
+            "thoughts_token_count": 66,
+            "total_token_count": 614,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 93,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 93
+              }
+            ],
+            "prompt_token_count": 691,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 691
+              }
+            ],
+            "thoughts_token_count": 457,
+            "total_token_count": 1241,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Há duas pessoas chamadas Ana cadastradas: Ana Silva (projeto alfa) e Ana Souza (projeto gama). Qual delas deve ter a alocação transferida para o projeto beta?",
+        "evidence": "Decidido: mover 50% da alocação de Ana para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "41f7dc9b-b4f4-4450-8a1f-e47a80af89a5"
+      },
+      "passed": true,
+      "seconds": 7.232
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "ambiguous",
+      "repeat": 1,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 579,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 579
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 612,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 111,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 111
+              }
+            ],
+            "prompt_token_count": 757,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 757
+              }
+            ],
+            "thoughts_token_count": 292,
+            "total_token_count": 1160,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Há mais de uma pessoa chamada Ana no contexto atual (Ana Silva, id 'ana-design' no projeto alfa, e Ana Souza, id 'ana-research' no projeto gama). Qual delas deve ter 50% da alocação movida para beta?",
+        "evidence": "Decidido: mover 50% da alocação de Ana para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "38830614-1d97-4335-9050-5966b120acac"
+      },
+      "passed": true,
+      "seconds": 5.622
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "complete",
+      "repeat": 2,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 586,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 586
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 619,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 117,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 117
+              }
+            ],
+            "prompt_token_count": 764,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 764
+              }
+            ],
+            "thoughts_token_count": 495,
+            "total_token_count": 1376,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "proposed",
+        "move": {
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "target_project": "beta",
+          "percentage": 50,
+          "start_date": "2026-11-23",
+          "expected_version": 1
+        },
+        "question": "",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "119a7a3a-ce5f-461a-b050-213b04c8c231"
+      },
+      "passed": true,
+      "seconds": 6.813
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "complete",
+      "repeat": 2,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 543,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 543
+              }
+            ],
+            "thoughts_token_count": 78,
+            "total_token_count": 633,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 116,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 116
+              }
+            ],
+            "prompt_token_count": 710,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 710
+              }
+            ],
+            "thoughts_token_count": 521,
+            "total_token_count": 1347,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "proposed",
+        "move": {
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "target_project": "beta",
+          "percentage": 50,
+          "start_date": "2026-11-23",
+          "expected_version": 1
+        },
+        "question": "",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "1fcc6b3d-d520-4902-89cc-cc4501404ffb"
+      },
+      "passed": true,
+      "seconds": 8.469
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "missing_date",
+      "repeat": 2,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 526,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 526
+              }
+            ],
+            "thoughts_token_count": 174,
+            "total_token_count": 712,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 74,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 74
+              }
+            ],
+            "prompt_token_count": 789,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 789
+              }
+            ],
+            "thoughts_token_count": 475,
+            "total_token_count": 1338,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Qual é a data de início (formato ISO AAAA-MM-DD) para a movimentação da alocação de Ana Silva?",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva do projeto alfa para beta.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "597cee47-dada-4276-995f-6b8d98d3a1f6"
+      },
+      "passed": true,
+      "seconds": 8.744
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "missing_date",
+      "repeat": 2,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 569,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 569
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 602,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 83,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 83
+              }
+            ],
+            "prompt_token_count": 747,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 747
+              }
+            ],
+            "thoughts_token_count": 387,
+            "total_token_count": 1217,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Qual é a data de início (em formato YYYY-MM-DD) para a movimentação de 50% da alocação de Ana Silva do projeto alfa para beta?",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva do projeto alfa para beta.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "7c99e0f7-f39b-4bf4-8939-0d5f6eaf6534"
+      },
+      "passed": true,
+      "seconds": 5.699
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "ambiguous",
+      "repeat": 2,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 579,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 579
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 612,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 108,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 108
+              }
+            ],
+            "prompt_token_count": 757,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 757
+              }
+            ],
+            "thoughts_token_count": 253,
+            "total_token_count": 1118,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Existem duas pessoas chamadas Ana no contexto atual: Ana Silva (ana-design, alocada em alfa) e Ana Souza (ana-research, alocada em gama). Qual delas deve ter 50% da alocação movida para beta?",
+        "evidence": "Decidido: mover 50% da alocação de Ana para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "2299dbf3-fcba-44c3-b43c-9eef8f1f5410"
+      },
+      "passed": true,
+      "seconds": 5.376
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "ambiguous",
+      "repeat": 2,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 536,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 536
+              }
+            ],
+            "thoughts_token_count": 67,
+            "total_token_count": 615,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 85,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 85
+              }
+            ],
+            "prompt_token_count": 692,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 692
+              }
+            ],
+            "thoughts_token_count": 458,
+            "total_token_count": 1235,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Há mais de uma pessoa chamada Ana no contexto: Ana Silva (projeto alfa) e Ana Souza (projeto gama). A qual delas você se refere?",
+        "evidence": "Decidido: mover 50% da alocação de Ana para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "31b39e38-74b0-4d44-9cf2-deb53d73ded0"
+      },
+      "passed": true,
+      "seconds": 7.483
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "complete",
+      "repeat": 3,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 543,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 543
+              }
+            ],
+            "thoughts_token_count": 83,
+            "total_token_count": 638,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 116,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 116
+              }
+            ],
+            "prompt_token_count": 715,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 715
+              }
+            ],
+            "thoughts_token_count": 744,
+            "total_token_count": 1575,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "proposed",
+        "move": {
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "target_project": "beta",
+          "percentage": 50,
+          "start_date": "2026-11-23",
+          "expected_version": 1
+        },
+        "question": "",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "562222d3-da7f-4c2f-9fb2-907efaeaef25"
+      },
+      "passed": true,
+      "seconds": 11.045
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "complete",
+      "repeat": 3,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 586,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 586
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 619,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 117,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 117
+              }
+            ],
+            "prompt_token_count": 764,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 764
+              }
+            ],
+            "thoughts_token_count": 732,
+            "total_token_count": 1613,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "proposed",
+        "move": {
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "target_project": "beta",
+          "percentage": 50,
+          "start_date": "2026-11-23",
+          "expected_version": 1
+        },
+        "question": "",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "8e7b2cd4-9e9e-4622-be6f-1dca663ccde8"
+      },
+      "passed": true,
+      "seconds": 8.569
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "missing_date",
+      "repeat": 3,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 569,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 569
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 602,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 89,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 89
+              }
+            ],
+            "prompt_token_count": 747,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 747
+              }
+            ],
+            "thoughts_token_count": 386,
+            "total_token_count": 1222,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Qual é a data de início explícita (formato ISO, ex.: AAAA-MM-DD) para a movimentação de 50% da alocação de Ana Silva do projeto alfa para beta?",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva do projeto alfa para beta.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "3cf08d12-f49b-46e2-99fe-76a6f28fc1da"
+      },
+      "passed": true,
+      "seconds": 5.779
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "missing_date",
+      "repeat": 3,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 526,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 526
+              }
+            ],
+            "thoughts_token_count": 219,
+            "total_token_count": 757,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 81,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 81
+              }
+            ],
+            "prompt_token_count": 834,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 834
+              }
+            ],
+            "thoughts_token_count": 363,
+            "total_token_count": 1278,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Qual é a data de início (em formato ISO, AAAA-MM-DD) para a movimentação de alocação de Ana Silva do projeto alfa para o beta?",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva do projeto alfa para beta.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "9b0da6dd-3c0e-404d-8b20-c330a9cc1a42"
+      },
+      "passed": true,
+      "seconds": 7.614
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "case": "ambiguous",
+      "repeat": 3,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 12,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 12
+              }
+            ],
+            "prompt_token_count": 536,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 536
+              }
+            ],
+            "thoughts_token_count": 63,
+            "total_token_count": 611,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 84,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 84
+              }
+            ],
+            "prompt_token_count": 688,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 688
+              }
+            ],
+            "thoughts_token_count": 353,
+            "total_token_count": 1125,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Há duas pessoas chamadas Ana no sistema: Ana Silva (projeto alfa) e Ana Souza (projeto gama). A qual delas você se refere?",
+        "evidence": "Decidido: mover 50% da alocação de Ana para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "7c8eb3ca-cef0-4395-a38f-e0111c2604e7"
+      },
+      "passed": true,
+      "seconds": 7.3
+    },
+    {
+      "model": "gemini-4-hydrogen",
+      "case": "ambiguous",
+      "repeat": 3,
+      "metrics": {
+        "usage": [
+          {
+            "candidates_token_count": 18,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 18
+              }
+            ],
+            "prompt_token_count": 579,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 579
+              }
+            ],
+            "thoughts_token_count": 15,
+            "total_token_count": 612,
+            "traffic_type": "ON_DEMAND"
+          },
+          {
+            "candidates_token_count": 107,
+            "candidates_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 107
+              }
+            ],
+            "prompt_token_count": 757,
+            "prompt_tokens_details": [
+              {
+                "modality": "TEXT",
+                "token_count": 757
+              }
+            ],
+            "thoughts_token_count": 317,
+            "total_token_count": 1181,
+            "traffic_type": "ON_DEMAND"
+          }
+        ]
+      },
+      "result": {
+        "status": "needs_clarification",
+        "move": null,
+        "question": "Há duas pessoas chamadas Ana no contexto (Ana Silva no projeto alfa e Ana Souza no projeto gama). Qual delas deve ter 50% da alocação movida para beta a partir de 2026-11-23?",
+        "evidence": "Decidido: mover 50% da alocação de Ana para beta a partir de 2026-11-23.",
+        "tools_used": [
+          "get_work_context"
+        ],
+        "run_id": "7b1a47df-e1ba-4887-902f-d71f80275a56"
+      },
+      "passed": true,
+      "seconds": 5.51
+    }
+  ],
+  "summary": {
+    "gemini-3.8-flash": {
+      "attempts": 9,
+      "passed": 9,
+      "median_seconds_all_attempts": 7.614,
+      "tokens": {
+        "prompt_token_count": 11309,
+        "candidates_token_count": 943,
+        "thoughts_token_count": 5303,
+        "total_token_count": 17555
+      }
+    },
+    "gemini-4-hydrogen": {
+      "attempts": 9,
+      "passed": 9,
+      "median_seconds_all_attempts": 5.779,
+      "tokens": {
+        "prompt_token_count": 12006,
+        "candidates_token_count": 1093,
+        "thoughts_token_count": 3917,
+        "total_token_count": 17016
+      }
+    }
+  }
+}

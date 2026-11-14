@@ -1,0 +1,87 @@
+{
+  "model": "gemini-4-hydrogen",
+  "result": {
+    "digest": "9339f7d35bc5a8e9bd2769209c1f2cb5433f8b46477923743deb433b4540beb1",
+    "envelope": {
+      "action": "move_allocation",
+      "approver": "delivery-manager",
+      "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+      "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+      "payload": {
+        "expected_version": 1,
+        "percentage": 50,
+        "person_id": "ana-design",
+        "source_project": "alfa",
+        "start_date": "2026-11-23",
+        "target_project": "beta"
+      }
+    },
+    "receipt": {
+      "confirmed": true,
+      "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+      "payload_digest": "2ef6e1a35b8340aa13958d9a74506f3f1fda31fc0484a5226432d883e83af083"
+    },
+    "stage": "confirmed",
+    "tools_used": [
+      "get_work_context",
+      "get_capacity"
+    ]
+  },
+  "portal": {
+    "effects": 1,
+    "attempts": 2
+  },
+  "context_events": [
+    {
+      "envelope": {
+        "action": "move_allocation",
+        "approver": "delivery-manager",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+        "payload": {
+          "expected_version": 1,
+          "percentage": 50,
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "start_date": "2026-11-23",
+          "target_project": "beta"
+        }
+      },
+      "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+      "stage": "proposed"
+    },
+    {
+      "decision": {
+        "actor": "delivery-manager",
+        "decision": "approved",
+        "digest": "9339f7d35bc5a8e9bd2769209c1f2cb5433f8b46477923743deb433b4540beb1"
+      },
+      "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+      "stage": "approved"
+    },
+    {
+      "envelope": {
+        "action": "move_allocation",
+        "approver": "delivery-manager",
+        "evidence": "Decidido: mover 50% da alocação de Ana Silva (designer) do projeto alfa para beta a partir de 2026-11-23.",
+        "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+        "payload": {
+          "expected_version": 1,
+          "percentage": 50,
+          "person_id": "ana-design",
+          "source_project": "alfa",
+          "start_date": "2026-11-23",
+          "target_project": "beta"
+        }
+      },
+      "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+      "receipt": {
+        "confirmed": true,
+        "operation_id": "demo-90e9198c-9fc2-4c1b-8278-113988102df1",
+        "payload_digest": "2ef6e1a35b8340aa13958d9a74506f3f1fda31fc0484a5226432d883e83af083"
+      },
+      "stage": "confirmed"
+    }
+  ],
+  "replay": "passed"
+}

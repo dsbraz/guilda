@@ -22,7 +22,7 @@ class Proposer:
         self.config = config or json.loads((ROOT / "fixtures/agent.json").read_text())
         self.context = context or json.loads((ROOT / "fixtures/context.json").read_text())
 
-    async def propose(self, request: str) -> dict:
+    async def propose(self, request: str, *, metrics: dict | None = None) -> dict:
         used = []
 
         # Registro de extensão do FDE. Não modifica o workflow nem expõe execução ao LLM.
@@ -47,6 +47,9 @@ class Proposer:
                 new_message=types.Content(role="user", parts=[types.Part(text=request)]),
                 run_config=RunConfig(max_llm_calls=6),
             ):
+                if metrics is not None and event.usage_metadata:
+                    usage = event.usage_metadata.model_dump(exclude_none=True)
+                    metrics.setdefault("usage", []).append(usage)
                 if event.is_final_response() and event.content:
                     final = "".join(part.text or "" for part in event.content.parts or [])
         finally:
