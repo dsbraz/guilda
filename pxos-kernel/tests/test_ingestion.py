@@ -24,26 +24,29 @@ from pxos_kernel.ontology import Registry
 
 LOG = "Erin: I will restock aisle 3 with 12 boxes of A-1 tomorrow morning.\nCarla: thanks.\n"
 INSTRUCTIONS = 'Extract restock promises as: RESTOCK | sku=<sku> | qty=<n> | quote="<verbatim>"'
-FACT = re.compile(r'RESTOCK \| sku=(?P<sku>[^|]+) \| qty=(?P<qty>[^|]+) \| quote="(?P<quote>.*)"')
+FACT = re.compile(
+    r"RESTOCK \| sku=(?P<sku>[^|]+) \| qty=(?P<qty>[^|]+)"
+    r'(?: \| assignee=(?P<assignee>[^|]+))? \| quote="(?P<quote>.*)"'
+)
 
 
 def read_restock(fact: str) -> Candidate | None:
     match = FACT.fullmatch(fact)
     if match is None:
         return None
-    return Candidate(
-        action="create_restock_order",
-        payload={
-            "sku": match["sku"],
-            "quantity": int(match["qty"]) if match["qty"].isdigit() else match["qty"],
-            "occurred_at": "2026-11-01T09:00:00Z",
-        },
-        quote=match["quote"],
-    )
+    payload = {
+        "sku": match["sku"],
+        "quantity": int(match["qty"]) if match["qty"].isdigit() else match["qty"],
+        "occurred_at": "2026-11-01T09:00:00Z",
+    }
+    if match["assignee"]:
+        payload["assignee"] = match["assignee"]
+    return Candidate(action="create_restock_order", payload=payload, quote=match["quote"])
 
 
-def restock(quote: str, sku: str = "A-1", qty: str = "12") -> str:
-    return f'RESTOCK | sku={sku} | qty={qty} | quote="{quote}"'
+def restock(quote: str, sku: str = "A-1", qty: str = "12", assignee: str | None = None) -> str:
+    who = f" | assignee={assignee}" if assignee else ""
+    return f'RESTOCK | sku={sku} | qty={qty}{who} | quote="{quote}"'
 
 
 def document(name: str, text: str = LOG) -> SourceDocument:
@@ -100,6 +103,7 @@ async def test_only_candidates_with_a_literal_quote_become_proposals(
                 restock(other, sku="B-2", qty="4"),  # another document
                 restock("Erin: I will restock aisle 3", qty="zero"),  # fails the schema
                 restock("Erin: I will restock aisle 3", qty="0"),  # fails the schema
+                restock("Erin: I will restock aisle 3", assignee="nobody"),  # unknown actor
                 "not a restock fact at all",
             ]
         }

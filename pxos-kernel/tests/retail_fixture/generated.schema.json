@@ -83,6 +83,12 @@
             "additionalProperties": false,
             "description": "",
             "properties": {
+                "assignee": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
                 "occurred_at": {
                     "format": "date-time",
                     "type": "string"

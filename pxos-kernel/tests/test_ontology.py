@@ -51,6 +51,7 @@ def test_fixture_package_extends_base() -> None:
         ),
     )
     assert package.action("create_restock_order").approver == "store-manager"
+    assert package.references == {"RestockOrder": {"assignee": "Actor"}}
     assert "occurred_at" in package.schema.class_slots("RestockOrder")
 
 
@@ -169,4 +170,12 @@ def test_action_type_names_are_unique(tmp_path: Path) -> None:
     schema, manifest = retail()
     manifest["actions"] = manifest["actions"] * 2
     with pytest.raises(InvalidPackage, match="duplicated action type names"):
+        load_package(write_package(tmp_path, schema, manifest))
+
+
+def test_a_reference_can_only_point_to_an_actor(tmp_path: Path) -> None:
+    schema, manifest = retail()
+    assignee = schema["classes"]["RestockOrder"]["attributes"]["assignee"]
+    assignee["annotations"]["pxos.refers_to"] = "Shelf"
+    with pytest.raises(InvalidPackage, match="assignee can only refer to Actor"):
         load_package(write_package(tmp_path, schema, manifest))

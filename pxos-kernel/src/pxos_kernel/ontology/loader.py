@@ -25,6 +25,7 @@ METAMODEL_SCHEMA = ONTOLOGY_DIR / "metamodel.yaml"
 BASE_IMPORT = "pxos_base"
 KIND_ANNOTATION = "pxos.kind"
 BASE_VERSION_ANNOTATION = "pxos.base_version"
+REFERS_TO_ANNOTATION = "pxos.refers_to"
 
 
 class InvalidPackage(PxosError):
@@ -55,6 +56,8 @@ class Package:
     kinds: dict[str, Kind]
     readers: dict[str, tuple[str, ...]]
     actions: tuple[ActionType, ...]
+    references: dict[str, dict[str, str]]
+    """Per canonical type, the slots whose value is the id of a base type (only Actor)."""
 
     def action(self, name: str) -> ActionType:
         for action in self.actions:
@@ -106,6 +109,7 @@ def load_package(package_dir: Path) -> Package:
         kinds=kinds,
         readers=readers,
         actions=actions,
+        references=_references(view, kinds, name),
     )
 
 
@@ -178,6 +182,23 @@ def _actions(
     if len(names) != len(set(names)):
         raise InvalidPackage(f"{package}: duplicated action type names")
     return tuple(actions)
+
+
+def _references(
+    view: SchemaView, kinds: dict[str, Kind], package: str
+) -> dict[str, dict[str, str]]:
+    references: dict[str, dict[str, str]] = {}
+    for type_name, kind in kinds.items():
+        if kind is not Kind.CANONICAL:
+            continue
+        for slot in view.class_induced_slots(type_name):
+            target = _annotation(slot.annotations, REFERS_TO_ANNOTATION)
+            if target is None:
+                continue
+            if target != "Actor":
+                raise InvalidPackage(f"{package}: {type_name}.{slot.name} can only refer to Actor")
+            references.setdefault(type_name, {})[slot.name] = target
+    return references
 
 
 def _digest(manifest: dict[str, Any], schema_path: Path) -> str:

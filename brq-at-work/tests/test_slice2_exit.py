@@ -46,6 +46,8 @@ PARAPHRASE = (
     " | descrição=Verificar a carga de teste"
     ' | trecho="Célia: vou ver com o time de dados se a carga de teste fica pronta."'
 )
+# Literal quote, but the owner is nobody we know.
+UNKNOWN_OWNER = REAL.replace("dono=bruno", "dono=fulano")
 
 STORES = [
     pytest.param("fake", id="fake"),
@@ -61,7 +63,7 @@ STORES = [
 
 def store_for(kind: str, document: SourceDocument) -> ContextStore:
     if kind == "fake":
-        return FakeContextStore({document.key: [REAL, INVENTED, PARAPHRASE]})
+        return FakeContextStore({document.key: [REAL, INVENTED, PARAPHRASE, UNKNOWN_OWNER]})
     from pxos_kernel.context.hindsight import HindsightContextStore
 
     return HindsightContextStore.from_environment()

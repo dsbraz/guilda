@@ -134,6 +134,8 @@ async def propose(
     action_type = registered.package.action(action)
     if (entity_id is None) != (base_revision == 0):
         raise InvalidProposal("a new entity has base revision 0; a change names its entity")
+    payload = registered.validate(action_type.creates, payload)
+    await _check_references(connection, registered, action_type.creates, payload)
     return await _insert(
         connection,
         registered,
@@ -144,7 +146,7 @@ async def propose(
         "assert",
         valid_from,
         valid_to,
-        registered.validate(action_type.creates, payload),
+        payload,
         evidence,
     )
 
@@ -353,6 +355,21 @@ async def _insert(
         raise _translate(error) from None
     assert row is not None
     return Proposal(**dict(row))
+
+
+async def _check_references(
+    connection: Connection, registered: RegisteredPackage, type_name: str, payload: dict[str, Any]
+) -> None:
+    """A slot the package marks as referring to an actor must name an existing actor."""
+    for slot in registered.package.references.get(type_name, {}):
+        value = payload.get(slot)
+        if value is None:
+            continue
+        known = await connection.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM pxos.actors WHERE id = $1)", value
+        )
+        if not known:
+            raise InvalidProposal(f"{type_name}.{slot}: unknown actor {value}")
 
 
 async def _review(connection: Connection, proposal_id: UUID) -> Review:

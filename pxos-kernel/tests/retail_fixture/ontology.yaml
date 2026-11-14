@@ -29,6 +29,10 @@ classes:
         range: integer
         required: true
         minimum_value: 1
+      assignee:
+        title: responsável
+        annotations:
+          pxos.refers_to: Actor
 
   ShelfObservation:
     title: Observação de gôndola

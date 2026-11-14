@@ -284,6 +284,29 @@ async def test_invalid_payload_and_missing_evidence_are_rejected(
             )
 
 
+async def test_a_referenced_actor_must_exist(pool: asyncpg.Pool, registry: Registry) -> None:
+    retail = registry.get("retail")
+    async with session(pool, "erin") as connection:
+        with pytest.raises(InvalidProposal, match="assignee: unknown actor nobody"):
+            await propose(
+                connection,
+                retail,
+                "create_restock_order",
+                payload={**order(1), "assignee": "nobody"},
+                evidence=EVIDENCE,
+                valid_from=NOV[1],
+            )
+        proposal = await propose(
+            connection,
+            retail,
+            "create_restock_order",
+            payload={**order(1), "assignee": "gina"},
+            evidence=EVIDENCE,
+            valid_from=NOV[1],
+        )
+    assert proposal.payload["assignee"] == "gina"
+
+
 async def test_retroactive_correction_and_two_date_reading(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:

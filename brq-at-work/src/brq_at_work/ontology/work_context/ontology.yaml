@@ -50,6 +50,8 @@ classes:
       owner:
         title: dono
         required: true
+        annotations:
+          pxos.refers_to: Actor
       due_date:
         title: prazo
         range: date

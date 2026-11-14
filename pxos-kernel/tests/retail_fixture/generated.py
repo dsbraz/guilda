@@ -107,6 +107,7 @@ class Evidence(ConfiguredBaseModel):
 class RestockOrder(Event):
     sku: str = Field(default=..., title="SKU")
     quantity: int = Field(default=..., title="quantidade", ge=1)
+    assignee: Optional[str] = Field(default=None, title="responsável")
     occurred_at: datetime  = Field(default=..., title="ocorreu em")
 
 
