@@ -186,5 +186,9 @@ A fatia 3 foi concluída em 14/11/2026: pessoas e agentes leem e propõem pelo m
 token OIDC e as permissões do banco (PXOS-57 a 60). O req. 1 saiu de `xfail`; o PXOS-30
 continua aberto (busca, páginas, API, política e gateway). A proposta pelo MCP tem como fonte
 quem chamou, e o dono de um compromisso precisa ser um ator conhecido. A conferência da frente
-de trabalho foi para o K27. O escopo da próxima fatia é decidido com o mantenedor, e cada fase
-começa com confirmação explícita.
+de trabalho foi para o K27.
+A fatia 4 foi concluída em 14/11/2026: ator externo sem acesso ao contexto interno, token
+recusado no MCP quando o banco recusa o ator, e logins próprios por instalação (PXOS-61 a 64).
+Os reqs. 4 e 5 saíram de `xfail`; PXOS-8, 9 e 29 continuam abertos. O externo não recebe card,
+porque o card mostra contexto interno. O escopo da próxima fatia é decidido com o mantenedor, e
+cada fase começa com confirmação explícita.
