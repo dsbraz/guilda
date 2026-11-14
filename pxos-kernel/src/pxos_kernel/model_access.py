@@ -112,11 +112,13 @@ class GatewayModel(BaseLlm):
 
 
 class FakeModels:
-    """Providers for tests: every model answers ``reply`` and records the route it served."""
+    """Providers for tests: every model answers ``reply`` (a text, or a function of the
+    request) and records the requests it got and the route it served."""
 
-    def __init__(self, reply: str) -> None:
+    def __init__(self, reply: str | Callable[[LlmRequest], str]) -> None:
         self.reply = reply
         self.routes: list[Route] = []
+        self.requests: list[LlmRequest] = []
 
     def __call__(self, route: Route) -> BaseLlm:
         return _FakeModel(route, self)
@@ -135,9 +137,10 @@ class _FakeModel(BaseLlm):
         self, llm_request: LlmRequest, stream: bool = False
     ) -> AsyncGenerator[LlmResponse, None]:
         self._models.routes.append(self._route)
-        yield LlmResponse(
-            content=types.Content(role="model", parts=[types.Part(text=self._models.reply)])
-        )
+        self._models.requests.append(llm_request)
+        reply = self._models.reply
+        text = reply if isinstance(reply, str) else reply(llm_request)
+        yield LlmResponse(content=types.Content(role="model", parts=[types.Part(text=text)]))
 
 
 def vertex_models(project: str) -> Providers:

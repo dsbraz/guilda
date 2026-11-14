@@ -30,6 +30,7 @@ known-first-party = ["pxos_kernel", "brq_at_work"]
 python_version = "3.12"
 strict = true
 files = [
+    "agents_testing.py",
     "db_testing.py",
     "mcp_testing.py",
     "temporal_testing.py",

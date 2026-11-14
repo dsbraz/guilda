@@ -6,6 +6,7 @@ import asyncpg
 import pytest
 import retail_fixture.generated as retail_models
 
+from agents_testing import publish
 from db_testing import Database, create_test_database
 from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
@@ -41,9 +42,31 @@ def installation(name: str, registry: Registry, residency: Residency) -> Databas
     return database
 
 
+AGENT = "restock-agent"
+MEMORY_INSTRUCTIONS = "Extract every restock promise, one per fact, with the verbatim sentence."
+RESTOCK_AGENT = {
+    "agent": AGENT,
+    # Braces are text, not a template: the kernel hands instructions to ADK literally.
+    "instructions": "Read the restock promise: its {sku}, quantity and verbatim quote.",
+    "memory_instructions": MEMORY_INSTRUCTIONS,
+    "proposes": "retail.create_restock_order",
+}
+
+
 @pytest.fixture(scope="session")
 def database(registry: Registry) -> Database:
-    return installation("pxos_test_kernel", registry, "br")
+    """The kernel's installation, where the restock agent has an approved version."""
+    database = installation("pxos_test_kernel", registry, "br")
+
+    async def published() -> None:
+        pool = await create_pool(database.app_dsn)
+        try:
+            await publish(pool, registry, RESTOCK_AGENT, author="gina", approver="paula")
+        finally:
+            await pool.close()
+
+    asyncio.run(published())
+    return database
 
 
 @pytest.fixture(scope="session")

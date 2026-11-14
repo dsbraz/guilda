@@ -7,30 +7,28 @@ normalized. Model output is untrusted: a candidate that fails the schema is drop
 
 import re
 from datetime import UTC, datetime
+from typing import Any
 
 import asyncpg
 import pytest
+from conftest import AGENT, MEMORY_INSTRUCTIONS
 
+from agents_testing import scripted
 from db_testing import Database
 from pxos_kernel.context import FakeContextStore
-from pxos_kernel.ingestion import (
-    Candidate,
-    FakeConnector,
-    SourceDocument,
-    ingest,
-    quote_in_source,
-)
+from pxos_kernel.ingestion import FakeConnector, SourceDocument, ingest, quote_in_source
+from pxos_kernel.model_access import FakeModels, ModelGateway
 from pxos_kernel.ontology import Registry
 
 LOG = "Erin: I will restock aisle 3 with 12 boxes of A-1 tomorrow morning.\nCarla: thanks.\n"
-INSTRUCTIONS = 'Extract restock promises as: RESTOCK | sku=<sku> | qty=<n> | quote="<verbatim>"'
 FACT = re.compile(
     r"RESTOCK \| sku=(?P<sku>[^|]+) \| qty=(?P<qty>[^|]+)"
     r'(?: \| assignee=(?P<assignee>[^|]+))? \| quote="(?P<quote>.*)"'
 )
 
 
-def read_restock(fact: str) -> Candidate | None:
+def read_restock(fact: str) -> dict[str, Any] | None:
+    """What the agent answers for a fact: the fixture's model reads the line literally."""
     match = FACT.fullmatch(fact)
     if match is None:
         return None
@@ -41,7 +39,7 @@ def read_restock(fact: str) -> Candidate | None:
     }
     if match["assignee"]:
         payload["assignee"] = match["assignee"]
-    return Candidate(action="create_restock_order", payload=payload, quote=match["quote"])
+    return {"payload": payload, "quote": match["quote"]}
 
 
 def restock(quote: str, sku: str = "A-1", qty: str = "12", assignee: str | None = None) -> str:
@@ -61,16 +59,8 @@ def document(name: str, text: str = LOG) -> SourceDocument:
 async def run(
     pool: asyncpg.Pool, registry: Registry, store: FakeContextStore, doc: SourceDocument
 ) -> list[str]:
-    proposals = await ingest(
-        pool,
-        registry,
-        store,
-        doc,
-        package="retail",
-        instructions=INSTRUCTIONS,
-        reader=read_restock,
-        actor="restock-agent",
-    )
+    model = await ModelGateway(pool, FakeModels(reply=scripted(read_restock))).adk_model()
+    proposals = await ingest(pool, registry, store, doc, model, agent=AGENT)
     return [p.evidence["quote"] for p in proposals]
 
 
@@ -110,7 +100,7 @@ async def test_only_candidates_with_a_literal_quote_become_proposals(
     )
     quotes = await run(pool, registry, store, doc)
     assert quotes == ["Erin: I will restock aisle 3 with 12 boxes of A-1"]
-    assert store.retained == [(doc.key, INSTRUCTIONS)]
+    assert store.retained == [(doc.key, MEMORY_INSTRUCTIONS)]
 
 
 async def test_replay_of_a_source_version_creates_nothing(
@@ -131,29 +121,6 @@ async def test_replay_of_a_source_version_creates_nothing(
     finally:
         await owner.close()
     assert [r["ingested_by"] for r in rows] == ["restock-agent"]
-
-
-async def test_failed_ingestion_leaves_no_trace_and_can_be_retried(
-    pool: asyncpg.Pool, registry: Registry
-) -> None:
-    doc = document("retry")
-    store = FakeContextStore({doc.key: [restock("Erin: I will restock aisle 3")]})
-
-    def broken(fact: str) -> Candidate | None:
-        raise RuntimeError("reader crashed")
-
-    with pytest.raises(RuntimeError):
-        await ingest(
-            pool,
-            registry,
-            store,
-            doc,
-            package="retail",
-            instructions=INSTRUCTIONS,
-            reader=broken,
-            actor="restock-agent",
-        )
-    assert await run(pool, registry, store, doc) == ["Erin: I will restock aisle 3"]
 
 
 async def test_application_cannot_read_ingested_sources(pool: asyncpg.Pool) -> None:

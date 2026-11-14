@@ -1,46 +1,29 @@
-"""BRQ@work scribe (PXOS-56): extraction instructions and the reader of extracted facts."""
+"""BRQ@work scribe (PXOS-56, PXOS-80): the draft of its definition."""
 
-import pytest
+import re
+from pathlib import Path
 
-from brq_at_work.scribe import INSTRUCTIONS, read_commitment
-from pxos_kernel.ingestion import Candidate
-
-QUOTE = "Bruno: fechado, eu entrego o protótipo do onboarding até sexta, dia 28."
-FACT = (
-    "COMPROMISSO | dono=bruno | prazo=2026-11-28 | frente=onboarding-app"
-    f' | descrição=Entregar o protótipo do onboarding | trecho="{QUOTE}"'
-)
+import brq_at_work
+from brq_at_work.composition import build_registry
+from brq_at_work.scribe import DRAFT, MEMORY_INSTRUCTIONS
+from pxos_kernel.agents import AGENTS
 
 
-def test_instructions_ask_for_the_verbatim_quote_in_the_reader_format() -> None:
-    assert "COMPROMISSO | dono=" in INSTRUCTIONS
-    assert "literal" in INSTRUCTIONS
+def test_the_draft_is_a_valid_definition_of_the_commitment_action() -> None:
+    registry = build_registry()
+    assert registry.get(AGENTS).validate("AgentVersion", DRAFT) == DRAFT
+    package, action = DRAFT["proposes"].split(".")
+    assert registry.get(package).package.action(action).creates == "Commitment"
 
 
-def test_reads_a_commitment_fact() -> None:
-    assert read_commitment(FACT) == Candidate(
-        action="create_commitment",
-        payload={
-            "description": "Entregar o protótipo do onboarding",
-            "owner": "bruno",
-            "due_date": "2026-11-28",
-            "work_stream": "onboarding-app",
-        },
-        quote=QUOTE,
-    )
+def test_memory_instructions_ask_for_the_verbatim_quote() -> None:
+    assert "COMPROMISSO | dono=" in MEMORY_INSTRUCTIONS
+    assert "literal" in MEMORY_INSTRUCTIONS
 
 
-def test_reads_a_fact_embedded_in_extraction_prose() -> None:
-    assert read_commitment(f"Na reunião ficou registrado: {FACT}") is not None
-
-
-@pytest.mark.parametrize(
-    "fact",
-    [
-        "Bruno vai entregar o protótipo até o dia 28.",
-        FACT.replace(f' | trecho="{QUOTE}"', ""),
-        FACT.replace("dono=bruno", "dono="),
-    ],
-)
-def test_anything_else_is_not_a_commitment(fact: str) -> None:
-    assert read_commitment(fact) is None
+def test_the_distribution_builds_no_adk_agent() -> None:
+    """Only the kernel builds agents, on the gateway's model (ADR 0004 §2, rule 1)."""
+    source = Path(brq_at_work.__file__).parent
+    adk = re.compile(r"^\s*(import|from)\s+google\.adk\b", re.M)
+    files = list(source.rglob("*.py"))
+    assert files and not [path for path in files if adk.search(path.read_text())]

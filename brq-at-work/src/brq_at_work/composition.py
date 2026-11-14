@@ -6,6 +6,7 @@ from pathlib import Path
 import asyncpg
 
 import brq_at_work.ontology.work_context.generated as work_context_models
+from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
 from pxos_kernel.model_access import Residency, install_residency
 from pxos_kernel.ontology import Registry
@@ -19,6 +20,7 @@ IDENTITIES = ROOT / "identities.yaml"
 def build_registry() -> Registry:
     registry = Registry()
     registry.register(WORK_CONTEXT, work_context_models)
+    register_agents(registry)
     return registry
 
 

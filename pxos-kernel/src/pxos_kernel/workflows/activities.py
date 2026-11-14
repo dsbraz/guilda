@@ -10,7 +10,8 @@ from temporalio.exceptions import ApplicationError
 
 from pxos_kernel.context import ContextStore
 from pxos_kernel.identity import session
-from pxos_kernel.ingestion import Connector, Reader, SourceDocument, UnknownSource, ingest
+from pxos_kernel.ingestion import Connector, SourceDocument, UnknownSource, ingest
+from pxos_kernel.model_access import ModelGateway
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import InvalidProposal, get_proposal, get_review, proposals_from
 
@@ -43,7 +44,7 @@ class ReviewActivities:
 
 
 class IngestionActivities:
-    """Fetch a source by reference and ingest it as ``actor``, the agent the worker runs for.
+    """Fetch a source by reference and ingest it as ``agent``, from its approved version.
 
     Only references cross into the workflow: the source reference in, proposal ids out.
     A failure is reported by its type alone, because its message may quote the source.
@@ -55,20 +56,16 @@ class IngestionActivities:
         registry: Registry,
         store: ContextStore,
         connector: Connector,
+        gateway: ModelGateway,
         *,
-        package: str,
-        instructions: str,
-        reader: Reader,
-        actor: str,
+        agent: str,
     ) -> None:
         self._pool = pool
         self._registry = registry
         self._store = store
         self._connector = connector
-        self._package = package
-        self._instructions = instructions
-        self._reader = reader
-        self._actor = actor
+        self._gateway = gateway
+        self._agent = agent
 
     @activity.defn(name="ingest_source")
     async def ingest_source(self, ref: str) -> list[str]:
@@ -92,14 +89,12 @@ class IngestionActivities:
             self._registry,
             self._store,
             document,
-            package=self._package,
-            instructions=self._instructions,
-            reader=self._reader,
-            actor=self._actor,
+            await self._gateway.adk_model(),
+            agent=self._agent,
         )
         if created:
             return [proposal.id for proposal in created]
-        async with session(self._pool, self._actor) as connection:
+        async with session(self._pool, self._agent) as connection:
             return [proposal.id for proposal in await proposals_from(connection, document.key)]
 
     def registered(self) -> list[Callable[..., Any]]:

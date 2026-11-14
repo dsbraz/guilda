@@ -2,7 +2,8 @@
 on a review card, with the literal quote as evidence.
 
 In CI the context store is the kernel's fake: its scripted extraction stands in for what
-Hindsight returns under the BRQ@work extraction instructions. The real run is opt-in: with
+Hindsight returns under the scribe's memory instructions, and the model behind the ADK
+step is the fake that reads commitment lines. The real context memory is opt-in: with
 PXOS_HINDSIGHT_URL set, the same test runs against Hindsight and a real model.
 """
 
@@ -13,12 +14,13 @@ from uuid import uuid4
 import asyncpg
 import pytest
 
-from brq_at_work.scribe import INSTRUCTIONS, read_commitment
+from brq_at_work.scribe import MEMORY_INSTRUCTIONS, SCRIBE
 from db_testing import Database
 from pxos_kernel.channel import FakeChannel, decide, route_cards
 from pxos_kernel.context import ContextStore, FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import FakeConnector, SourceDocument, ingest
+from pxos_kernel.model_access import FakeModels, ModelGateway
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool, history, publish
 
@@ -71,7 +73,11 @@ def store_for(kind: str, document: SourceDocument) -> ContextStore:
 
 @pytest.mark.parametrize("kind", STORES)
 async def test_transcript_becomes_a_commitment_approved_on_a_card(
-    database: Database, pool: asyncpg.Pool, registry: Registry, kind: str
+    database: Database,
+    pool: asyncpg.Pool,
+    registry: Registry,
+    scribe_models: FakeModels,
+    kind: str,
 ) -> None:
     document = SourceDocument(
         source=f"fixture:transcript/2026-11-12-status/{uuid4()}",
@@ -82,24 +88,16 @@ async def test_transcript_becomes_a_commitment_approved_on_a_card(
     connector = FakeConnector([document])
     store = store_for(kind, document)
     channel = FakeChannel()
+    model = await ModelGateway(pool, scribe_models).adk_model()
     publisher = await create_pool(database.publisher_dsn)
     try:
         await publish(publisher, {})  # events left by earlier tests are not ours
         # 1-4: transcript in, retained, and only the commitment with a literal quote proposed.
         proposals = []
         for received in connector.documents():
-            proposals += await ingest(
-                pool,
-                registry,
-                store,
-                received,
-                package="work_context",
-                instructions=INSTRUCTIONS,
-                reader=read_commitment,
-                actor="scribe-agent",
-            )
+            proposals += await ingest(pool, registry, store, received, model, agent=SCRIBE)
         if isinstance(store, FakeContextStore):
-            assert store.retained == [(document.key, INSTRUCTIONS)]
+            assert store.retained == [(document.key, MEMORY_INSTRUCTIONS)]
         assert len(proposals) == 1
         proposal = proposals[0]
         assert proposal.author == "scribe-agent"
@@ -123,16 +121,7 @@ async def test_transcript_becomes_a_commitment_approved_on_a_card(
         assert fact.payload == proposal.payload
 
         # 7: replaying the transcript creates no proposal and no card.
-        again = await ingest(
-            pool,
-            registry,
-            store,
-            document,
-            package="work_context",
-            instructions=INSTRUCTIONS,
-            reader=read_commitment,
-            actor="scribe-agent",
-        )
+        again = await ingest(pool, registry, store, document, model, agent=SCRIBE)
         assert again == []
         await publish(publisher, {"proposal.created": route_cards(pool, registry, channel)})
         assert len(channel.cards["ana"]) == 1

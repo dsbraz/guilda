@@ -33,8 +33,8 @@ Modelos Pydantic e JSON Schema são gerados do LinkML de cada pacote (`generated
 `generated.schema.json`, ao lado do `ontology.yaml`). Depois de mudar uma ontologia:
 
 ```sh
-uv run python -m pxos_kernel.ontology.generate \
-  pxos-kernel/tests/retail_fixture brq-at-work/src/brq_at_work/ontology/work_context
+uv run python -m pxos_kernel.ontology.generate pxos-kernel/tests/retail_fixture \
+  pxos-kernel/src/pxos_kernel/agents/package brq-at-work/src/brq_at_work/ontology/work_context
 ```
 
 O teste de snapshot e o CI (`--check`) falham se o gerado divergir do LinkML.
@@ -85,9 +85,9 @@ claude mcp add --transport http brq-at-work http://127.0.0.1:18000/mcp \
 
 O token vale 12 horas; depois disso, emita outro e registre o servidor de novo (`claude mcp
 remove brq-at-work` antes do `add`). As tools são `list_commitments`, `timeline` e
-`create_commitment`. A proposta segue para a
-gerente de projeto; enquanto não há canal real, a aprovação do card é feita com
-`mcp_local.py approve <proposal_id> --as ana`.
+`create_commitment`, além de `list_agent_versions` e `publish_agent_version` (fatia 7). A
+proposta de compromisso segue para a gerente de projeto; enquanto não há canal real, a
+aprovação do card é feita com `mcp_local.py approve <proposal_id> --as ana`.
 
 O MCP só aceita um token se o banco aceitar o ator dele (fatia 4). A Dora é contato do
 cliente, uma atora externa: o token dela (`token dora`) é assinado pelo IdP da instalação e
@@ -99,6 +99,15 @@ do transcrito, a Activity ingere como o agente e devolve ids de proposta, e o wo
 decisão da gerente de projeto. O publicador da outbox avisa o workflow quando a proposta é
 aprovada ou rejeitada; a decisão vale quando lida no banco. O histórico do Temporal guarda ids,
 nunca o que foi dito.
+
+O escriba roda a partir de uma versão publicada (fatia 7). A definição dele (instruções do
+agente ADK, instruções para a memória de contexto e a ação que propõe) é uma proposta de
+`publish_agent_version`, aprovada por quem tem o papel `platform-admin`; na BRQ@work, a Eva.
+Uma instalação nova não roda o escriba até haver versão aprovada: o bootstrap não cria
+nenhuma, e `brq_at_work.scribe.DRAFT` é só o texto proposto como primeira versão. Uma versão
+nova muda a mesma entidade (`entity_id` e `base_revision` na tool). Na ingestão, um agente
+ADK montado pelo kernel, com o modelo do gateway, lê cada fato extraído; cada execução
+registra a versão que rodou.
 
 O CI de produto (`.github/workflows/ci.yml`) roda os mesmos checks. Os experimentos em
 `spikes/` ficam fora do workspace e do CI; seus procedimentos estão nas respectivas pastas.

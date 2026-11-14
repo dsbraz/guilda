@@ -22,6 +22,7 @@ from pxos_kernel.channel import FakeChannel, decide, route_cards
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import FakeConnector, SourceDocument
+from pxos_kernel.model_access import FakeModels, ModelGateway
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import Handler, create_pool, history, proposals_from, publish
 from pxos_kernel.workflows import (
@@ -75,7 +76,12 @@ async def publisher(database: Database) -> AsyncIterator[asyncpg.Pool]:
 
 @asynccontextmanager
 async def scribe(
-    temporal: Client, pool: asyncpg.Pool, registry: Registry, document: SourceDocument, queue: str
+    temporal: Client,
+    pool: asyncpg.Pool,
+    registry: Registry,
+    document: SourceDocument,
+    queue: str,
+    models: FakeModels,
 ) -> AsyncIterator[None]:
     async with Worker(
         temporal,
@@ -86,6 +92,7 @@ async def scribe(
             registry,
             FakeContextStore({document.key: [INVENTED, COMMITMENT]}),
             FakeConnector([document]),
+            ModelGateway(pool, models),
         ),
         workflow_runner=workflow_runner(),
     ):
@@ -118,7 +125,11 @@ def handlers(
 
 
 async def test_the_scribe_survives_a_worker_shutdown_while_ana_decides(
-    temporal: Client, pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry
+    temporal: Client,
+    pool: asyncpg.Pool,
+    publisher: asyncpg.Pool,
+    registry: Registry,
+    scribe_models: FakeModels,
 ) -> None:
     document = transcript()
     queue = f"scribe-{uuid4()}"
@@ -127,7 +138,7 @@ async def test_the_scribe_survives_a_worker_shutdown_while_ana_decides(
 
     # 1-2: the transcript goes in by reference; only the commitment with a literal quote is
     # proposed, and its card reaches Ana.
-    async with scribe(temporal, pool, registry, document, queue):
+    async with scribe(temporal, pool, registry, document, queue, scribe_models):
         handle = await start(temporal, queue, document)
         proposal_id = await proposal_from(pool, document)
         await publish(publisher, outbox)
@@ -144,7 +155,7 @@ async def test_the_scribe_survives_a_worker_shutdown_while_ana_decides(
     await publish(publisher, outbox)
 
     # 5: a new worker picks the workflow up and finishes it.
-    async with scribe(temporal, pool, registry, document, queue):
+    async with scribe(temporal, pool, registry, document, queue, scribe_models):
         result = await asyncio.wait_for(handle.result(), timeout=30)
     assert result == {str(proposal_id): "approved"}
     async with session(pool, "celia") as connection:
@@ -161,14 +172,18 @@ async def test_the_scribe_survives_a_worker_shutdown_while_ana_decides(
 
 
 async def test_a_rejection_on_the_card_also_ends_the_workflow(
-    temporal: Client, pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry
+    temporal: Client,
+    pool: asyncpg.Pool,
+    publisher: asyncpg.Pool,
+    registry: Registry,
+    scribe_models: FakeModels,
 ) -> None:
     document = transcript()
     queue = f"scribe-{uuid4()}"
     channel = FakeChannel()
     outbox = handlers(temporal, pool, registry, channel)
 
-    async with scribe(temporal, pool, registry, document, queue):
+    async with scribe(temporal, pool, registry, document, queue, scribe_models):
         handle = await start(temporal, queue, document)
         proposal_id = await proposal_from(pool, document)
         await publish(publisher, outbox)

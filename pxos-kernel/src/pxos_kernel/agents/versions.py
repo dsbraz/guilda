@@ -70,3 +70,36 @@ async def approved_version(connection: Connection, agent: str) -> AgentVersion:
         memory_instructions=fact.payload["memory_instructions"],
         proposes=(package, action),
     )
+
+
+@dataclass(frozen=True)
+class AgentRun:
+    id: UUID
+    agent: str
+    definition: UUID
+    revision: int
+    context_ref: str
+    started_at: datetime
+
+
+async def record_run(connection: Connection, version: AgentVersion, context_ref: str) -> AgentRun:
+    """Record that the session's agent ran ``version`` on ``context_ref``."""
+    row = await connection.fetchrow(
+        """
+        INSERT INTO pxos.agent_runs (agent, definition, revision, context_ref)
+        VALUES ('', $1, $2, $3) RETURNING *
+        """,
+        version.entity_id,
+        version.revision,
+        context_ref,
+    )
+    assert row is not None
+    return AgentRun(**dict(row))
+
+
+async def recorded_run(connection: Connection, context_ref: str) -> AgentRun | None:
+    """The run on ``context_ref`` the session can read, or None."""
+    row = await connection.fetchrow(
+        "SELECT * FROM pxos.agent_runs WHERE context_ref = $1", context_ref
+    )
+    return None if row is None else AgentRun(**dict(row))

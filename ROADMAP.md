@@ -225,5 +225,11 @@ Hindsight usa a mesma rota. K12, K13 e K14 ficaram fora. A validação real no V
 segue aberta: embeddings funcionam em São Paulo, mas nenhum modelo de geração respondeu em
 `southamerica-east1`, e o Claude não respondeu no endpoint global do projeto de teste. Um
 `LlmAgent` ainda pode ser montado com o nome de um modelo, sem o gateway; isso fecha na fatia 7
-(PXOS-77). O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com
-confirmação explícita.
+(PXOS-77).
+A fatia 7 foi concluída em 14/11/2026 (PXOS-78 a 80): a definição do escriba é uma versão
+publicada no banco, aprovada pelo papel `platform-admin` pelo mesmo ciclo de proposta, e o
+escriba só roda a partir da versão vigente. Na ingestão, um agente ADK montado pelo kernel,
+com o modelo do gateway, lê cada fato extraído, e cada execução registra a versão que rodou.
+A distribuição não importa o ADK. A execução real da etapa ADK na rota `br` espera o PXOS-75.
+O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com confirmação
+explícita.

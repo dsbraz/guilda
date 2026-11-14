@@ -12,6 +12,11 @@ actors:
     kind: internal_person
     name: Célia
     roles: [team-member]
+  # Aprova as versões de agentes (ADR 0004); não aprova compromissos.
+  - id: eva
+    kind: internal_person
+    name: Eva (administradora da plataforma)
+    roles: [platform-admin]
   # Contato do cliente: identidade própria, sem acesso ao contexto interno (PXOS-61).
   - id: dora
     kind: external_person
@@ -19,9 +24,11 @@ actors:
   - id: meeting-agent
     kind: agent
     name: Agente de reuniões
+    roles: [agent]
   - id: scribe-agent
     kind: agent
     name: Escriba pós-reunião
+    roles: [agent]
 delegations:
   - agent: meeting-agent
     person: bruno

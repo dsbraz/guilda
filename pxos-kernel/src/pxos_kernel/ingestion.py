@@ -1,20 +1,22 @@
-"""Ingestion and literal-evidence proposals (PXOS-52, PXOS-54).
+"""Ingestion and literal-evidence proposals (PXOS-52, PXOS-54, PXOS-79).
 
-A connector delivers source documents. Each source version is ingested once: it is kept in
-the canonical store, retained in the context memory with the distribution's extraction
-instructions, and what the context memory extracted is read back. The distribution's
-reader turns an extracted fact into a candidate; the kernel proposes it only when the
-quote is literally in the source text it holds, never in text the model returned.
+A connector delivers source documents. Each source version is ingested once, by an agent
+from its approved version: the source is kept in the canonical store, retained in the
+context memory with the version's memory instructions, and the version's ADK step reads
+each extracted fact into a candidate. The kernel proposes it only when the quote is
+literally in the source text it holds, never in text the model returned.
 """
 
 import re
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Protocol
 
 import asyncpg
+from google.adk.models.base_llm import BaseLlm
 
+from pxos_kernel.agents import FactReader, approved_version, record_run
 from pxos_kernel.context import ContextStore
 from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import session
@@ -62,17 +64,6 @@ class FakeConnector:
         raise UnknownSource(f"source {key} not found")
 
 
-@dataclass(frozen=True)
-class Candidate:
-    """What the distribution read from one extracted fact; untrusted until validated."""
-
-    action: str
-    payload: dict[str, Any]
-    quote: str
-
-
-Reader = Callable[[str], Candidate | None]
-
 _WHITESPACE = re.compile(r"\s+")
 
 
@@ -91,20 +82,22 @@ async def ingest(
     registry: Registry,
     store: ContextStore,
     document: SourceDocument,
+    model: BaseLlm,
     *,
-    package: str,
-    instructions: str,
-    reader: Reader,
-    actor: str,
+    agent: str,
 ) -> list[Proposal]:
-    """Ingest one source version as ``actor``; a replay returns no proposals.
+    """Ingest one source version as ``agent``, from its approved version; a replay returns
+    no proposals.
 
-    The source row and the proposals commit together, so a failure leaves nothing behind
-    and the same version can be ingested again. Retaining twice is harmless: the context
-    memory keys the document by source and version.
+    The version in force, the run record, the source row and the proposals belong to one
+    transaction, so a failure leaves nothing behind and the same version can be ingested
+    again. Retaining twice is harmless: the context memory keys the document by source and
+    version.
     """
-    registered = registry.get(package)
-    async with session(pool, actor) as connection, connection.transaction():
+    async with session(pool, agent) as connection, connection.transaction():
+        version = await approved_version(connection, agent)
+        package, action = version.proposes
+        registered = registry.get(package)
         status = await connection.execute(
             """
             INSERT INTO pxos.sources (source, version, content) VALUES ($1, $2, $3)
@@ -116,23 +109,28 @@ async def ingest(
         )
         if status == "INSERT 0 0":
             return []
-        await store.retain(document.key, document.text, instructions)
+        await record_run(connection, version, document.key)
+        await store.retain(document.key, document.text, version.memory_instructions)
+        reader = FactReader(
+            model, version, registered.models[registered.package.action(action).creates]
+        )
         proposals = []
         for fact in await store.extracted(document.key):
-            candidate = reader(fact)
-            if candidate is None or not quote_in_source(candidate.quote, document.text):
+            candidate = await reader.read(fact)
+            if candidate is None or not quote_in_source(candidate[1], document.text):
                 continue
+            payload, quote = candidate
             try:
                 async with connection.transaction():
                     proposals.append(
                         await propose(
                             connection,
                             registered,
-                            candidate.action,
-                            payload=candidate.payload,
+                            action,
+                            payload=payload,
                             evidence=Evidence(
                                 source=document.source,
-                                quote=candidate.quote,
+                                quote=quote,
                                 context_ref=document.key,
                             ),
                             valid_from=document.occurred_at,
