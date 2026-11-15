@@ -12,6 +12,3 @@ actions:
     approver: project-manager
     reversible: true
     rule_parameters: [due_date]
-    # Prazo de até 14 dias pode ser registrado direto por agente em fase 2 ou 3 (PXOS-86).
-    rules:
-      - {parameter: due_date, within_days: 14}

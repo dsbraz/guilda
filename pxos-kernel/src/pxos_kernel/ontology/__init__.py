@@ -7,7 +7,6 @@ from pxos_kernel.ontology.loader import (
     InvalidPackage,
     Kind,
     Package,
-    Rule,
     load_package,
 )
 from pxos_kernel.ontology.registry import InvalidPayload, RegisteredPackage, Registry
@@ -22,6 +21,5 @@ __all__ = [
     "Package",
     "RegisteredPackage",
     "Registry",
-    "Rule",
     "load_package",
 ]

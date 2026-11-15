@@ -12,7 +12,7 @@ from uuid import UUID
 from pxos_kernel.api.auth import Caller
 from pxos_kernel.identity import Connection
 from pxos_kernel.ontology import RegisteredPackage
-from pxos_kernel.policy import Verdict, decide
+from pxos_kernel.policy import Verdict, decide, installed_rules
 from pxos_kernel.state import AuditResult as Result
 from pxos_kernel.state import Evidence, execute, propose, record_audit
 
@@ -37,7 +37,7 @@ async def act(
     if caller.on_behalf_of is not None:
         verdict = decide(
             action,
-            readers=package.readers[action.creates],
+            await installed_rules(connection, package.name, action_name),
             principal_roles=await _roles(connection, caller.on_behalf_of),
             autonomy=await connection.fetchval(
                 "SELECT autonomy FROM pxos.actors WHERE id = $1", caller.actor

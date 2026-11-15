@@ -84,7 +84,7 @@ async def test_an_agent_action_goes_through_the_policy(
         direct = await ask("2026-11-28")
         assert (direct["status"], direct["reason"]) == (
             "executed",
-            "within module rules in phase 2",
+            "within rules in phase 2",
         )
         assert await cards() == set()
         listed = await call(app, idp.token("ana"), "list_commitments", {})

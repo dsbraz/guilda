@@ -1,0 +1,9 @@
+# Regras de exemplo do pacote fixture (PXOS-87): quem pede e até quanto vale sem aprovação.
+# Uma distro real declara as suas; o deploy pode substituí-las por ação.
+actions:
+  retail.create_restock_order:
+    - {roles: [store-staff, store-manager], otherwise: deny}
+    - {parameter: quantity, max: 10, otherwise: approval}
+  retail.confirm_restock_order:
+    - {roles: [store-staff, store-manager], otherwise: deny}
+    - {parameter: quantity, max: 10, otherwise: approval}

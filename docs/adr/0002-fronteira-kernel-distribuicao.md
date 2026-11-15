@@ -46,3 +46,8 @@ distribuições) volta a valer para promoções.
 | Data | Item | Lado | Motivo |
 |---|---|---|---|
 | 13/11/2026 | Pacote de contexto de trabalho | Distribuição | Vocabulário de domínio |
+| 14/11/2026 | Tipos de regra da política (`max`, `within_days`, `roles`), efeito `approval` ou `deny`, avaliação na política e no banco | Kernel | Mecanismo comum a qualquer domínio |
+| 14/11/2026 | Regras da política por ação (limites, quem pede, motivos para negar) | Distribuição, substituíveis no deploy | Regra de negócio do cliente, definida pelo FDE |
+| 14/11/2026 | Fases de autonomia: fase 2 age direto só em ação reversível com regras e dentro delas; fase 3 também sem regras, e as regras sempre limitam; irreversível sempre por uma pessoa | Kernel | Requisito do PRD (§4 req. 6, §6.3); as regras definem "baixo risco" |
+| 14/11/2026 | Fase de autonomia de cada agente | Instalação (deploy) | Decisão do cliente |
+| 14/11/2026 | Aprovação sempre por uma pessoa agindo por si; delegação não vale para revisar | Kernel | Um único caminho de autonomia: fase mais regras |

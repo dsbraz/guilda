@@ -15,6 +15,7 @@ import pytest
 from db_testing import Database
 from pxos_kernel.identity import install_identities, read_identities, session
 from pxos_kernel.ontology import Registry
+from pxos_kernel.policy import install_policy, read_policy
 from pxos_kernel.state import (
     DecisionFinal,
     Evidence,
@@ -22,7 +23,6 @@ from pxos_kernel.state import (
     PersonRequired,
     Proposal,
     execute,
-    install_packages,
     propose,
     review,
 )
@@ -165,7 +165,7 @@ async def test_phase_2_needs_declared_rules_and_phase_3_does_not(
 ) -> None:
     owner = await asyncpg.connect(database.owner_dsn)
     try:
-        await owner.execute("DELETE FROM pxos.package_rules WHERE action = 'create_restock_order'")
+        await owner.execute("DELETE FROM pxos.policy_rules WHERE action = 'create_restock_order'")
         planned = await proposed(pool, registry, "planner-agent", quantity=50)
         with pytest.raises(asyncpg.PostgresError) as error:
             await raw_execution(pool, planned, "planner-agent")
@@ -174,7 +174,7 @@ async def test_phase_2_needs_declared_rules_and_phase_3_does_not(
         night = await proposed(pool, registry, "night-agent", quantity=50)
         await raw_execution(pool, night, "night-agent")
     finally:
-        await install_packages(owner, registry)
+        await install_policy(owner, read_policy([RETAIL / "policy.yaml"], registry))
         await owner.close()
 
 
@@ -265,3 +265,38 @@ async def test_audit_is_append_only_and_its_actor_comes_from_the_session(
         async with session(pool, "planner-agent", "erin") as connection:
             with pytest.raises(asyncpg.InsufficientPrivilegeError):
                 await connection.execute(statement)
+
+
+async def test_the_application_cannot_change_policy_rules(pool: asyncpg.Pool) -> None:
+    for statement in [
+        "UPDATE pxos.policy_rules SET value = 1000",
+        "DELETE FROM pxos.policy_rules",
+        "INSERT INTO pxos.policy_rules (package, action, position, kind, effect, roles)"
+        " VALUES ('retail', 'create_restock_order', 9, 'roles', 'deny', '{agent}')",
+    ]:
+        async with session(pool, "planner-agent", "erin") as connection:
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                await connection.execute(statement)
+
+
+async def test_a_new_limit_applies_to_open_proposals(
+    pool: asyncpg.Pool, registry: Registry, database: Database, tmp_path: Path
+) -> None:
+    """Limits are deploy configuration, not part of the package digest (PXOS-87)."""
+    proposal = await proposed(pool, registry, "planner-agent", quantity=20)
+    with pytest.raises(asyncpg.PostgresError):
+        await raw_execution(pool, proposal, "planner-agent")
+
+    deploy = tmp_path / "deploy.yaml"
+    deploy.write_text(
+        "actions:\n  retail.create_restock_order:\n"
+        "    - {parameter: quantity, max: 50, otherwise: approval}\n",
+        encoding="utf-8",
+    )
+    owner = await asyncpg.connect(database.owner_dsn)
+    try:
+        await install_policy(owner, read_policy([RETAIL / "policy.yaml", deploy], registry))
+        await raw_execution(pool, proposal, "planner-agent")
+    finally:
+        await install_policy(owner, read_policy([RETAIL / "policy.yaml"], registry))
+        await owner.close()

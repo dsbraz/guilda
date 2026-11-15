@@ -250,7 +250,7 @@ async def audit(database: Database) -> list[dict[str, object]]:
 @pytest.mark.parametrize(
     ("agent", "tool", "quantity", "status", "decision", "reason"),
     [
-        ("planner-agent", "create_restock_order", 2, "executed", "allow", "within module rules"),
+        ("planner-agent", "create_restock_order", 2, "executed", "allow", "within rules"),
         ("planner-agent", "create_restock_order", 11, "pending", "approval", "quantity above 10"),
         ("restock-agent", "create_restock_order", 2, "pending", "approval", "autonomy phase 1"),
         ("night-agent", "confirm_restock_order", 2, "pending", "approval", "irreversible action"),
@@ -296,7 +296,7 @@ async def test_an_agent_action_goes_through_the_policy_and_the_audit(
 async def test_a_denied_agent_call_is_an_error_and_stays_audited(
     app: Starlette, issuer: LocalIssuer, database: Database
 ) -> None:
-    with pytest.raises(ToolError, match="principal cannot read RestockOrder"):
+    with pytest.raises(ToolError, match="requires role store-staff or store-manager"):
         await call(
             app,
             issuer.token("frank", agent="planner-agent"),

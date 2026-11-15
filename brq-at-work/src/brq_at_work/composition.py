@@ -1,6 +1,7 @@
 """Composition root: BRQ@work registers its packages in the kernel (ADR 0003 §1)."""
 
 import asyncio
+from collections.abc import Sequence
 from pathlib import Path
 
 import asyncpg
@@ -10,11 +11,13 @@ from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
 from pxos_kernel.model_access import Route, install_route
 from pxos_kernel.ontology import Registry
+from pxos_kernel.policy import install_policy, read_policy
 from pxos_kernel.state import install_packages, upgrade
 
 ROOT = Path(__file__).resolve().parent
 WORK_CONTEXT = ROOT / "ontology" / "work_context"
 IDENTITIES = ROOT / "identities.yaml"
+POLICY = ROOT / "policy.yaml"
 
 
 def build_registry() -> Registry:
@@ -30,10 +33,12 @@ def bootstrap(
     identities: Path = IDENTITIES,
     *,
     route: Route | None = None,
+    policies: Sequence[Path] = (POLICY,),
 ) -> None:
-    """Migrate the installation and record identities, packages and, when the deploy
-    configures one, the model route (``Route.from_environment()``), as the owner. Without a
-    route the installation gets no model."""
+    """Migrate the installation and record identities, packages, policy rules and, when the
+    deploy configures one, the model route (``Route.from_environment()``), as the owner.
+    Without a route the installation gets no model. ``policies`` starts with the
+    distribution's rules; a deploy file after it replaces the actions it declares."""
     upgrade(owner_dsn)
 
     async def install() -> None:
@@ -41,6 +46,7 @@ def bootstrap(
         try:
             await install_identities(owner, read_identities(identities))
             await install_packages(owner, registry)
+            await install_policy(owner, read_policy(policies, registry))
             if route is not None:
                 await install_route(owner, route)
         finally:

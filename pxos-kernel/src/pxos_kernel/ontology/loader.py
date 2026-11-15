@@ -7,10 +7,10 @@ package declares.
 
 import hashlib
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import yaml
 from linkml.validator import validate
@@ -37,18 +37,6 @@ class Kind(StrEnum):
     CONTEXT = "context"
 
 
-RULE_OPERATORS = {"max": ("integer", "float", "decimal"), "within_days": ("date", "datetime")}
-
-
-@dataclass(frozen=True)
-class Rule:
-    """A module limit on one parameter, within which an agent may act without approval."""
-
-    parameter: str
-    operator: Literal["max", "within_days"]
-    value: float
-
-
 @dataclass(frozen=True)
 class ActionType:
     name: str
@@ -56,7 +44,6 @@ class ActionType:
     approver: str
     reversible: bool
     rule_parameters: tuple[str, ...]
-    rules: tuple[Rule, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -189,33 +176,12 @@ def _actions(
         unknown = sorted(set(action.rule_parameters) - set(view.class_slots(action.creates)))
         if unknown:
             raise InvalidPackage(f"{package}: {action.name} rule parameters {unknown} unknown")
-        rules = tuple(_rule(view, item, rule, package) for rule in item.get("rules", []))
-        action = replace(action, rules=rules)
-        ruled = [rule.parameter for rule in rules]
-        for parameter in {name for name in ruled if ruled.count(name) > 1}:
-            raise InvalidPackage(f"{package}: {action.name} has a duplicated rule on {parameter}")
         actions.append(action)
 
     names = [action.name for action in actions]
     if len(names) != len(set(names)):
         raise InvalidPackage(f"{package}: duplicated action type names")
     return tuple(actions)
-
-
-def _rule(view: SchemaView, action: dict[str, Any], item: dict[str, Any], package: str) -> Rule:
-    parameter = item["parameter"]
-    where = f"{package}: {action['name']} rule on {parameter}"
-    if parameter not in action.get("rule_parameters", []):
-        raise InvalidPackage(f"{where} is not a rule parameter")
-    operators = [name for name in RULE_OPERATORS if name in item]
-    if len(operators) != 1:
-        raise InvalidPackage(f"{where} needs exactly one of {', '.join(RULE_OPERATORS)}")
-    operator = operators[0]
-    slot_range = view.induced_slot(parameter, action["creates"]).range
-    if slot_range not in RULE_OPERATORS[operator]:
-        expected = "a number" if operator == "max" else "a date"
-        raise InvalidPackage(f"{where}: {operator} needs {expected}, not {slot_range}")
-    return Rule(parameter=parameter, operator=operator, value=item[operator])  # type: ignore[arg-type]
 
 
 def _references(

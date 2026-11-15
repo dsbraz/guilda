@@ -10,7 +10,6 @@ from pxos_kernel.ontology import (
     ActionType,
     InvalidPackage,
     Kind,
-    Rule,
     load_package,
 )
 from pxos_kernel.ontology.loader import class_kind, is_compatible
@@ -54,16 +53,14 @@ def test_fixture_package_extends_base() -> None:
             creates="RestockOrder",
             approver="store-manager",
             reversible=True,
-            rule_parameters=("quantity",),
-            rules=(Rule(parameter="quantity", operator="max", value=10),),
+            rule_parameters=("quantity", "occurred_at"),
         ),
         ActionType(
             name="confirm_restock_order",
             creates="RestockOrder",
             approver="store-manager",
             reversible=False,
-            rule_parameters=("quantity",),
-            rules=(Rule(parameter="quantity", operator="max", value=10),),
+            rule_parameters=("quantity", "occurred_at"),
         ),
     )
     assert package.action("create_restock_order").approver == "store-manager"
@@ -179,49 +176,6 @@ def test_action_type_must_follow_metamodel(
     action = {**manifest["actions"][0], **change}
     manifest["actions"] = [{key: value for key, value in action.items() if value is not None}]
     with pytest.raises(InvalidPackage, match=message):
-        load_package(write_package(tmp_path, schema, manifest))
-
-
-@pytest.mark.parametrize(
-    ("rules", "message"),
-    [
-        ([{"parameter": "sku", "max": 1}], r"rule on sku is not a rule parameter"),
-        ([{"parameter": "quantity"}], "rule on quantity needs exactly one of max, within_days"),
-        (
-            [{"parameter": "quantity", "max": 1, "within_days": 2}],
-            "rule on quantity needs exactly one of max, within_days",
-        ),
-        ([{"parameter": "quantity", "within_days": 2}], "within_days needs a date"),
-        ([{"parameter": "quantity", "max": -1}], "invalid manifest"),
-        ([{"parameter": "quantity", "max": 1, "limit": 2}], "invalid manifest"),
-        ([{"parameter": "quantity", "max": 1}] * 2, "duplicated rule on quantity"),
-    ],
-)
-def test_action_rules_limit_declared_parameters(
-    tmp_path: Path, rules: list[dict[str, Any]], message: str
-) -> None:
-    schema, manifest = retail()
-    manifest["actions"][0]["rules"] = rules
-    with pytest.raises(InvalidPackage, match=message):
-        load_package(write_package(tmp_path, schema, manifest))
-
-
-def test_max_rule_needs_a_number_and_within_days_a_date(tmp_path: Path) -> None:
-    schema, manifest = retail()
-    schema["classes"]["RestockOrder"]["attributes"]["deliver_by"] = {"range": "date"}
-    manifest["actions"][0]["rule_parameters"] = ["quantity", "deliver_by"]
-    manifest["actions"][0]["rules"] = [
-        {"parameter": "quantity", "max": 10},
-        {"parameter": "deliver_by", "within_days": 7},
-    ]
-    action = load_package(write_package(tmp_path, schema, manifest)).action("create_restock_order")
-    assert action.rules == (
-        Rule(parameter="quantity", operator="max", value=10),
-        Rule(parameter="deliver_by", operator="within_days", value=7),
-    )
-
-    manifest["actions"][0]["rules"] = [{"parameter": "deliver_by", "max": 7}]
-    with pytest.raises(InvalidPackage, match="max needs a number"):
         load_package(write_package(tmp_path, schema, manifest))
 
 

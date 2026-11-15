@@ -237,15 +237,17 @@ grava e um novo deploy os substitui. As rotas `br` e `global` e o padrão `br` d
 saíram; qual região atende a residência de cada cliente é decisão do deploy (K44), com os
 achados do PXOS-75 como insumo. Com isso o PXOS-75 foi fechado (PXOS-81) e a fatia 6
 está concluída.
-A fatia 8 foi concluída em 14/11/2026 (PXOS-82 a 86): a chamada de um agente a uma tool de
+A fatia 8 foi concluída em 14/11/2026 (PXOS-82 a 88): a chamada de um agente a uma tool de
 ação passa pela política, que permite (o fato é gravado na mesma chamada), encaminha para
 aprovação ou nega, a partir da ação, dos papéis de quem o agente representa, dos parâmetros,
-da fase de autonomia do agente (na instalação, padrão 1) e das regras do módulo (`max` e
-`within_days` sobre os `rule_parameters`). A fase 2 só age direto em ação cujo módulo declara
-regras; a fase 3 também nas demais; as regras declaradas sempre limitam. O banco recusa a
-execução direta fora disso, a revisão de proposta já executada e a aprovação de ação
-irreversível por agente com delegação. Toda chamada fica na auditoria; pessoas continuam
-propondo. O req. 6 saiu de `xfail`. Ficaram fora o executor em sistemas externos, cofre de
+da fase de autonomia do agente (na instalação, padrão 1) e das regras da política. O kernel
+dá os tipos de regra (`max`, `within_days`, `roles`, com efeito `approval` ou `deny`); a
+distro declara as regras por ação e o deploy pode substituí-las (PXOS-87); o pacote só diz
+o que pode ser limitado (`rule_parameters`). A fase 2 só age direto em ação com regras; a
+fase 3 também nas demais; as regras sempre limitam. Revisar é sempre de uma pessoa agindo
+por si, nunca de agente com delegação (PXOS-88). O banco recusa a execução direta fora
+disso e a revisão de proposta já executada. Toda chamada fica na auditoria; pessoas
+continuam propondo. O req. 6 saiu de `xfail`. Ficaram fora o executor em sistemas externos, cofre de
 credenciais e Agent Gateway (PXOS-32), o caminho síncrono com meta de latência (PXOS-33,
 req. 7) e expiração e delegação de aprovação.
 O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com confirmação
