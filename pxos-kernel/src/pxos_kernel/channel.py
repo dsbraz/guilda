@@ -65,7 +65,10 @@ def route_cards(pool: asyncpg.Pool, registry: Registry, channel: Channel) -> Han
         async with pool.acquire() as connection:
             approver = registered.package.action(event.payload["action"]).approver
             candidates = await connection.fetch(
-                "SELECT actor_id FROM pxos.actor_roles WHERE role = $1 ORDER BY actor_id",
+                """
+                SELECT r.actor_id FROM pxos.actor_roles r JOIN pxos.actors a ON a.id = r.actor_id
+                WHERE r.role = $1 AND a.kind = 'internal_person' ORDER BY r.actor_id
+                """,
                 approver,
             )
         for row in candidates:

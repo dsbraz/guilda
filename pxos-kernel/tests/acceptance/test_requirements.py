@@ -236,7 +236,7 @@ async def test_req_06_action_with_policy_and_approval(
                 irreversible["digest"],
             )
     async with session(pool, "restock-agent", "carla") as connection:
-        with pytest.raises(asyncpg.PostgresError, match="needs the review of a person"):
+        with pytest.raises(asyncpg.PostgresError, match="only a person"):
             await connection.execute(
                 "INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest)"
                 " VALUES ($1, 'approved', $2)",

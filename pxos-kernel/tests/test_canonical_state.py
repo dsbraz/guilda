@@ -21,6 +21,7 @@ from pxos_kernel.state import (
     Evidence,
     InvalidProposal,
     NotApprover,
+    PersonRequired,
     Proposal,
     SelfApproval,
     StalePackage,
@@ -172,7 +173,8 @@ async def test_approval_requires_the_reviewed_digest(
         ("restock-agent", "carla", None, NotApprover),
         ("erin", "erin", None, SelfApproval),
         ("erin", "restock-agent", "erin", SelfApproval),
-        ("erin", "restock-agent", "carla", None),
+        ("erin", "restock-agent", "carla", PersonRequired),
+        ("erin", "diego", None, None),
     ],
 )
 async def test_approver_is_declared_role_and_never_the_author(
@@ -201,7 +203,7 @@ async def test_approver_is_declared_role_and_never_the_author(
             decided = await review(
                 connection, registry, proposal.id, "approved", digest=proposal.digest
             )
-            assert (decided.reviewer, decided.reviewer_principal) == (reviewer, on_behalf_of)
+            assert (decided.reviewer, decided.reviewer_principal) == (reviewer, reviewer)
         else:
             with pytest.raises(error):
                 await review(connection, registry, proposal.id, "approved", digest=proposal.digest)

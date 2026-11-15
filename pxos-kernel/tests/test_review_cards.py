@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
+from db_testing import Database
 from pxos_kernel.channel import FakeChannel, decide, route_cards
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import Registry
@@ -81,6 +82,26 @@ async def test_card_goes_to_approvers_other_than_the_author(
         assert card.quote == "restock 5"
         assert card.payload == proposal.payload
         assert card.digest == proposal.digest
+
+
+async def test_an_agent_holding_the_approver_role_gets_no_card(
+    pool: asyncpg.Pool, registry: Registry, database: Database
+) -> None:
+    """Approving is always a person's act (PXOS-88), whatever roles an agent holds."""
+    owner = await asyncpg.connect(database.owner_dsn)
+    try:
+        await owner.execute(
+            "INSERT INTO pxos.actor_roles (actor_id, role) VALUES ('night-agent', 'store-manager')"
+        )
+        proposal = await proposed(pool, registry, "erin")
+        channel = FakeChannel()
+        await route_cards(pool, registry, channel)(created(proposal))
+        assert set(channel.cards) == {"carla", "diego"}
+    finally:
+        await owner.execute(
+            "DELETE FROM pxos.actor_roles WHERE actor_id = 'night-agent' AND role = 'store-manager'"
+        )
+        await owner.close()
 
 
 async def test_redelivery_does_not_duplicate_cards(pool: asyncpg.Pool, registry: Registry) -> None:

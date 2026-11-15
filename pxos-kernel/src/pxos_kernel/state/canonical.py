@@ -54,7 +54,7 @@ class NotExecutable(NotAuthorized):
 
 
 class PersonRequired(NotAuthorized):
-    """An irreversible action is approved only by the person, never by an agent."""
+    """Only a person acting for themselves reviews; never an agent (PXOS-88)."""
 
 
 @dataclass(frozen=True)

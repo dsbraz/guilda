@@ -191,6 +191,7 @@ async def test_author_and_reviewer_come_from_the_session(
         ("restock-agent", "erin", "PX011"),
         ("frank", None, "PX013"),
         ("restock-agent", None, "PX013"),
+        ("restock-agent", "carla", "PX018"),
     ],
 )
 async def test_database_refuses_self_approval_and_missing_role(
