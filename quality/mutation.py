@@ -33,6 +33,9 @@ def settings(policy: dict[str, Any]) -> dict[str, Any]:
         "pytest_add_cli_args": ["-x", "-q"],
         "max_stack_depth": -1,
         "mutate_only_covered_lines": False,
+        # Seconds added to each estimate, which leaves out the database fixtures; without
+        # them a surviving mutant runs out of CPU time and is misread as a timeout.
+        "timeout_constant": 10.0,
     }
 
 

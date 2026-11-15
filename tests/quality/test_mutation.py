@@ -17,6 +17,17 @@ def test_mutation_configuration_includes_every_selected_responsibility() -> None
     assert "pxos_kernel/api/auth.py" in config["only_mutate"]
 
 
+def test_a_surviving_mutant_has_time_for_the_database_setup() -> None:
+    # Mutmut limits each mutant's CPU to (estimate + constant) * multiplier * 2, where the
+    # estimate sums only the test calls. A survivor runs every selected test, including
+    # the database fixtures the estimate leaves out (up to two minutes in CI), and must
+    # not be classified as a timeout for that.
+    config = settings(load())
+    smallest_estimate = 0.0
+    limit = (smallest_estimate + config["timeout_constant"]) * 15 * 2
+    assert limit >= 300
+
+
 def test_mutation_missing_metadata_is_incomplete(tmp_path: Path) -> None:
     assert all(not row["complete"] for row in read_results(tmp_path, load()).values())
 
