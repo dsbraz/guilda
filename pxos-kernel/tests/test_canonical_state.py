@@ -1,6 +1,8 @@
 """Governed canonical state with the retail fixture package (PXOS-7)."""
 
 import asyncio
+import hashlib
+import json
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,7 +31,9 @@ from pxos_kernel.state import (
     as_of,
     current,
     get_proposal,
+    get_review,
     history,
+    proposals_from,
     propose,
     propose_invalidation,
     review,
@@ -114,6 +118,64 @@ async def test_proposal_is_immutable_draft_until_approved(
     assert facts[0].proposal_id == proposal.id
     assert facts[0].evidence["source"] == EVIDENCE.source  # req. 3: every fact has a source
     assert await events(database, proposal.entity_id) == ["proposal.created", "fact.recorded"]
+
+
+async def test_the_digest_is_sha256_of_what_the_reviewer_sees(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    proposal = await new_proposal(pool, registry, valid_to=NOV[20])
+    package = registry.get("retail").package
+    content = {
+        "package": package.name,
+        "package_version": package.version,
+        "package_digest": package.digest,
+        "action": "create_restock_order",
+        "type_name": "RestockOrder",
+        "entity_id": str(proposal.entity_id),
+        "base_revision": 0,
+        "operation": "assert",
+        "valid_from": NOV[1].isoformat(),
+        "valid_to": NOV[20].isoformat(),
+        "payload": proposal.payload,
+        "evidence": EVIDENCE.as_dict(),
+    }
+    encoded = json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
+    assert proposal.digest == hashlib.sha256(encoded).hexdigest()
+
+
+async def test_proposals_of_a_context_and_their_review_can_be_read(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    evidence = Evidence(source="fixture:shelf-log", quote="Repor", context_ref="fixture:ctx-read")
+    proposals = []
+    for quantity in (1, 2):
+        async with session(pool, "erin") as connection:
+            proposals.append(
+                await propose(
+                    connection,
+                    registry.get("retail"),
+                    "create_restock_order",
+                    payload=order(quantity),
+                    evidence=evidence,
+                    valid_from=NOV[1],
+                )
+            )
+    async with session(pool, "erin") as connection:
+        assert await proposals_from(connection, "fixture:ctx-read") == proposals
+        assert await proposals_from(connection, "fixture:ctx-none") == []
+        assert await get_review(connection, proposals[0].id) is None
+
+    await approve(pool, registry, proposals[0])
+
+    async with session(pool, "erin") as connection:
+        decided = await get_review(connection, proposals[0].id)
+    assert decided is not None
+    assert (decided.proposal_id, decided.decision, decided.reviewer) == (
+        proposals[0].id,
+        "approved",
+        "carla",
+    )
+    assert decided.proposal_digest == proposals[0].digest
 
 
 async def test_rejection_records_reason_without_publishing(
