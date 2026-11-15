@@ -10,10 +10,10 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
-from db_testing import Database
+from db_testing import Database, drain
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import Registry
-from pxos_kernel.state import Event, Evidence, create_pool, propose, publish, review
+from pxos_kernel.state import Event, Evidence, create_pool, propose, review
 
 EVIDENCE = Evidence(source="fixture:shelf-log", quote="restock 3", context_ref="fixture:ctx-1")
 PAYLOAD = {"sku": "A-1", "quantity": 3, "occurred_at": "2026-11-01T09:00:00Z"}
@@ -23,7 +23,7 @@ PAYLOAD = {"sku": "A-1", "quantity": 3, "occurred_at": "2026-11-01T09:00:00Z"}
 async def publisher(database: Database) -> AsyncIterator[asyncpg.Pool]:
     pool = await create_pool(database.publisher_dsn)
     # Earlier tests leave events behind; start from a drained outbox.
-    await publish(pool, {})
+    await drain(pool, {})
     yield pool
     await pool.close()
 
@@ -50,9 +50,9 @@ async def test_events_are_delivered_once_handled(
     async def handler(event: Event) -> None:
         seen.append(event)
 
-    assert await publish(publisher, {"proposal.created": handler}) == 1
+    assert await drain(publisher, {"proposal.created": handler}) == 1
     assert [e.payload["proposal_id"] for e in seen] == [proposal_id]
-    assert await publish(publisher, {"proposal.created": handler}) == 0
+    assert await drain(publisher, {"proposal.created": handler}) == 0
     assert len(seen) == 1
 
 
@@ -68,8 +68,8 @@ async def test_a_failing_handler_gets_the_event_again(
             raise RuntimeError("consumer down")
 
     with pytest.raises(RuntimeError):
-        await publish(publisher, {"proposal.created": flaky})
-    assert await publish(publisher, {"proposal.created": flaky}) == 1
+        await drain(publisher, {"proposal.created": flaky})
+    assert await drain(publisher, {"proposal.created": flaky}) == 1
     assert attempts == [proposal_id, proposal_id]
 
 
@@ -91,7 +91,7 @@ async def test_rejection_event_carries_identifiers_only(
     async def handler(event: Event) -> None:
         rejected.append(event)
 
-    await publish(publisher, {"proposal.rejected": handler})
+    await drain(publisher, {"proposal.rejected": handler})
     assert [e.payload for e in rejected] == [{"proposal_id": str(row["id"])}]
 
 

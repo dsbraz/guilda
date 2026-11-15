@@ -8,12 +8,13 @@ Each database stands for an installation and has its own logins (PXOS-63).
 
 import asyncio
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from urllib.parse import urlsplit, urlunsplit
 
 import asyncpg
 
-from pxos_kernel.state import grant_connect, upgrade
+from pxos_kernel.state import Handler, grant_connect, publish, upgrade
 
 ADMIN_DSN = os.environ.get(
     "PXOS_TEST_DATABASE_URL", "postgresql://pxos:pxos-local@127.0.0.1:25432/postgres"
@@ -101,3 +102,10 @@ def publisher_login(name: str) -> str:
 def on_database(dsn: str, name: str) -> str:
     """``dsn`` with the same login, pointed at database ``name``."""
     return _with(dsn, database=name)
+
+
+async def drain(publisher: asyncpg.Pool, handlers: Mapping[str, Handler]) -> int:
+    """Publish the pending events; a publisher that never empties the outbox fails the
+    test instead of hanging it."""
+    async with asyncio.timeout(30):
+        return await publish(publisher, handlers)

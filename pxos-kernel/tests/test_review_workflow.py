@@ -16,7 +16,7 @@ from temporalio.client import Client, WorkflowFailureError, WorkflowHandle
 from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker
 
-from db_testing import Database
+from db_testing import Database, drain
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import (
@@ -26,7 +26,6 @@ from pxos_kernel.state import (
     create_pool,
     get_review,
     propose,
-    publish,
     review,
 )
 from pxos_kernel.workflows import (
@@ -130,11 +129,11 @@ async def test_the_decision_reaches_the_waiting_workflow(
     decision: str,
 ) -> None:
     signals = review_signals(temporal)
-    await publish(publisher, signals)  # events left by earlier tests are not ours
+    await drain(publisher, signals)  # events left by earlier tests are not ours
     proposal = await proposed(pool, registry)
     handle = await start(temporal, worker, proposal.id)
     await decided(pool, registry, proposal, decision)
-    await publish(publisher, signals)
+    await drain(publisher, signals)
     assert await asyncio.wait_for(handle.result(), timeout=30) == decision
 
 
@@ -148,7 +147,7 @@ async def test_a_signal_is_not_a_decision(
         await asyncio.wait_for(asyncio.shield(handle.result()), timeout=2)
 
     await decided(pool, registry, proposal, "approved")
-    await publish(publisher, review_signals(temporal))
+    await drain(publisher, review_signals(temporal))
     assert await asyncio.wait_for(handle.result(), timeout=30) == "approved"
 
 
@@ -157,7 +156,7 @@ async def test_a_decision_taken_before_anyone_waits_is_seen(
 ) -> None:
     proposal = await proposed(pool, registry)
     await decided(pool, registry, proposal, "approved")
-    await publish(publisher, review_signals(temporal))  # nobody waits yet: ignored
+    await drain(publisher, review_signals(temporal))  # nobody waits yet: ignored
     handle = await start(temporal, worker, proposal.id)
     assert await asyncio.wait_for(handle.result(), timeout=30) == "approved"
 
