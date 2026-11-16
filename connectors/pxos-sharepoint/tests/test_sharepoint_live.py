@@ -1,0 +1,40 @@
+"""The connector reads a real document library. Opt-in: real calls to the tenant.
+
+Run with PXOS_SHAREPOINT_TENANT, PXOS_SHAREPOINT_CLIENT_ID, PXOS_SHAREPOINT_CLIENT_SECRET
+and PXOS_SHAREPOINT_DRIVE_ID, and optionally PXOS_SHAREPOINT_FOLDER_ID: an Entra app
+granted Sites.Selected (read) on the library's site, as a deploy would configure it. Use a
+library holding a few test files; the pass reads every one.
+"""
+
+import os
+
+import pytest
+
+from pxos_sharepoint import ClientSecret, SharePointConnector
+
+TENANT = os.environ.get("PXOS_SHAREPOINT_TENANT", "")
+pytestmark = pytest.mark.skipif(not TENANT, reason="PXOS_SHAREPOINT_TENANT not set")
+
+
+async def test_a_full_pass_then_a_pass_from_its_cursor() -> None:
+    drive = os.environ["PXOS_SHAREPOINT_DRIVE_ID"]
+    sharepoint = SharePointConnector(
+        "sharepoint-live",
+        tenant=TENANT,
+        client_id=os.environ["PXOS_SHAREPOINT_CLIENT_ID"],
+        credential=ClientSecret(os.environ["PXOS_SHAREPOINT_CLIENT_SECRET"]),
+        drive_id=drive,
+        folder_id=os.environ.get("PXOS_SHAREPOINT_FOLDER_ID") or None,
+        access=("corporate",),
+    )
+
+    first = await sharepoint.changes(None)
+    later = await sharepoint.changes(first.cursor)
+
+    assert first.cursor.startswith("https://graph.microsoft.com/")
+    assert first.documents, "the library should hold at least one supported file"
+    for document in first.documents:
+        assert document.source.startswith(f"sharepoint-live:{drive}:")
+        assert document.version and document.access == ("corporate",)
+        assert "\nhttps://" in document.text
+    assert later.cursor.startswith("https://graph.microsoft.com/")
