@@ -5,13 +5,15 @@ real test, run with fakes for SharePoint, Granola and Teams.
 
 Slice 11 proves the conversation and the correction up to the agent: the question is
 posted in the project's thread, the team's answer is kept with its author and cycle and
-wakes the cycle through the outbox, and a correction becomes context for the next cycle.
-Writing the answer into the report and redoing it belong to the agent and its cycle
-(slices 12 and 13); the PM's rejection of a report waits for the report type (slice 12)
-and is proven on another type in the kernel (``test_conversation.py``).
+wakes the cycle through the outbox, and a correction, in the thread or as the reason of a
+rejection, becomes context for the next cycle with who made it. Writing the answer into
+the report and redoing it belong to the agent and its cycle (slices 12 and 13). The PM's
+rejection of a report waits for the report type (slice 12): until then the rejection
+shown is of an agent version, the governed cycle this installation already has.
 """
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -19,11 +21,20 @@ import asyncpg
 import pytest
 
 from db_testing import Database, drain
+from pxos_kernel.agents import AGENTS
 from pxos_kernel.channel import FakeChannel
 from pxos_kernel.context import FakeContextStore
-from pxos_kernel.conversation import Inbound, conversation, post, receive, retain_message
+from pxos_kernel.conversation import (
+    Inbound,
+    conversation,
+    post,
+    receive,
+    retain_message,
+    retain_rejection,
+)
 from pxos_kernel.identity import NotAuthorized, session
-from pxos_kernel.state import Event, create_pool
+from pxos_kernel.ontology import Registry
+from pxos_kernel.state import Event, Evidence, create_pool, propose, review
 
 AGENT = "report-agent"
 THREAD = "teams:projeto-alfa"
@@ -89,25 +100,56 @@ async def test_clarification(pool: asyncpg.Pool, publisher: asyncpg.Pool) -> Non
     assert [event.payload for event in woken] == [{"message_id": str(answer.id), "cycle": cycle}]
 
 
-async def test_continuity(pool: asyncpg.Pool, publisher: asyncpg.Pool) -> None:
-    """This week's correction is context for the next cycle, with who made it."""
-    channel = FakeChannel()
+async def rejected(pool: asyncpg.Pool, registry: Registry, reason: str) -> UUID:
+    """A version of the agent proposed by Ana and rejected by Eva with ``reason``."""
+    async with session(pool, "ana") as connection:
+        proposal = await propose(
+            connection,
+            registry.get(AGENTS),
+            "publish_agent_version",
+            payload={
+                "agent": AGENT,
+                "instructions": "Prepare o report semanal.",
+                "memory_instructions": INSTRUCTIONS,
+            },
+            evidence=Evidence(source="test:ana", quote="Nova versão.", context_ref=f"t:{uuid4()}"),
+            valid_from=datetime.now(UTC),
+        )
+    async with session(pool, "eva") as connection:
+        await review(
+            connection, registry, proposal.id, "rejected", digest=proposal.digest, reason=reason
+        )
+    return proposal.id
+
+
+async def test_continuity(pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry) -> None:
+    """This week's corrections are context for the next cycle, with who made them."""
     this_week = f"semana-{uuid4()}"
-    await post(pool, channel, AGENT, thread=THREAD, cycle=this_week, text="O marco 2 atrasou?")
+    await post(
+        pool, FakeChannel(), AGENT, thread=THREAD, cycle=this_week, text="O marco 2 atrasou?"
+    )
     correction = await receive(
         pool, said("teams:ana", "Não atrasou: o prazo foi renegociado para 30/11.")
     )
+    proposal_id = await rejected(pool, registry, "Distinga atraso confirmado de renegociado.")
     store = TextStore()
 
-    async def retain(event: Event) -> None:
+    async def retain_answer(event: Event) -> None:
         await retain_message(pool, store, AGENT, UUID(event.payload["message_id"]), INSTRUCTIONS)
 
-    await drain(publisher, {"message.received": retain})
+    async def retain_reason(event: Event) -> None:
+        await retain_rejection(pool, store, AGENT, UUID(event.payload["proposal_id"]), INSTRUCTIONS)
 
-    key = f"message:{correction.id}"
-    assert store.retained == [(key, INSTRUCTIONS)]
-    assert store.texts[key] == (
+    await drain(publisher, {"message.received": retain_answer, "proposal.rejected": retain_reason})
+
+    answer_key, reason_key = f"message:{correction.id}", f"rejection:{proposal_id}"
+    assert store.retained == [(answer_key, INSTRUCTIONS), (reason_key, INSTRUCTIONS)]
+    assert store.texts[answer_key] == (
         f"Message from ana in cycle {this_week}: Não atrasou: o prazo foi renegociado para 30/11."
+    )
+    assert store.texts[reason_key] == (
+        f"Correction from eva: proposal {proposal_id} (AgentVersion) was rejected"
+        " because: Distinga atraso confirmado de renegociado."
     )
     async with session(pool, AGENT) as connection:
         assert correction in await conversation(connection, this_week)
