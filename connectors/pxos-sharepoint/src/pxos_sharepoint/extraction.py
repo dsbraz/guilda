@@ -32,6 +32,11 @@ class UnreadableDocument(PxosError):
     """The file is not in a supported format, or its content cannot be read."""
 
 
+def supported(name: str) -> bool:
+    """Whether the file ``name`` is in a format whose text can be extracted."""
+    return PurePosixPath(name).suffix.lower() in _READERS
+
+
 def extract_text(name: str, content: bytes, *, limit: int = LIMIT) -> str:
     """The text of the file ``name``, chosen by its extension, stripped."""
     reader = _READERS.get(PurePosixPath(name).suffix.lower())
