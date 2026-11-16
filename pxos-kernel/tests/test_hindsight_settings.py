@@ -37,6 +37,8 @@ def test_the_local_script_takes_the_route_from_the_environment(
         "PXOS_MEMORY_REGION": ROUTE.memory_region,
         "PXOS_EMBEDDING_MODEL": ROUTE.embedding_model,
         "PXOS_EMBEDDING_REGION": ROUTE.embedding_region,
+        "PXOS_MODEL_INPUT_PRICE": str(ROUTE.input_price),
+        "PXOS_MODEL_OUTPUT_PRICE": str(ROUTE.output_price),
     }
     for name, value in environment.items():
         monkeypatch.setenv(name, value)

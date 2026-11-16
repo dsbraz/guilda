@@ -4,13 +4,15 @@ Which provider, model and regions an installation uses is decided at deploy: the
 them per client in the environment (see .env.example), and the bootstrap records them as
 the installation's single route. Every model call of that installation uses it, and the
 gateway builds clients for that route only; nobody asks it for a model or a region. The
-kernel fixes no model and no region.
+kernel fixes no model, no region and no price: the deploy also sets what the model costs
+per million tokens, and the gateway prices the tokens each model it issued used.
 """
 
 import os
 import weakref
 from collections.abc import AsyncGenerator, Callable, Mapping
 from dataclasses import astuple, dataclass, fields
+from decimal import Decimal, InvalidOperation
 from typing import Any, Literal, Self, get_args
 
 import asyncpg
@@ -52,6 +54,10 @@ class Route:
     memory_region: str
     embedding_model: str
     embedding_region: str
+    input_price: Decimal
+    """What the model costs per million input tokens."""
+    output_price: Decimal
+    """What the model costs per million output tokens."""
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] = os.environ) -> Self:
@@ -63,6 +69,8 @@ class Route:
             if not value:
                 raise RouteNotConfigured(f"{name} is not set")
             values[field.name] = value
+        for price in ("input_price", "output_price"):
+            values[price] = _price(_VARIABLES[price], values[price])
         if values["provider"] not in get_args(Provider):
             raise RouteNotConfigured(
                 f"PXOS_MODEL_PROVIDER must be one of {', '.join(get_args(Provider))}"
@@ -78,9 +86,23 @@ _VARIABLES = {
     "memory_region": "PXOS_MEMORY_REGION",
     "embedding_model": "PXOS_EMBEDDING_MODEL",
     "embedding_region": "PXOS_EMBEDDING_REGION",
+    "input_price": "PXOS_MODEL_INPUT_PRICE",
+    "output_price": "PXOS_MODEL_OUTPUT_PRICE",
 }
 
+
+def _price(name: str, value: str) -> Decimal:
+    try:
+        price = Decimal(value)
+    except InvalidOperation:
+        price = Decimal(-1)
+    if not price.is_finite() or price < 0:
+        raise RouteNotConfigured(f"{name} must be a non-negative number")
+    return price
+
+
 _COLUMNS = ", ".join(field.name for field in fields(Route))
+_PLACEHOLDERS = ", ".join(f"${n}" for n in range(1, len(fields(Route)) + 1))
 
 Providers = Callable[[Route], BaseLlm]
 """Builds the model client for a route."""
@@ -90,21 +112,40 @@ async def install_route(owner: asyncpg.Connection, route: Route) -> None:
     """Record the installation's route, as the owner. A new deploy replaces it."""
     updates = ", ".join(f"{f.name} = EXCLUDED.{f.name}" for f in fields(Route))
     await owner.execute(
-        f"INSERT INTO pxos.installation ({_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        f"INSERT INTO pxos.installation ({_COLUMNS}) VALUES ({_PLACEHOLDERS})"
         f" ON CONFLICT (singleton) DO UPDATE SET {updates}",
         *astuple(route),
     )
 
 
+@dataclass(frozen=True)
+class Usage:
+    model: str
+    input_tokens: int
+    output_tokens: int
+    cost: Decimal
+    """The tokens priced by the route, in the currency the deploy set the prices in."""
+
+
 class GatewayModel(BaseLlm):
     """The ADK model an agent gets from the gateway: every call goes to the route's
-    provider, and a request for any other model is refused."""
+    provider, a request for any other model is refused, and the tokens used are counted."""
 
+    _route: Route = PrivateAttr()
     _provider: BaseLlm = PrivateAttr()
+    _tokens: list[int] = PrivateAttr()
 
     def __init__(self, route: Route, provider: BaseLlm) -> None:
         super().__init__(model=route.model)
+        self._route = route
         self._provider = provider
+        self._tokens = [0, 0]
+
+    def usage(self) -> Usage:
+        """The tokens this model used so far, and their cost."""
+        input_tokens, output_tokens = self._tokens
+        cost = input_tokens * self._route.input_price + output_tokens * self._route.output_price
+        return Usage(self.model, input_tokens, output_tokens, cost / 1_000_000)
 
     async def generate_content_async(
         self, llm_request: LlmRequest, stream: bool = False
@@ -112,15 +153,24 @@ class GatewayModel(BaseLlm):
         if llm_request.model not in (None, self.model):
             raise ModelNotAllowed(f"{llm_request.model} is not this installation's model")
         async for response in self._provider.generate_content_async(llm_request, stream):
+            if response.usage_metadata is not None:
+                self._tokens[0] += response.usage_metadata.prompt_token_count or 0
+                self._tokens[1] += response.usage_metadata.candidates_token_count or 0
             yield response
 
 
 class FakeModels:
     """Providers for tests: every model answers ``reply`` (a text, or a function of the
-    request) and records the requests it got and the route it served."""
+    request giving a text or a part, such as a tool call), reports ``tokens`` (input,
+    output) when given, and records the requests it got and the route it served."""
 
-    def __init__(self, reply: str | Callable[[LlmRequest], str]) -> None:
+    def __init__(
+        self,
+        reply: str | Callable[[LlmRequest], str | types.Part],
+        tokens: tuple[int, int] | None = None,
+    ) -> None:
         self.reply = reply
+        self.tokens = tokens
         self.routes: list[Route] = []
         self.requests: list[LlmRequest] = []
 
@@ -143,8 +193,15 @@ class _FakeModel(BaseLlm):
         self._models.routes.append(self._route)
         self._models.requests.append(llm_request)
         reply = self._models.reply
-        text = reply if isinstance(reply, str) else reply(llm_request)
-        yield LlmResponse(content=types.Content(role="model", parts=[types.Part(text=text)]))
+        answer = reply if isinstance(reply, str) else reply(llm_request)
+        part = types.Part(text=answer) if isinstance(answer, str) else answer
+        tokens = self._models.tokens
+        usage = None
+        if tokens is not None:
+            usage = types.GenerateContentResponseUsageMetadata(
+                prompt_token_count=tokens[0], candidates_token_count=tokens[1]
+            )
+        yield LlmResponse(content=types.Content(role="model", parts=[part]), usage_metadata=usage)
 
 
 def vertex_models(project: str) -> Providers:

@@ -9,6 +9,7 @@ clients for that route only. Nothing about models or regions is fixed in code.
 import re
 from collections.abc import AsyncGenerator, AsyncIterator
 from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -20,6 +21,7 @@ from google.adk.models.base_llm import BaseLlm
 from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
+from google.genai import types
 
 from db_testing import Database, create_test_database
 from model_testing import OTHER_ROUTE, ROUTE
@@ -31,6 +33,7 @@ from pxos_kernel.model_access import (
     NoRoute,
     Route,
     RouteNotConfigured,
+    Usage,
     install_route,
     issued_by_gateway,
     vertex_models,
@@ -47,6 +50,8 @@ ENVIRONMENT = {
     "PXOS_MEMORY_REGION": "memory-region-c",
     "PXOS_EMBEDDING_MODEL": "embedding-model-c",
     "PXOS_EMBEDDING_REGION": "embedding-region-c",
+    "PXOS_MODEL_INPUT_PRICE": "1.25",
+    "PXOS_MODEL_OUTPUT_PRICE": "10",
 }
 
 
@@ -75,7 +80,16 @@ def test_the_route_comes_from_the_environment() -> None:
         memory_region="memory-region-c",
         embedding_model="embedding-model-c",
         embedding_region="embedding-region-c",
+        input_price=Decimal("1.25"),
+        output_price=Decimal("10"),
     )
+
+
+@pytest.mark.parametrize("price", ["PXOS_MODEL_INPUT_PRICE", "PXOS_MODEL_OUTPUT_PRICE"])
+@pytest.mark.parametrize("value", ["free", "-1", "NaN"])
+def test_a_price_that_is_not_a_non_negative_number_is_refused(price: str, value: str) -> None:
+    with pytest.raises(RouteNotConfigured, match=f"{price} must be a non-negative number"):
+        Route.from_environment({**ENVIRONMENT, price: value})
 
 
 @pytest.mark.parametrize("missing", sorted(ENVIRONMENT))
@@ -157,6 +171,33 @@ async def test_the_gateway_model_passes_the_request_to_the_route_provider() -> N
     assert provider.calls == [(request, False), (request, True)]
 
 
+class Metered(BaseLlm):
+    """Answers twice per call, the way a tool round does, each with its token counts."""
+
+    async def generate_content_async(
+        self, llm_request: LlmRequest, stream: bool = False
+    ) -> AsyncGenerator[LlmResponse, None]:
+        for prompt, candidates in ((1_000, 200), (3_000, None)):
+            yield LlmResponse(
+                usage_metadata=types.GenerateContentResponseUsageMetadata(
+                    prompt_token_count=prompt, candidates_token_count=candidates
+                )
+            )
+        yield LlmResponse()
+
+
+async def test_the_gateway_model_counts_tokens_and_prices_them_by_the_route() -> None:
+    model = GatewayModel(ROUTE, Metered(model=ROUTE.model))
+    await answers(model, LlmRequest(model=ROUTE.model))
+
+    assert model.usage() == Usage(
+        model=ROUTE.model,
+        input_tokens=4_000,
+        output_tokens=200,
+        cost=(4_000 * ROUTE.input_price + 200 * ROUTE.output_price) / 1_000_000,
+    )
+
+
 async def test_the_gateway_model_refuses_another_model() -> None:
     model = GatewayModel(ROUTE, Recorder(model=ROUTE.model, calls=[]))
     with pytest.raises(ModelNotAllowed, match="other-model is not this installation's model"):
@@ -174,6 +215,20 @@ async def test_fake_models_answer_from_the_request_and_record_it() -> None:
     assert [part.text for part in response.content.parts or []] == [f"answer to {ROUTE.model}"]
     assert models.requests == [request]
     assert models.routes == [ROUTE]
+    assert response.usage_metadata is None
+
+
+async def test_fake_models_may_call_a_tool_and_report_tokens() -> None:
+    call = types.Part(function_call=types.FunctionCall(name="recall", args={"query": "q"}))
+    models = FakeModels(reply=lambda request: call, tokens=(30, 4))
+
+    (response,) = await answers(models(ROUTE), LlmRequest(model=ROUTE.model))
+
+    assert response.content is not None
+    assert response.content.parts == [call]
+    assert response.usage_metadata == types.GenerateContentResponseUsageMetadata(
+        prompt_token_count=30, candidates_token_count=4
+    )
 
 
 async def test_only_a_model_the_gateway_issued_counts_as_issued(pool: asyncpg.Pool) -> None:
@@ -221,6 +276,11 @@ async def test_a_new_deploy_replaces_the_route(unconfigured: Database) -> None:
             await install_route(owner, replace(ROUTE, provider="other"))  # type: ignore[arg-type]
         with pytest.raises(asyncpg.CheckViolationError):
             await install_route(owner, replace(ROUTE, region=""))
+        with pytest.raises(asyncpg.CheckViolationError):
+            await install_route(owner, replace(ROUTE, output_price=Decimal(-1)))
+        assert await owner.fetchval("SELECT input_price FROM pxos.installation") == (
+            OTHER_ROUTE.input_price
+        )
     finally:
         await owner.execute("DELETE FROM pxos.installation")
         await owner.close()
