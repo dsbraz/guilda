@@ -36,4 +36,7 @@ class ContextStore(Protocol):
         """Purge what was retained under ``source``; forgetting it again is harmless."""
 
 
-__all__ = ["ContextStore", "ContextUnavailable", "Recalled"]
+# The adapter imports the port above, so it comes last.
+from pxos_kernel.context.hindsight import HindsightContextStore  # noqa: E402
+
+__all__ = ["ContextStore", "ContextUnavailable", "HindsightContextStore", "Recalled"]
