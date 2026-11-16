@@ -2,13 +2,16 @@
 
 Every call must carry the Bot Connector's token for this bot and activity
 (``pxos_teams.auth``) and come from the configured tenant; otherwise 401, before anything
-is read from the activity. A message in a Teams conversation mapped to a kernel thread is
-received in that thread from ``teams:<sender's Entra object id>``, without the bot's
-@mention; the kernel accepts it only from the internal person bound to that identity. A
-click on a review card (``adaptiveCard/action``) is the clicker's decision on the
-proposal and digest the card showed. Anything else is acknowledged and ignored. The
-answer never carries the message, the exception or why the kernel refused: a click gets
-only whether its decision was recorded.
+is read from the activity. Only Teams vouches for who sent an activity, so any other
+channel is refused, even under a key endorsed for it: on Web Chat or Direct Line the
+client writes ``from`` and ``channelData`` itself. A message in a Teams conversation
+mapped to a kernel thread is received in that thread from
+``teams:<sender's Entra object id>``, without the bot's @mention; the kernel accepts it
+only from the internal person bound to that identity. A click on a review card
+(``adaptiveCard/action``) is the clicker's decision on the proposal and digest the card
+showed. Anything else is acknowledged and ignored. The answer never carries the message,
+the exception or why the kernel refused: a click gets only whether its decision was
+recorded.
 """
 
 import json
@@ -55,7 +58,7 @@ def create_app(
             await authenticator.verify(request.headers.get("authorization"), activity)
         except (Unauthorized, ValueError, AttributeError):
             return Response(status_code=401)
-        if _tenant(activity) != settings.tenant_id:
+        if activity.get("channelId") != "msteams" or _tenant(activity) != settings.tenant_id:
             return Response(status_code=401)
         if activity.get("type") == "invoke" and activity.get("name") == "adaptiveCard/action":
             return JSONResponse(await _click(pool, registry, activity))

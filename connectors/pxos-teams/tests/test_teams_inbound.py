@@ -19,7 +19,7 @@ import asyncpg
 import httpx
 import pytest
 import retail_fixture.generated as retail_models
-from teams_testing import AAD, CHANNEL, SETTINGS, TENANT, Microsoft, activity
+from teams_testing import AAD, CHANNEL, SETTINGS, TENANT, Microsoft, Signer, activity
 
 from db_testing import Database, create_test_database
 from model_testing import ROUTE
@@ -209,6 +209,21 @@ async def test_a_body_that_is_no_activity_is_refused(bot: Bot, body: bytes) -> N
     response = await bot.http.post("/api/messages", content=body, headers=headers)
 
     assert response.status_code == 401
+
+
+async def test_another_channel_cannot_speak_as_a_teams_user(bot: Bot) -> None:
+    """Bot Framework keys are endorsed for many channels, and on Web Chat or Direct Line
+    the client writes ``from`` and ``channelData``: only Teams vouches for an Entra id."""
+    bot.microsoft.signers = [Signer(endorsements=("msteams", "webchat"))]
+    proposal_id, card = await carded(bot)
+    await bot.ask()
+
+    said = await bot.send(bot.message(channelId="webchat"))
+    clicked = await bot.send({**click(card, "approve"), "channelId": "webchat"})
+
+    assert (said.status_code, clicked.status_code) == (401, 401)
+    assert await bot.said() == []
+    assert await decision(bot, proposal_id) is None
 
 
 async def test_a_call_from_another_tenant_is_refused(bot: Bot) -> None:
