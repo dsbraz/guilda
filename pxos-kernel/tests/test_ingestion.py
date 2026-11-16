@@ -18,7 +18,7 @@ from conftest import AGENT, MEMORY_INSTRUCTIONS, RESTOCK_AGENT, installation
 from agents_testing import publish
 from db_testing import Database
 from model_testing import ROUTE
-from pxos_kernel.agents import NoApprovedVersion, approved_version, recorded_run
+from pxos_kernel.agents import NoApprovedVersion, approved_version
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import SourceDocument, ingest
@@ -131,8 +131,13 @@ async def test_each_run_records_the_version_it_ran(pool: asyncpg.Pool, registry:
     await ingest_as_agent(FakeContextStore(), pool, second)
 
     async with session(pool, AGENT) as connection:
-        ran = [await recorded_run(connection, doc.key) for doc in (first, second)]
-    assert [(r.definition, r.revision) for r in ran if r] == [
+        ran = [
+            await connection.fetchrow(
+                "SELECT definition, revision FROM pxos.agent_runs WHERE context_ref = $1", doc.key
+            )
+            for doc in (first, second)
+        ]
+    assert [(r["definition"], r["revision"]) for r in ran if r] == [
         (before.entity_id, before.revision),
         (before.entity_id, before.revision + 1),
     ]

@@ -29,7 +29,6 @@ from pxos_kernel.agents.versions import (
     pinned_version,
     propose_version,
     record_run,
-    recorded_run,
     register_agents,
 )
 
@@ -57,7 +56,6 @@ __all__ = [
     "propose_version",
     "recall_tool",
     "record_run",
-    "recorded_run",
     "register_agents",
     "round_input",
     "run_round",

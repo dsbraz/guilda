@@ -172,11 +172,3 @@ async def record_run(connection: Connection, version: AgentVersion, context_ref:
     )
     assert row is not None
     return AgentRun(**dict(row))
-
-
-async def recorded_run(connection: Connection, context_ref: str) -> AgentRun | None:
-    """The run on ``context_ref`` the session can read, or None."""
-    row = await connection.fetchrow(
-        "SELECT * FROM pxos.agent_runs WHERE context_ref = $1", context_ref
-    )
-    return None if row is None else AgentRun(**dict(row))
