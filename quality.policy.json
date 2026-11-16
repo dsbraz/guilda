@@ -30,5 +30,5 @@
     "pxos-kernel/tests/acceptance/test_requirements.py",
     "brq-at-work/tests/test_mvp_scenarios.py"
   ],
-  "generation": ["pxos-kernel/tests/retail_fixture", "pxos-kernel/src/pxos_kernel/agents/package"]
+  "generation": ["pxos-kernel/tests/retail_fixture", "pxos-kernel/src/pxos_kernel/agents/package", "brq-at-work/src/brq_at_work/weekly_report"]
 }

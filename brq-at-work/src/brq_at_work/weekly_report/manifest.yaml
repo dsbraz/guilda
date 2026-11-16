@@ -1,0 +1,11 @@
+name: brq_weekly_report
+version: 0.1.0
+types:
+  - name: WeeklyReport
+    readers: [project-manager, agent]
+  - name: ReportItem
+    readers: [project-manager, agent]
+actions:
+  - name: propose_weekly_report
+    creates: WeeklyReport
+    approver: project-manager

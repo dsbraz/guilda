@@ -1,0 +1,79 @@
+# Report semanal ao cliente (ADR 0006 §3). Cada versão é uma proposta revisada pelo PM;
+# riscos, decisões e progresso citados continuam contexto, não fatos canônicos.
+id: https://pxos.example/brq-at-work/weekly_report
+name: brq_weekly_report
+title: Report semanal
+version: 0.1.0
+annotations:
+  pxos.base_version: 0.1.0
+prefixes:
+  linkml: https://w3id.org/linkml/
+  report: https://pxos.example/brq-at-work/weekly_report/
+default_prefix: report
+default_range: string
+imports:
+  - linkml:types
+  - pxos_base
+
+classes:
+  WeeklyReport:
+    title: Report semanal
+    annotations:
+      pxos.kind: canonical
+    attributes:
+      summary:
+        title: resumo
+        required: true
+      items:
+        title: itens
+        range: ReportItem
+        multivalued: true
+        inlined_as_list: true
+        required: true
+      uncertainties:
+        title: incertezas
+        description: O que o agente não conseguiu confirmar.
+        multivalued: true
+      unavailable_sources:
+        title: fontes indisponíveis
+        description: Fontes que o ciclo não conseguiu ler.
+        multivalued: true
+
+  # O registro só conhece tipos canônicos; o item vive apenas dentro do report e nenhuma
+  # ação o cria.
+  ReportItem:
+    title: Item do report
+    annotations:
+      pxos.kind: canonical
+    attributes:
+      category:
+        title: categoria
+        range: ReportCategory
+        required: true
+      text:
+        title: texto
+        required: true
+      sources:
+        title: fontes
+        multivalued: true
+        required: true
+        minimum_cardinality: 1
+
+enums:
+  ReportCategory:
+    title: Categoria do item
+    permissible_values:
+      progress:
+        title: progresso
+      delay_risk:
+        title: risco de atraso
+      confirmed_delay:
+        title: atraso confirmado
+      renegotiated_deadline:
+        title: prazo renegociado
+      impediment:
+        title: impedimento
+      decision:
+        title: decisão
+      change:
+        title: mudança

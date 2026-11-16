@@ -1,0 +1,120 @@
+{
+    "$defs": {
+        "Actor": {
+            "additionalProperties": false,
+            "description": "Pessoa interna, pessoa externa ou agente.",
+            "properties": {
+                "actor_kind": {
+                    "$ref": "#/$defs/ActorKind"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "actor_kind"
+            ],
+            "title": "Actor",
+            "type": "object"
+        },
+        "ActorKind": {
+            "description": "",
+            "enum": [
+                "internal_person",
+                "external_person",
+                "agent"
+            ],
+            "title": "ActorKind",
+            "type": "string"
+        },
+        "ReportCategory": {
+            "description": "",
+            "enum": [
+                "progress",
+                "delay_risk",
+                "confirmed_delay",
+                "renegotiated_deadline",
+                "impediment",
+                "decision",
+                "change"
+            ],
+            "title": "ReportCategory",
+            "type": "string"
+        },
+        "ReportItem": {
+            "additionalProperties": false,
+            "description": "",
+            "properties": {
+                "category": {
+                    "$ref": "#/$defs/ReportCategory"
+                },
+                "sources": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "category",
+                "text",
+                "sources"
+            ],
+            "title": "ReportItem",
+            "type": "object"
+        },
+        "WeeklyReport": {
+            "additionalProperties": false,
+            "description": "",
+            "properties": {
+                "items": {
+                    "items": {
+                        "$ref": "#/$defs/ReportItem"
+                    },
+                    "type": "array"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "unavailable_sources": {
+                    "description": "Fontes que o ciclo n\u00e3o conseguiu ler.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "uncertainties": {
+                    "description": "O que o agente n\u00e3o conseguiu confirmar.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "summary",
+                "items"
+            ],
+            "title": "WeeklyReport",
+            "type": "object"
+        }
+    },
+    "$id": "https://pxos.example/brq-at-work/weekly_report",
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "additionalProperties": true,
+    "metamodel_version": "1.12.0",
+    "title": "brq_weekly_report",
+    "type": "object",
+    "version": "0.1.0"
+}
