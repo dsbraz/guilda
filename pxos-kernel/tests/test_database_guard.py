@@ -59,6 +59,7 @@ async def test_application_login_has_no_owner_powers(database: Database) -> None
             "reviews",
             "facts",
             "agent_runs",
+            "messages",
         }
     finally:
         await connection.close()
@@ -82,6 +83,12 @@ async def test_application_login_has_no_owner_powers(database: Database) -> None
         "SELECT * FROM pxos.outbox",
         "INSERT INTO pxos.actor_roles (actor_id, role) VALUES ('frank', 'store-manager')",
         "UPDATE pxos.packages SET digest = 'x'",
+        "INSERT INTO pxos.channel_identities (channel_id, actor_id) VALUES ('chat:x', 'frank')",
+        "UPDATE pxos.channel_identities SET actor_id = 'frank'",
+        "UPDATE pxos.messages SET text = ''",
+        "DELETE FROM pxos.messages",
+        "INSERT INTO pxos.messages (thread, channel_message, cycle, sender, text, author)"
+        " VALUES ('t', 'm', 'c', 'chat:erin', 'x', 'carla')",
     ],
 )
 async def test_application_cannot_change_history_or_configuration(

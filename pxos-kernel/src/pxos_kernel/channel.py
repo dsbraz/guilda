@@ -46,15 +46,23 @@ class Channel(Protocol):
     async def deliver_card(self, card: Card) -> None:
         """Show ``card`` to its recipient; delivering the same card again replaces it."""
 
+    async def post(self, thread: str, text: str) -> str:
+        """Post ``text`` in ``thread``; return the channel's id of the new message."""
+
 
 class FakeChannel:
-    """Reference channel: keeps each recipient's cards by proposal."""
+    """Reference channel: keeps each recipient's cards by proposal and each thread's posts."""
 
     def __init__(self) -> None:
         self.cards: dict[str, dict[UUID, Card]] = defaultdict(dict)
+        self.threads: dict[str, list[str]] = defaultdict(list)
 
     async def deliver_card(self, card: Card) -> None:
         self.cards[card.recipient][card.proposal_id] = card
+
+    async def post(self, thread: str, text: str) -> str:
+        self.threads[thread].append(text)
+        return f"{thread}/{len(self.threads[thread])}"
 
 
 def route_cards(pool: asyncpg.Pool, registry: Registry, channel: Channel) -> Handler:

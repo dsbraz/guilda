@@ -1,0 +1,118 @@
+"""Conversation in channel threads (ADR 0006, slice 11).
+
+An agent posts in a thread for a cycle of work, an opaque reference; the messages that
+follow in the thread belong to the cycle of the agent's last post there. A message from
+the channel counts only from the internal person bound to its sender identity, written
+in that person's session: the database sets the author and refuses anyone else, so a
+stranger, a guest, an external actor or the agent's own echo adds nothing. A redelivered
+channel message is kept once. Each accepted message leaves a ``message.received`` event
+in the outbox, with the message id and its cycle only.
+"""
+
+from dataclasses import dataclass
+from datetime import datetime
+from uuid import UUID
+
+import asyncpg
+
+from pxos_kernel.channel import Channel
+from pxos_kernel.errors import PxosError
+from pxos_kernel.identity import Connection, NotAuthorized, bound_actor, session
+
+
+@dataclass(frozen=True)
+class Inbound:
+    """A message as the channel delivers it: who sent it is the channel's identity."""
+
+    thread: str
+    channel_message: str
+    sender: str
+    text: str
+
+
+@dataclass(frozen=True)
+class Message:
+    id: UUID
+    thread: str
+    channel_message: str
+    cycle: str
+    sender: str | None
+    author: str
+    text: str
+    received_at: datetime
+
+
+class NoCycle(PxosError):
+    """No agent has posted in the thread, so its messages belong to no cycle."""
+
+
+async def post(
+    pool: asyncpg.Pool, channel: Channel, agent: str, *, thread: str, cycle: str, text: str
+) -> Message:
+    """Post ``text`` in ``thread`` as ``agent`` and keep it in the conversation of ``cycle``."""
+    async with session(pool, agent) as connection:
+        channel_message = await channel.post(thread, text)
+        return await _insert(connection, thread, channel_message, cycle, None, text)
+
+
+async def receive(pool: asyncpg.Pool, inbound: Inbound) -> Message:
+    """Keep ``inbound`` as a message of its bound sender, in the cycle of its thread."""
+    async with pool.acquire() as connection:
+        actor = await bound_actor(connection, inbound.sender)
+    async with session(pool, actor) as connection:
+        cycle = await connection.fetchval(
+            """
+            SELECT m.cycle FROM pxos.messages m JOIN pxos.actors a ON a.id = m.author
+            WHERE m.thread = $1 AND a.kind = 'agent'
+            ORDER BY m.received_at DESC LIMIT 1
+            """,
+            inbound.thread,
+        )
+        if cycle is None:
+            raise NoCycle(f"no agent has posted in thread {inbound.thread}")
+        return await _insert(
+            connection, inbound.thread, inbound.channel_message, cycle, inbound.sender, inbound.text
+        )
+
+
+async def conversation(connection: Connection, cycle: str) -> list[Message]:
+    """The messages of ``cycle``, oldest first, as the session can read them."""
+    rows = await connection.fetch(
+        "SELECT * FROM pxos.messages WHERE cycle = $1 ORDER BY received_at, id", cycle
+    )
+    return [Message(**dict(row)) for row in rows]
+
+
+async def _insert(
+    connection: Connection,
+    thread: str,
+    channel_message: str,
+    cycle: str,
+    sender: str | None,
+    text: str,
+) -> Message:
+    try:
+        row = await connection.fetchrow(
+            """
+            INSERT INTO pxos.messages (thread, channel_message, cycle, sender, text)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (thread, channel_message) DO NOTHING RETURNING *
+            """,
+            thread,
+            channel_message,
+            cycle,
+            sender,
+            text,
+        )
+    except asyncpg.PostgresError as error:
+        if error.sqlstate == "PX019":
+            raise NotAuthorized(str(error)) from None
+        raise
+    if row is None:
+        row = await connection.fetchrow(
+            "SELECT * FROM pxos.messages WHERE thread = $1 AND channel_message = $2",
+            thread,
+            channel_message,
+        )
+    assert row is not None
+    return Message(**dict(row))

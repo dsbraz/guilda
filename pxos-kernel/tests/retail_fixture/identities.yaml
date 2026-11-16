@@ -36,6 +36,7 @@ actors:
     kind: agent
     name: Agente de reposição
     roles: [agent]
+    channel_ids: [chat:restock-agent]
 delegations:
   - agent: restock-agent
     person: carla
