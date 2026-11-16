@@ -1,0 +1,33 @@
+# Override para rodar a instalação no localhost, em desenvolvimento:
+#   docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml up -d --build
+# Sem Caddy (fica no perfil "public"); o endpoint do app escuta só em loopback, na 8000.
+# Fora da VM não há conta de serviço da máquina: o app e o Hindsight chamam a Vertex com as
+# credenciais de aplicação do desenvolvedor, copiadas para .secrets/adc.json (veja
+# deploy/README.md, "Rodar no localhost"). A imagem roda com outro usuário, por isso a cópia
+# precisa ser legível por ele; .secrets/ é ignorado pelo git e pelo build.
+# O nome do projeto difere do compose de desenvolvimento da raiz, que também se chamaria
+# "pxos": sem isso, os dois dividiriam containers e o volume do Postgres.
+name: pxos-local
+
+x-adc: &adc
+  GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/adc.json
+
+services:
+  hindsight:
+    environment: *adc
+    volumes:
+      - ../.secrets/adc.json:/run/secrets/adc.json:ro
+
+  app:
+    environment:
+      <<: *adc
+      # Estado de desenvolvimento no volume do app: o token do login delegado do
+      # SharePoint e a mensagem de cada card do Telegram.
+      PXOS_SHAREPOINT_TOKEN_PATH: /var/lib/pxos/sharepoint-token
+      PXOS_TELEGRAM_CARDS_PATH: /var/lib/pxos/telegram-cards
+    volumes:
+      - ../.secrets/adc.json:/run/secrets/adc.json:ro
+    ports: ["127.0.0.1:8000:8000"]
+
+  caddy:
+    profiles: [public]

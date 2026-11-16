@@ -143,6 +143,68 @@ docker compose -f deploy/compose.yaml exec app sh -c \
 
 O comando imprime o id da proposta.
 
+## Rodar no localhost (desenvolvimento)
+
+O mesmo compose roda na máquina do desenvolvedor com `deploy/compose.local.yaml`: sem
+Caddy, com o app em `127.0.0.1:8000` e com as credenciais Google do desenvolvedor no lugar
+da conta de serviço da VM. O projeto do compose se chama `pxos-local`, para não dividir
+containers nem volumes com o `compose.yaml` da raiz, que é o dos testes. Para não depender
+de admin do tenant nem de endpoint público, use as opções de desenvolvimento dos
+adaptadores: o login delegado do SharePoint, uma chave pessoal do Granola (plano Business
+ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados de cliente.
+
+1. **Vertex.** Use um projeto seu com a Vertex AI habilitada e copie suas credenciais
+   de aplicação para `.secrets/`, legíveis pelo usuário dos containers:
+
+   ```sh
+   gcloud auth application-default login
+   gcloud auth application-default set-quota-project <projeto>
+   install -m 644 ~/.config/gcloud/application_default_credentials.json .secrets/adc.json
+   ```
+
+2. **`deploy/.env`.** Parta do `.env.example`. Preencha a rota do modelo, as senhas e
+   `PXOS_DOMAIN=localhost`, que o compose base exige mesmo sem o Caddy. Os caminhos do
+   token do SharePoint e dos cards do Telegram já vêm do override.
+3. **Granola.** No app, gere uma chave em Settings → Connectors → API keys → Personal
+   API key e coloque-a em `PXOS_GRANOLA_API_KEY`. A chave lê as suas notas e as
+   compartilhadas com você.
+4. **SharePoint sem admin.** Registre o app no Entra como o `.env.example` descreve
+   (cliente público, permissões delegadas). Preencha `PXOS_SHAREPOINT_TENANT` e
+   `PXOS_SHAREPOINT_CLIENT_ID`, e faça o login uma vez, gravando o token no volume do
+   app. Com `--link`, o comando também imprime o drive e a pasta:
+
+   ```sh
+   C="docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
+   $C run --rm --no-deps app python -m pxos_sharepoint.login \
+     --tenant <tenant> --client-id <app> --token-path /var/lib/pxos/sharepoint-token \
+     --link '<link copiado da pasta>'
+   ```
+
+5. **Telegram.** Crie o bot com o `@BotFather`, desative o privacy mode (`/setprivacy`),
+   adicione-o a um grupo e mande `/start` ao bot no privado. Antes de subir o app, leia
+   os ids em `https://api.telegram.org/bot<token>/getUpdates`:
+   - `chat.id` do grupo vai em `PXOS_TELEGRAM_CHAT_ID`;
+   - `from.id` de cada pessoa vai nos `channel_ids` dela em `identities.yaml`, como
+     `telegram:<id>`.
+
+   Defina `PXOS_CHANNEL=telegram` e `PXOS_TELEGRAM_BOT_TOKEN`. Quem revisa (PM e
+   administrador da plataforma) precisa ter mandado `/start` ao bot.
+6. **Subir e publicar.** Suba com `$C up -d --build` e publique o assistente como na
+   seção 6, trocando o compose pelo `$C`. O card de aprovação da versão chega no privado
+   do administrador.
+7. **Disparar um ciclo agora**, sem esperar a agenda. O agendamento existe depois que a
+   versão é aprovada:
+
+   ```sh
+   $C run --rm --no-deps --entrypoint temporal temporal-namespace \
+     schedule trigger --schedule-id pxos-cycle-project-assistant --address temporal:7233
+   ```
+
+   O ciclo sincroniza as fontes, roda o agente e posta as perguntas no grupo ou manda o
+   report ao PM. A primeira resposta no grupo já acorda o ciclo. Para ver o histórico,
+   suba a UI do Temporal com `$C --profile ui up -d temporal-ui` e abra
+   http://localhost:8080.
+
 ## Limites atuais
 
 - O canal liga a thread do arquivo do assistente (`thread` em `project_assistant.yaml`)
