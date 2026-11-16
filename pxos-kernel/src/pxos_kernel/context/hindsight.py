@@ -1,15 +1,21 @@
 """Hindsight adapter for the context port (PXOS-53), over its HTTP API.
 
 The bank is configured for custom extraction with the distribution's instructions, without
-observations (consolidated summaries). Retaining is synchronous and keyed by document id,
-so a replay of an unchanged document keeps its memories as they are.
+observations (consolidated summaries). Retaining is synchronous and keyed by document id:
+retaining a key again replaces its memories, and forgetting deletes the document with all
+its memories. Recall excludes untagged memories (``any_strict``) and observations, so each
+result comes from a document the tags reach. A network failure becomes ContextUnavailable,
+by type alone; any other error from Hindsight is raised as is.
 """
 
 import os
-from typing import Self
+from collections.abc import Sequence
+from typing import Any, Self
+from urllib.parse import quote
 
 import httpx
 
+from pxos_kernel.context import ContextUnavailable, Recalled
 from pxos_kernel.model_access import Route
 
 
@@ -51,9 +57,18 @@ class HindsightContextStore:
             os.environ.get("PXOS_HINDSIGHT_API_KEY"),
         )
 
-    async def retain(self, key: str, text: str, instructions: str) -> None:
-        config = await self._client.patch(
-            f"{self._bank}/config",
+    async def _send(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
+        try:
+            return await self._client.request(method, f"{self._bank}{path}", **kwargs)
+        except httpx.TransportError as error:
+            raise ContextUnavailable(type(error).__name__) from None
+
+    async def retain(
+        self, key: str, text: str, instructions: str, *, tags: Sequence[str] = ()
+    ) -> None:
+        config = await self._send(
+            "PATCH",
+            "/config",
             json={
                 "updates": {
                     "retain_extraction_mode": "custom",
@@ -63,11 +78,39 @@ class HindsightContextStore:
             },
         )
         config.raise_for_status()
-        retained = await self._client.post(
-            f"{self._bank}/memories",
-            json={"items": [{"content": text, "document_id": key}], "async": False},
+        retained = await self._send(
+            "POST",
+            "/memories",
+            json={
+                "items": [{"content": text, "document_id": key, "tags": list(tags)}],
+                "async": False,
+            },
         )
         retained.raise_for_status()
+
+    async def recall(self, query: str, *, tags: Sequence[str]) -> list[Recalled]:
+        if not tags:
+            return []
+        response = await self._send(
+            "POST",
+            "/memories/recall",
+            json={
+                "query": query,
+                "tags": list(tags),
+                "tags_match": "any_strict",
+                "types": ["world", "experience"],
+            },
+        )
+        response.raise_for_status()
+        return [
+            Recalled(text=result["text"], source=result["document_id"])
+            for result in response.json()["results"]
+        ]
+
+    async def forget(self, source: str) -> None:
+        response = await self._send("DELETE", f"/documents/{quote(source, safe='')}")
+        if response.status_code != httpx.codes.NOT_FOUND:
+            response.raise_for_status()
 
 
 def main() -> None:

@@ -7,7 +7,7 @@ source says reaches the Temporal history.
 """
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
@@ -49,11 +49,13 @@ class Store(FakeContextStore):
         self.failures = failures
         self.error = error
 
-    async def retain(self, key: str, text: str, instructions: str) -> None:
+    async def retain(
+        self, key: str, text: str, instructions: str, *, tags: Sequence[str] = ()
+    ) -> None:
         if self.failures:
             self.failures -= 1
             raise self.error(f"cannot retain {text}")
-        await super().retain(key, text, instructions)
+        await super().retain(key, text, instructions, tags=tags)
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ version, and nothing is proposed. A failure leaves no trace, so the version can 
 ingested again.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from uuid import uuid4
 
 import asyncpg
@@ -35,7 +35,9 @@ def document() -> SourceDocument:
 
 
 class BrokenStore(FakeContextStore):
-    async def retain(self, key: str, text: str, instructions: str) -> None:
+    async def retain(
+        self, key: str, text: str, instructions: str, *, tags: Sequence[str] = ()
+    ) -> None:
         raise ConnectionResetError("context memory unavailable")
 
 

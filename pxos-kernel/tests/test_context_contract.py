@@ -40,7 +40,7 @@ def store_for(kind: str, key: str) -> ContextStore:
 
 @pytest.fixture
 def key() -> str:
-    return f"fixture:contract/{uuid4()}@1"
+    return f"fixture:contract/{uuid4()}"
 
 
 @pytest.mark.parametrize("kind", ADAPTERS)
@@ -48,6 +48,30 @@ async def test_retaining_the_same_document_twice_is_harmless(kind: str, key: str
     store = store_for(kind, key)
     await store.retain(key, TEXT, INSTRUCTIONS)
     await store.retain(key, TEXT, INSTRUCTIONS)
+
+
+@pytest.mark.parametrize("kind", ADAPTERS)
+async def test_recall_returns_only_what_the_tags_reach(kind: str, key: str) -> None:
+    store = store_for(kind, key)
+    allowed, restricted = f"access:{uuid4()}", f"access:{uuid4()}"
+    await store.retain(key, TEXT, INSTRUCTIONS, tags=[restricted])
+
+    assert await store.recall("Who will restock aisle 3?", tags=[allowed]) == []
+    assert await store.recall("Who will restock aisle 3?", tags=[]) == []
+    recalled = await store.recall("Who will restock aisle 3?", tags=[allowed, restricted])
+    assert recalled and {r.source for r in recalled} == {key}
+
+
+@pytest.mark.parametrize("kind", ADAPTERS)
+async def test_a_forgotten_source_is_never_recalled(kind: str, key: str) -> None:
+    store = store_for(kind, key)
+    tag = f"access:{uuid4()}"
+    await store.retain(key, TEXT, INSTRUCTIONS, tags=[tag])
+
+    await store.forget(key)
+    await store.forget(key)
+
+    assert await store.recall("Who will restock aisle 3?", tags=[tag]) == []
 
 
 def test_only_the_adapter_talks_to_hindsight() -> None:
