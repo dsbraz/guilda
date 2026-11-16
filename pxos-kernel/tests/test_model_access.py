@@ -32,6 +32,7 @@ from pxos_kernel.model_access import (
     Route,
     RouteNotConfigured,
     install_route,
+    issued_by_gateway,
     vertex_models,
 )
 from pxos_kernel.state import create_pool
@@ -173,6 +174,13 @@ async def test_fake_models_answer_from_the_request_and_record_it() -> None:
     assert [part.text for part in response.content.parts or []] == [f"answer to {ROUTE.model}"]
     assert models.requests == [request]
     assert models.routes == [ROUTE]
+
+
+async def test_only_a_model_the_gateway_issued_counts_as_issued(pool: asyncpg.Pool) -> None:
+    models = FakeModels(reply="ok")
+    issued = await ModelGateway(pool, models).adk_model()
+    assert issued_by_gateway(issued)
+    assert not issued_by_gateway(GatewayModel(ROUTE, models(ROUTE)))
 
 
 @pytest.fixture(scope="module")

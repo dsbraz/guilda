@@ -8,6 +8,7 @@ kernel fixes no model and no region.
 """
 
 import os
+import weakref
 from collections.abc import AsyncGenerator, Callable, Mapping
 from dataclasses import astuple, dataclass, fields
 from typing import Any, Literal, Self, get_args
@@ -178,4 +179,14 @@ class ModelGateway:
     async def adk_model(self) -> GatewayModel:
         """The model to give an ADK agent of this installation."""
         route = await self.route()
-        return GatewayModel(route, self._providers(route))
+        model = GatewayModel(route, self._providers(route))
+        _issued[id(model)] = model
+        return model
+
+
+_issued: weakref.WeakValueDictionary[int, GatewayModel] = weakref.WeakValueDictionary()
+"""The models gateways issued and still in use; a model built by hand is not among them."""
+
+
+def issued_by_gateway(model: BaseLlm) -> bool:
+    return _issued.get(id(model)) is model
