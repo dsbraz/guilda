@@ -43,6 +43,7 @@ files = [
     "brq-at-work/src",
     "brq-at-work/tests",
     "connectors/pxos-granola/src",
+    "connectors/pxos-granola/tests",
     "connectors/pxos-sharepoint/src",
     "connectors/pxos-sharepoint/tests",
     "connectors/pxos-teams/src",
