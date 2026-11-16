@@ -250,3 +250,27 @@ async def test_a_failed_round_reaches_history_by_its_type_alone(
     raw = await history_bytes(temporal, handle.id)
     assert b"run_round failed: InvalidOutput" in raw
     assert SKU.encode() not in raw
+
+
+async def test_a_failed_cycle_started_again_keeps_what_was_decided(
+    temporal: Client, pool: asyncpg.Pool, registry: Registry
+) -> None:
+    """The rejected deliverable is neither proposed nor awaited again: its round is next."""
+    cycle = f"week-{uuid4()}"
+
+    def broken(data: dict[str, Any]) -> str:
+        return "not json" if data["corrections"] else order(12)
+
+    async with worker(temporal, pool, registry, broken) as (queue, _, _):
+        handle = await start_cycle(temporal, AGENT, cycle, task_queue=queue)
+        await decide(pool, registry, handle, await proposal(pool, handle.id), "rejected")
+        with pytest.raises(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=30)
+
+    async with worker(temporal, pool, registry, lambda data: order(10)) as (queue, _, _):
+        handle = await start_cycle(temporal, AGENT, cycle, task_queue=queue)
+        redone = await proposal(pool, handle.id, 2)
+        await decide(pool, registry, handle, redone, "approved")
+        assert await asyncio.wait_for(handle.result(), timeout=30) == "approved"
+
+    assert [p.payload["quantity"] for p in await proposals(pool, handle.id)] == [12, 10]

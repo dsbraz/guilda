@@ -78,6 +78,14 @@ class Round:
     final: bool
 
 
+@dataclass(frozen=True)
+class Delivered:
+    """A round's deliverable, by reference, and the decision already recorded on it."""
+
+    proposal_id: str
+    decision: str | None
+
+
 @workflow.defn
 class AgentCycle:
     """The agent's cycle, the same steps for every agent; its published version sets the
@@ -133,9 +141,11 @@ class AgentCycle:
             )
 
     async def _deliver(self, step: Round) -> str:
-        proposal: str = await _call("propose_deliverable", step, str)
-        await workflow.wait_condition(lambda: proposal in self._decisions)
-        return self._decisions[proposal]
+        delivered: Delivered = await _call("propose_deliverable", step, Delivered)
+        if delivered.decision is not None:  # decided before this run: started again
+            self._decisions[delivered.proposal_id] = delivered.decision
+        await workflow.wait_condition(lambda: delivered.proposal_id in self._decisions)
+        return self._decisions[delivered.proposal_id]
 
 
 async def _call(

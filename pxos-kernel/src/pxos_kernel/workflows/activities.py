@@ -25,7 +25,8 @@ from pxos_kernel.identity import session
 from pxos_kernel.ingestion import Connector, sync
 from pxos_kernel.model_access import ModelGateway
 from pxos_kernel.ontology import Registry
-from pxos_kernel.workflows.definitions import Pinned, Round
+from pxos_kernel.state import InvalidProposal, get_review
+from pxos_kernel.workflows.definitions import Delivered, Pinned, Round
 
 TRANSIENT = (OSError, TimeoutError, asyncpg.PostgresConnectionError, ContextUnavailable)
 """Failures worth retrying. Anything else fails the workflow, which can be started again
@@ -150,15 +151,20 @@ class CycleActivities:
         await post_questions(self._pool, self._channel, version, cycle=step.cycle, round=step.round)
 
     @activity.defn(name="propose_deliverable")
-    async def propose_deliverable(self, step: Round) -> str:
+    async def propose_deliverable(self, step: Round) -> Delivered:
         return await _reduced("propose_deliverable", self._propose(step))
 
-    async def _propose(self, step: Round) -> str:
+    async def _propose(self, step: Round) -> Delivered:
         version = await self._version(step)
         proposal = await propose_deliverable(
             self._pool, self._registry, version, cycle=step.cycle, round=step.round
         )
-        return str(proposal.id)
+        async with session(self._pool, step.agent) as connection:
+            try:
+                decision: str | None = (await get_review(connection, proposal.id)).decision
+            except InvalidProposal:  # not reviewed yet
+                decision = None
+        return Delivered(str(proposal.id), decision)
 
     async def _version(self, step: Round) -> AgentVersion:
         async with session(self._pool, step.agent) as connection:
