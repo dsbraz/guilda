@@ -5,9 +5,14 @@ belong to the cycle of the agent's last post there. A received message counts on
 an internal person bound to its sender identity, written as that person. The refusals
 below the kernel's API are sent as raw SQL by the application login, so a pass means the
 database refused.
+
+What the team says in the thread and why a reviewer rejected a proposal become context for
+the next cycle, with their author, each under a key that retaining again does not repeat.
 """
 
 import json
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 import asyncpg
@@ -15,10 +20,34 @@ import pytest
 
 from db_testing import Database
 from pxos_kernel.channel import FakeChannel
-from pxos_kernel.conversation import Inbound, NoCycle, conversation, post, receive
+from pxos_kernel.context import FakeContextStore
+from pxos_kernel.conversation import (
+    Inbound,
+    NoCycle,
+    conversation,
+    post,
+    receive,
+    retain_message,
+    retain_rejection,
+)
 from pxos_kernel.identity import NotAuthorized, session
+from pxos_kernel.ontology import Registry
+from pxos_kernel.state import Decision, Evidence, InvalidProposal, Proposal, propose, review
 
 AGENT = "restock-agent"
+INSTRUCTIONS = "Keep each correction with who made it."
+
+
+class TextStore(FakeContextStore):
+    """The reference store, also keeping the text retained under each key."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.texts: dict[str, str] = {}
+
+    async def retain(self, key: str, text: str, instructions: str, **options: Any) -> None:
+        await super().retain(key, text, instructions, **options)
+        self.texts[key] = text
 
 
 def fresh(name: str) -> str:
@@ -169,3 +198,70 @@ async def test_the_author_comes_from_the_session(pool: asyncpg.Pool) -> None:
         with pytest.raises(asyncpg.PostgresError) as error:
             await connection.fetch("SELECT * FROM pxos.messages")
     assert error.value.sqlstate == "PX001"
+
+
+async def test_a_message_is_retained_with_its_author_under_a_stable_key(
+    pool: asyncpg.Pool,
+) -> None:
+    thread, cycle = fresh("thread"), fresh("cycle")
+    await post(pool, FakeChannel(), AGENT, thread=thread, cycle=cycle, text="Quantas?")
+    reply = await receive(pool, answer(thread, text="Na verdade foram sete."))
+    store = TextStore()
+
+    await retain_message(pool, store, AGENT, reply.id, INSTRUCTIONS)
+    await retain_message(pool, store, AGENT, reply.id, INSTRUCTIONS)
+
+    key = f"message:{reply.id}"
+    assert store.retained == [(key, INSTRUCTIONS), (key, INSTRUCTIONS)]
+    assert store.texts[key] == f"Message from erin in cycle {cycle}: Na verdade foram sete."
+
+
+async def decided(
+    pool: asyncpg.Pool, registry: Registry, decision: Decision | None, reason: str | None
+) -> Proposal:
+    async with session(pool, AGENT) as connection:
+        proposal = await propose(
+            connection,
+            registry.get("retail"),
+            "create_restock_order",
+            payload={"sku": "B-2", "quantity": 4, "occurred_at": "2026-11-01T09:00:00Z"},
+            evidence=Evidence(source="fixture:log", quote="restock 4", context_ref=fresh("ctx")),
+            valid_from=datetime(2026, 11, 1, tzinfo=UTC),
+        )
+    if decision is not None:
+        async with session(pool, "carla") as connection:
+            await review(
+                connection, registry, proposal.id, decision, digest=proposal.digest, reason=reason
+            )
+    return proposal
+
+
+async def test_a_rejection_reason_is_retained_as_a_correction_by_its_reviewer(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    proposal = await decided(pool, registry, "rejected", "Eram sete, não quatro.")
+    store = TextStore()
+
+    await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS)
+    await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS)
+
+    key = f"rejection:{proposal.id}"
+    assert store.retained == [(key, INSTRUCTIONS), (key, INSTRUCTIONS)]
+    assert store.texts[key] == (
+        f"Correction from carla: proposal {proposal.id} (RestockOrder) was rejected"
+        " because: Eram sete, não quatro."
+    )
+
+
+@pytest.mark.parametrize(
+    ("decision", "refusal"), [("approved", "not rejected"), (None, "has no review")]
+)
+async def test_only_a_rejection_is_a_correction(
+    pool: asyncpg.Pool, registry: Registry, decision: Decision | None, refusal: str
+) -> None:
+    proposal = await decided(pool, registry, decision, None)
+    store = TextStore()
+
+    with pytest.raises(InvalidProposal, match=refusal):
+        await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS)
+    assert store.retained == []

@@ -14,6 +14,7 @@ from pxos_kernel.state.canonical import (
     StalePackage,
     StaleRevision,
     get_proposal,
+    get_review,
     propose,
     review,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "create_pool",
     "current",
     "get_proposal",
+    "get_review",
     "grant_connect",
     "install_packages",
     "propose",

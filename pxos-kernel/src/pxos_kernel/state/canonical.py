@@ -164,7 +164,7 @@ async def review(
     except asyncpg.UniqueViolationError as error:
         if error.constraint_name != "reviews_pkey":
             raise _translate(error) from None
-        existing = await _review(connection, proposal_id)
+        existing = await get_review(connection, proposal_id)
         if existing.decision != decision or existing.proposal_digest != digest:
             raise DecisionFinal(f"proposal {proposal_id} was already {existing.decision}") from None
         return existing
@@ -249,11 +249,12 @@ async def _check_references(
             raise InvalidProposal(f"{type_name}.{slot}: unknown actor {value}")
 
 
-async def _review(connection: Connection, proposal_id: UUID) -> Review:
+async def get_review(connection: Connection, proposal_id: UUID) -> Review:
     row = await connection.fetchrow(
         "SELECT * FROM pxos.reviews WHERE proposal_id = $1", proposal_id
     )
-    assert row is not None
+    if row is None:
+        raise InvalidProposal(f"proposal {proposal_id} has no review")
     return Review(**dict(row))
 
 

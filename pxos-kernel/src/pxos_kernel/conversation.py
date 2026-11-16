@@ -7,6 +7,10 @@ in that person's session: the database sets the author and refuses anyone else, 
 stranger, a guest, an external actor or the agent's own echo adds nothing. A redelivered
 channel message is kept once. Each accepted message leaves a ``message.received`` event
 in the outbox, with the message id and its cycle only.
+
+A message, and the reason a reviewer rejected a proposal, are retained as context for the
+next cycle with their author, read in the agent's session and keyed by the message or the
+proposal, so retaining them again adds nothing.
 """
 
 from dataclasses import dataclass
@@ -16,8 +20,10 @@ from uuid import UUID
 import asyncpg
 
 from pxos_kernel.channel import Channel
+from pxos_kernel.context import ContextStore
 from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import Connection, NotAuthorized, bound_actor, session
+from pxos_kernel.state import InvalidProposal, get_proposal, get_review
 
 
 @dataclass(frozen=True)
@@ -81,6 +87,38 @@ async def conversation(connection: Connection, cycle: str) -> list[Message]:
         "SELECT * FROM pxos.messages WHERE cycle = $1 ORDER BY received_at, id", cycle
     )
     return [Message(**dict(row)) for row in rows]
+
+
+async def retain_message(
+    pool: asyncpg.Pool, store: ContextStore, agent: str, message_id: UUID, instructions: str
+) -> None:
+    """Retain the message ``message_id`` with its author, read as ``agent``."""
+    async with session(pool, agent) as connection:
+        row = await connection.fetchrow("SELECT * FROM pxos.messages WHERE id = $1", message_id)
+    assert row is not None
+    message = Message(**dict(row))
+    await store.retain(
+        f"message:{message.id}",
+        f"Message from {message.author} in cycle {message.cycle}: {message.text}",
+        instructions,
+    )
+
+
+async def retain_rejection(
+    pool: asyncpg.Pool, store: ContextStore, agent: str, proposal_id: UUID, instructions: str
+) -> None:
+    """Retain why ``proposal_id`` was rejected, with its reviewer, read as ``agent``."""
+    async with session(pool, agent) as connection:
+        proposal = await get_proposal(connection, proposal_id)
+        decided = await get_review(connection, proposal_id)
+    if decided.decision != "rejected":
+        raise InvalidProposal(f"proposal {proposal_id} was not rejected")
+    await store.retain(
+        f"rejection:{proposal_id}",
+        f"Correction from {decided.reviewer}: proposal {proposal_id} ({proposal.type_name})"
+        f" was rejected because: {decided.reason}",
+        instructions,
+    )
 
 
 async def _insert(
