@@ -64,7 +64,8 @@
     "pxos-kernel/tests/test_context_contract.py": "PXOS_HINDSIGHT_URL not set",
     "pxos-kernel/tests/test_vertex_routes.py": "PXOS_VERTEX_PROJECT not set",
     "connectors/pxos-sharepoint/tests/test_sharepoint_live.py": "PXOS_SHAREPOINT_TENANT not set",
-    "connectors/pxos-granola/tests/test_granola_live.py": "PXOS_GRANOLA_API_KEY not set"
+    "connectors/pxos-granola/tests/test_granola_live.py": "PXOS_GRANOLA_API_KEY not set",
+    "connectors/pxos-teams/tests/test_teams_live.py": "PXOS_TEAMS_* not set"
   },
   "pending_requirements": [
     "pxos-kernel/tests/acceptance/test_requirements.py",

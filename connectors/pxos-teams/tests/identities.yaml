@@ -1,0 +1,32 @@
+# The retail fixture's people, bound to Teams as `teams:<Entra object id>`.
+actors:
+  - id: carla
+    kind: internal_person
+    name: Carla
+    roles: [store-manager]
+    channel_ids: [teams:aad-carla]
+  - id: diego
+    kind: internal_person
+    name: Diego
+    roles: [store-manager]
+    channel_ids: [teams:aad-diego]
+  - id: erin
+    kind: internal_person
+    name: Erin
+    roles: [store-staff]
+    channel_ids: [teams:aad-erin]
+  - id: frank
+    kind: internal_person
+    name: Frank
+  - id: vera
+    kind: external_person
+    name: Vera (fornecedora)
+    roles: [store-manager]
+    channel_ids: [teams:aad-vera]
+  - id: restock-agent
+    kind: agent
+    name: Agente de reposição
+    roles: [agent]
+delegations:
+  - agent: restock-agent
+    person: carla

@@ -47,6 +47,7 @@ files = [
     "connectors/pxos-sharepoint/src",
     "connectors/pxos-sharepoint/tests",
     "connectors/pxos-teams/src",
+    "connectors/pxos-teams/tests",
     "quality",
     "tests/quality",
 ]
@@ -78,7 +79,7 @@ testpaths = [
     "connectors/pxos-teams/tests",
     "tests/quality",
 ]
-pythonpath = [".", "pxos-kernel/tests"]
+pythonpath = [".", "pxos-kernel/tests", "connectors/pxos-teams/tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = ["--import-mode=importlib"]

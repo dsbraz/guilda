@@ -3,7 +3,12 @@ name = "pxos-teams"
 version = "0.1.0"
 description = "Canal Microsoft Teams para o pxOS"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pxos-kernel"]
+dependencies = [
+    "pxos-kernel",
+    "httpx==0.28.1",
+    "pyjwt[crypto]==2.15.1",
+    "starlette==1.10.0",
+]
 
 [tool.uv.sources]
 pxos-kernel = { workspace = true }
