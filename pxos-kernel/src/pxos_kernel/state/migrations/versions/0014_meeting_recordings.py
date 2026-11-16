@@ -5,8 +5,8 @@
   access tags. Never its transcript: that goes to the context memory only;
 - a source's recording is unique; a recording removed at the source is deleted here, so
   the remaining recordings of a meeting are those the source still has;
-- only agents reach it, under RLS: the agent that ingests a source reads and writes its
-  recordings; a person reads nothing and writes nothing, and no session reaches nothing.
+- only agents reach it, under RLS: an agent's session reads and writes any source's
+  recordings; a person's reads and writes none, and without a session it is refused.
 """
 
 from alembic import op

@@ -7,6 +7,7 @@ per meeting from the most complete recording, and the others as its provenance. 
 recording's access tags say who may see it at the source; recall follows them.
 """
 
+import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
@@ -74,8 +75,8 @@ class MeetingConnector:
     Each delta updates the recordings kept for the source, without content, as ``agent``.
     What to ingest or forget is then read from the recordings kept and from what was
     ingested, never from the delta, so a pass replayed after a failure finds the same work
-    left. A meeting whose chosen recording or version changed is ingested under a new
-    version; one with no recording left is deleted.
+    left. A meeting whose chosen recording, version or access changed is ingested under a
+    new version; one with no recording left is deleted.
     """
 
     def __init__(self, pool: asyncpg.Pool, source: TranscriptSource, *, agent: str) -> None:
@@ -160,11 +161,13 @@ _ORPHANS = """
 def _version(row: asyncpg.Record) -> str | None:
     """The version to ingest the chosen recording under; None when it is retained already.
 
-    It names the recording and its version, and a count of the descriptions the meeting
-    had: going back to a recording ingested before is a new version, since each source
-    version is ingested once. One ingested but not retained keeps its version.
+    It names the recording, its version and a digest of its access tags, so new access
+    replaces the description's tags, and a count of the descriptions the meeting had:
+    going back to a recording ingested before is a new version, since each source version
+    is ingested once. One ingested but not retained keeps its version.
     """
-    chosen = f"{row['recording']}@{row['version']}"
+    access = hashlib.sha256("\n".join(sorted(row["access"])).encode()).hexdigest()[:12]
+    chosen = f"{row['recording']}@{row['version']}@{access}"
     ingested: str | None = row["ingested"]
     if ingested is None:
         return f"{chosen}#1"

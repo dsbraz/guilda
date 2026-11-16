@@ -69,6 +69,25 @@ async def state(pool: asyncpg.Pool, of: Meeting) -> str | None:
     return None if value is None else str(value)
 
 
+async def cursor(pool: asyncpg.Pool, source: FakeTranscriptSource) -> str | None:
+    async with pool.acquire() as connection:
+        value = await connection.fetchval(
+            "SELECT cursor FROM pxos.connector_cursors WHERE connector = $1", source.name
+        )
+    return None if value is None else str(value)
+
+
+class TranscriptsDown(FakeTranscriptSource):
+    """A tool that reports its recordings but, while down, cannot give a transcript."""
+
+    down = False
+
+    async def transcript(self, recording: str) -> str:
+        if self.down:
+            raise ConnectorUnavailable(f"{self.name} transcripts cannot be reached")
+        return await super().transcript(recording)
+
+
 class BrokenStore(FakeContextStore):
     async def retain(
         self, key: str, text: str, instructions: str, *, tags: Sequence[str] = ()
@@ -124,6 +143,39 @@ async def test_a_new_version_of_the_chosen_recording_replaces_the_description(
     await sync_meetings(pool, store, source)
 
     assert described(store, weekly) == "Erin: corrected.\n"
+
+
+async def test_new_access_to_the_chosen_recording_replaces_the_descriptions_access(
+    pool: asyncpg.Pool,
+) -> None:
+    source, store, weekly = tool(), FakeContextStore(), meeting()
+    first = recording(weekly, 1800)
+    put(source, first)
+    await sync_meetings(pool, store, source)
+    put(source, Recording(first.id, weekly, first.version, first.seconds, ("access:board",)))
+
+    await sync_meetings(pool, store, source)
+
+    assert store.memories[f"meeting:{weekly.key}"][1] == frozenset({"access:board"})
+
+
+async def test_a_tool_unreachable_for_the_fallback_transcript_is_retried_in_the_next_pass(
+    pool: asyncpg.Pool,
+) -> None:
+    source, store, weekly = TranscriptsDown(f"tool-{uuid4()}"), FakeContextStore(), meeting()
+    shorter, longer = recording(weekly, 1800), recording(weekly, 3600)
+    put(source, shorter, longer)
+    await sync_meetings(pool, store, source)
+    source.remove(longer.id)
+    source.down = True
+    assert await sync_meetings(pool, store, source) is False
+    assert await cursor(pool, source) == "2"
+    source.down = False
+
+    assert await sync_meetings(pool, store, source) is True
+
+    assert described(store, weekly) == source.transcripts[shorter.id]
+    assert await cursor(pool, source) == "3"
 
 
 async def test_deleting_the_chosen_recording_falls_back_to_the_next(pool: asyncpg.Pool) -> None:
