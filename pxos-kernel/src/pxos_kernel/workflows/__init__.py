@@ -3,7 +3,7 @@
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
 
 from pxos_kernel.workflows.activities import CycleActivities, SyncActivities
-from pxos_kernel.workflows.cycle import start_cycle
+from pxos_kernel.workflows.cycle import cycle_handlers, schedule_cycles, start_cycle
 from pxos_kernel.workflows.definitions import (
     AgentCycle,
     SyncConnector,
@@ -27,7 +27,9 @@ __all__ = [
     "CycleActivities",
     "SyncActivities",
     "SyncConnector",
+    "cycle_handlers",
     "cycle_workflow_id",
+    "schedule_cycles",
     "schedule_id",
     "start_cycle",
     "sync_workflow_id",

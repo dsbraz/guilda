@@ -25,7 +25,7 @@ from temporalio.worker import Worker
 
 from pxos_kernel.channel import FakeChannel
 from pxos_kernel.context import FakeContextStore
-from pxos_kernel.conversation import Inbound, receive
+from pxos_kernel.conversation import Inbound, conversation, receive
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import FakeConnector, SourceDocument
 from pxos_kernel.model_access import FakeModels, ModelGateway
@@ -152,9 +152,12 @@ async def decide(
     await handle.signal(AgentCycle.reviewed, args=[str(proposed.id), decision])
 
 
-async def asked(channel: FakeChannel, thread: str) -> None:
+async def asked(pool: asyncpg.Pool, cycle: str) -> None:
+    """Wait until the cycle's questions are posted and kept, so an answer joins the cycle."""
+
     async def probe() -> bool | None:
-        return True if channel.threads[thread] else None
+        async with session(pool, AGENT) as connection:
+            return True if await conversation(connection, cycle) else None
 
     await until(probe)
 
@@ -166,7 +169,7 @@ async def test_the_cycle_asks_waits_for_the_answer_and_delivers_it(
         temporal, pool, registry, lambda data: order() if data["answers"] else ASKS
     ) as (queue, channel, connector):
         handle = await start_cycle(temporal, AGENT, f"week-{uuid4()}", task_queue=queue)
-        await asked(channel, "thread:aisle-3")
+        await asked(pool, handle.id)
         inbound = Inbound("thread:aisle-3", f"m-{uuid4()}", "chat:erin", ANSWER)
         answer = await receive(pool, inbound)
         await handle.signal(AgentCycle.answered)

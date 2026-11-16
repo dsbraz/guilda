@@ -3,6 +3,7 @@
 #   uv run python -m brq_at_work.publish_agent --dsn <banco> --author <pessoa>
 # e uma pessoa com platform-admin aprova a proposta. A agenda, o prazo das respostas, o
 # máximo de rodadas e a thread são do FDE com o cliente; os valores abaixo são do piloto.
+# A agenda é um cron em UTC; o kernel atualiza o agendamento do ciclo a cada versão.
 # recall_tags é o escopo da memória: o kernel impõe essas tags de acesso à consulta do
 # agente e às retenções do ciclo, e só a aprovação de uma nova versão as muda.
 agent: weekly-report-agent
