@@ -59,7 +59,6 @@ async def serve(registry: Registry) -> None:
     try:
         await service.serve(
             temporal=os.environ["PXOS_TEMPORAL_ADDRESS"],
-            namespace=os.environ.get("PXOS_TEMPORAL_NAMESPACE", "default"),
             task_queue=os.environ["PXOS_TASK_QUEUE"],
             agent=AGENT,
             pool=pool,

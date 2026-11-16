@@ -1,0 +1,180 @@
+# Produção de uma instalação numa VM: docker compose -f deploy/compose.yaml up -d
+# Configuração e segredos vêm de deploy/.env (modelo em .env.example, nunca commitado).
+# Só o Caddy publica portas (80 e 443, com TLS automático); o resto fica na rede interna.
+# A UI do Temporal é opcional (--profile ui) e só escuta em loopback: use um túnel SSH.
+name: pxos
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *restart
+    image: pgvector/pgvector:0.8.1-pg16
+    environment:
+      POSTGRES_USER: pxos
+      POSTGRES_PASSWORD: ${PXOS_DB_OWNER_PASSWORD:?defina PXOS_DB_OWNER_PASSWORD}
+      POSTGRES_DB: pxos
+      PXOS_DB_APP_PASSWORD: ${PXOS_DB_APP_PASSWORD:?defina PXOS_DB_APP_PASSWORD}
+      PXOS_DB_PUBLISHER_PASSWORD: ${PXOS_DB_PUBLISHER_PASSWORD:?defina PXOS_DB_PUBLISHER_PASSWORD}
+      TEMPORAL_DB_PASSWORD: ${TEMPORAL_DB_PASSWORD:?defina TEMPORAL_DB_PASSWORD}
+      HINDSIGHT_DB_PASSWORD: ${HINDSIGHT_DB_PASSWORD:?defina HINDSIGHT_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pxos -d pxos"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Cria ou atualiza o schema do Temporal a cada subida, e sai.
+  temporal-schema:
+    image: temporalio/admin-tools:1.32.2
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      SQL_PASSWORD: ${TEMPORAL_DB_PASSWORD}
+    entrypoint: ["sh", "-euc"]
+    command:
+      - |
+        schema=/etc/temporal/schema/postgresql/v12
+        for db in temporal:temporal visibility:temporal_visibility; do
+          sql="temporal-sql-tool --plugin postgres12 --ep postgres -p 5432 -u temporal --db $${db#*:}"
+          $$sql setup-schema -v 0.0
+          $$sql update-schema -d "$$schema/$${db%%:*}/versioned"
+        done
+
+  temporal:
+    <<: *restart
+    image: temporalio/server:1.32.2
+    depends_on:
+      temporal-schema: { condition: service_completed_successfully }
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD}
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamicconfig.yaml
+    volumes:
+      - ./temporal/dynamicconfig.yaml:/etc/temporal/dynamicconfig.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z $$(hostname) 7233"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Registra o namespace default quando ainda não existe, e sai.
+  temporal-namespace:
+    image: temporalio/admin-tools:1.32.2
+    restart: on-failure
+    depends_on:
+      temporal: { condition: service_healthy }
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    entrypoint: ["sh", "-euc"]
+    command:
+      - |
+        until temporal operator cluster health; do sleep 2; done
+        temporal operator namespace describe -n default ||
+          temporal operator namespace create -n default
+
+  temporal-ui:
+    <<: *restart
+    image: temporalio/ui:2.58.1
+    profiles: [ui]
+    depends_on:
+      temporal: { condition: service_healthy }
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports: ["127.0.0.1:8080:8080"]
+
+  # Memória de contexto. Chama a Vertex com a conta de serviço da VM, na rota do deploy
+  # (o mesmo mapeamento de pxos_kernel.context.hindsight.server_settings).
+  hindsight:
+    <<: *restart
+    image: ghcr.io/vectorize-io/hindsight:1.2.1-slim
+    depends_on:
+      postgres: { condition: service_healthy }
+    stop_grace_period: 75s
+    environment:
+      HINDSIGHT_ENABLE_CP: "false"
+      HINDSIGHT_API_DATABASE_URL: postgresql://hindsight:${HINDSIGHT_DB_PASSWORD}@postgres:5432/hindsight
+      GOOGLE_CLOUD_PROJECT: ${PXOS_VERTEX_PROJECT:?defina PXOS_VERTEX_PROJECT}
+      HINDSIGHT_API_LLM_PROVIDER: vertexai
+      HINDSIGHT_API_LLM_VERTEXAI_PROJECT_ID: ${PXOS_VERTEX_PROJECT}
+      HINDSIGHT_API_LLM_VERTEXAI_REGION: ${PXOS_MEMORY_REGION:?defina PXOS_MEMORY_REGION}
+      HINDSIGHT_API_LLM_MODEL: ${PXOS_MEMORY_MODEL:?defina PXOS_MEMORY_MODEL}
+      HINDSIGHT_API_EMBEDDINGS_PROVIDER: google
+      HINDSIGHT_API_EMBEDDINGS_VERTEXAI_PROJECT_ID: ${PXOS_VERTEX_PROJECT}
+      HINDSIGHT_API_EMBEDDINGS_VERTEXAI_REGION: ${PXOS_EMBEDDING_REGION:?defina PXOS_EMBEDDING_REGION}
+      HINDSIGHT_API_EMBEDDINGS_GEMINI_MODEL: ${PXOS_EMBEDDING_MODEL:?defina PXOS_EMBEDDING_MODEL}
+      HINDSIGHT_API_EMBEDDINGS_GEMINI_OUTPUT_DIMENSIONALITY: "768"
+      HINDSIGHT_API_LLM_PROMPT_CACHE_ENABLED: "false"
+      HINDSIGHT_API_RERANKER_PROVIDER: rrf
+      HINDSIGHT_API_VECTOR_EXTENSION: pgvector
+      HINDSIGHT_API_TEXT_SEARCH_EXTENSION: native
+      HINDSIGHT_API_TEXT_SEARCH_EXTENSION_NATIVE_LANGUAGE: portuguese
+      HINDSIGHT_API_ENABLE_AUTO_CONSOLIDATION: "false"
+      # Traces de modelo guardam conteúdo restrito; ficam desligados (ADR 0001).
+      HINDSIGHT_API_LLM_TRACE_ENABLED: "false"
+      HINDSIGHT_API_OTEL_TRACES_ENABLED: "false"
+      HINDSIGHT_API_MCP_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8888/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  app:
+    <<: *restart
+    build:
+      context: ..
+    image: pxos-app
+    depends_on:
+      postgres: { condition: service_healthy }
+      temporal-namespace: { condition: service_completed_successfully }
+      hindsight: { condition: service_healthy }
+    env_file: .env
+    environment:
+      PXOS_OWNER_DATABASE_URL: postgresql://pxos:${PXOS_DB_OWNER_PASSWORD}@postgres:5432/pxos
+      PXOS_DATABASE_URL: postgresql://pxos_app_login:${PXOS_DB_APP_PASSWORD}@postgres:5432/pxos
+      PXOS_PUBLISHER_DATABASE_URL: postgresql://pxos_publisher_login:${PXOS_DB_PUBLISHER_PASSWORD}@postgres:5432/pxos
+      PXOS_TEMPORAL_ADDRESS: temporal:7233
+      PXOS_TASK_QUEUE: ${PXOS_TASK_QUEUE:?defina PXOS_TASK_QUEUE}
+      PXOS_HINDSIGHT_BANK: ${PXOS_HINDSIGHT_BANK:?defina PXOS_HINDSIGHT_BANK}
+      PXOS_HINDSIGHT_URL: http://hindsight:8888
+      PXOS_HTTP_PORT: "8000"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  caddy:
+    <<: *restart
+    image: caddy:2.11.9-alpine
+    depends_on:
+      app: { condition: service_healthy }
+    environment:
+      PXOS_DOMAIN: ${PXOS_DOMAIN:?defina PXOS_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
