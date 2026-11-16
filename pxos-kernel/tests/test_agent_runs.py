@@ -1,8 +1,8 @@
 """Agent runs are records the application cannot forge or change (PXOS-79, K34).
 
 The run's agent comes from the session, and the revision must be one of that agent's
-approved versions. No kernel module builds ADK agents today; when one does, every agent
-gets its model from the gateway (ADR 0004 §2, rule 1).
+approved versions. Only the agent runtime builds ADK agents, so every agent gets its model
+from the gateway (ADR 0004 §2, rule 1).
 """
 
 import re
@@ -44,7 +44,12 @@ async def test_the_application_cannot_forge_or_change_a_run(pool: asyncpg.Pool) 
             assert refused.value.sqlstate == "PX015"
 
 
-def test_no_kernel_module_builds_adk_agents() -> None:
+def test_only_the_agent_runtime_builds_adk_agents() -> None:
     kernel = Path(pxos_kernel.__file__).parent
     builds = re.compile(r"^\s*(import|from)\s+google\.adk\.(agents|runners)\b", re.M)
-    assert not [path for path in kernel.rglob("*.py") if builds.search(path.read_text())]
+    builders = {
+        path.relative_to(kernel).as_posix()
+        for path in kernel.rglob("*.py")
+        if builds.search(path.read_text())
+    }
+    assert builders == {"agents/runtime.py"}
