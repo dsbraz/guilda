@@ -2,6 +2,20 @@
 
 **Status:** aceito em 13/11/2026. Responde à questão do PRD (§16) "governança da fronteira do kernel".
 
+> **Refinamento do MVP (15/11/2026):** o [ADR 0006](0006-arquitetura-do-agente-especialista.md)
+> mantém ADK, Temporal e LinkML, amplia o uso do Hindsight com `recall` e distingue
+> contexto de estado canônico: o report semanal usa o ciclo canônico, revisado pelo PM.
+> O kernel monta o agente e tem o workflow do ciclo do agente; a distro os configura na
+> versão publicada. Envio autônomo é evolução futura.
+>
+> **Formas e materializações (16/11/2026):** o kernel oferece três formas: obter
+> transcrições de reuniões, obter uma base de documentos e um canal. Cada adaptador que as
+> materializa (Granola, SharePoint, Teams, e depois Meet, Drive, Zoom, Dropbox, Slack) é um
+> pacote próprio em `connectors/`, distribuído igual para toda distro. A distro escolhe e
+> configura os adaptadores; o FDE escreve só os que faltam. Um marketplace de conectores
+> virá depois. O gate de qualidade mantém cada adaptador fora do kernel, da distro e dos
+> outros adaptadores.
+
 ## Contexto
 
 O PRD propõe que uma capacidade entre no kernel quando duas ou mais distribuições
@@ -51,3 +65,6 @@ distribuições) volta a valer para promoções.
 | 14/11/2026 | Fases de autonomia: fase 2 age direto só em ação reversível com regras e dentro delas; fase 3 também sem regras, e as regras sempre limitam; irreversível sempre por uma pessoa | Kernel | Requisito do PRD (§4 req. 6, §6.3); as regras definem "baixo risco" |
 | 14/11/2026 | Fase de autonomia de cada agente | Instalação (deploy) | Decisão do cliente |
 | 14/11/2026 | Aprovação sempre por uma pessoa agindo por si; delegação não vale para revisar | Kernel | Um único caminho de autonomia: fase mais regras |
+| 16/11/2026 | Formas de obter transcrições de reuniões, base de documentos e canal; junção das gravações de uma mesma reunião numa descrição só; acesso seguindo a visibilidade na origem | Kernel | Mecanismo comum a qualquer cliente; "reunião" deixa de ser termo de domínio |
+| 16/11/2026 | Adaptadores de ferramenta (Granola, SharePoint, Teams…) | Pacote próprio em `connectors/`, reutilizado por toda distro | Evita que cada FDE reescreva o mesmo adaptador; prepara o marketplace |
+| 16/11/2026 | Escolha e configuração dos adaptadores (site, workspace, canal, marcas de acesso) | Distribuição e deploy | Decisão do cliente, feita pelo FDE |

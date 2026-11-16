@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="930" viewBox="0 0 1200 930" role="img" aria-labelledby="title desc">
+<title id="title">MVP: acompanhamento semanal de um projeto</title>
+<desc id="desc">Fontes autorizadas alimentam o contexto persistente do pxOS. Um agente ADK conversa em threads no Teams, prepara o status e recebe revisão do PM. Temporal agenda, espera e retoma; respostas e correções permanecem para a semana seguinte. Acessos e ambiente do piloto ainda estão abertos.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#67517b" stroke-width="1.5"/></marker></defs>
+<style>text{font-family:Arial,sans-serif;fill:#24172f} .title{font-size:30px;font-weight:700}.h{font-size:23px;font-weight:700}.b{font-size:20px}.small{font-size:18px}.line{fill:none;stroke:#67517b;stroke-width:2.5;marker-end:url(#arrow)}.box{fill:#f3edf9;stroke:#b69bcf;stroke-width:1.5}</style>
+<rect width="1200" height="930" fill="#fff"/>
+<text x="40" y="52" class="title">MVP · agente de acompanhamento de projeto</text>
+<text x="40" y="86" class="b">Primeiro marco: um time real usa o status após revisão do PM.</text>
+<rect x="40" y="118" width="540" height="142" rx="14" fill="#f4f5f7" stroke="#bac2cb"/>
+<text x="62" y="152" class="h">SharePoint → Microsoft Graph direto</text>
+<text x="62" y="186" class="b">Carga inicial + consulta incremental periódica</text>
+<text x="62" y="220" class="b">Identificação, versão, origem e acesso restrito</text>
+<rect x="620" y="118" width="540" height="142" rx="14" fill="#f4f5f7" stroke="#bac2cb"/>
+<text x="642" y="152" class="h">Granola → conexão própria do pxOS</text>
+<text x="642" y="186" class="b">API se disponível; alternativa: MCP autenticado</text>
+<text x="642" y="220" class="b">Validar acesso e operação agendada</text>
+<path d="M310 260 V300" class="line"/><path d="M890 260 V300" class="line"/>
+<rect x="40" y="303" width="1120" height="114" rx="14" class="box"/>
+<text x="62" y="338" class="h">pxOS · contexto e continuidade do trabalho</text>
+<text x="62" y="370" class="b">Fontes, respostas, correções e trabalho em andamento persistem entre semanas.</text>
+<text x="62" y="399" class="small">Sem duplicação; exclusões e perda de acesso respeitadas. Ingestão sem confirmar cada trecho.</text>
+<path d="M310 417 V460" class="line"/>
+<rect x="40" y="463" width="540" height="148" rx="14" class="box"/>
+<text x="62" y="498" class="h">Um agente ADK por projeto</text>
+<text x="62" y="531" class="b">Consulta contexto e esclarece lacunas</text>
+<text x="62" y="562" class="b">Prepara progresso, mudanças, riscos e decisões</text>
+<text x="62" y="591" class="small">Definição aprovada; versão registrada na execução</text>
+<path d="M580 529 H620" class="line" marker-start="url(#arrow)"/>
+<rect x="623" y="463" width="537" height="148" rx="14" fill="#ecf1f9" stroke="#9fb8e0"/>
+<text x="645" y="498" class="h">Teams · canal interno do projeto</text>
+<text x="645" y="531" class="b">Pedidos, perguntas proativas e respostas</text>
+<text x="645" y="562" class="b">Correções e revisão em threads</text>
+<text x="645" y="591" class="small">PM e time participam no contexto do trabalho</text>
+<path d="M310 611 V655" class="line"/>
+<rect x="40" y="658" width="1120" height="102" rx="14" fill="#ecf1f9" stroke="#9fb8e0"/>
+<text x="62" y="693" class="h">Status semanal → revisão do PM → compartilhamento com o cliente</text>
+<text x="62" y="727" class="b">Evidências e incertezas explícitas. Respostas e correções seguem para o próximo ciclo.</text>
+<rect x="40" y="789" width="1120" height="53" rx="12" fill="#4f1c7c"/>
+<text x="62" y="823" style="fill:white" class="b">Temporal: agenda, espera e retomada · Reinício sem perder respostas ou duplicar entregas</text>
+<text x="40" y="875" class="small">Em aberto: participantes, Teams/TI, Graph, Granola, ambiente, agenda e duração do piloto.</text>
+<text x="40" y="904" class="small">Depois do MVP: builder, workflows genéricos, carteira, apps e ações em Bud/portal.</text>
+</svg>

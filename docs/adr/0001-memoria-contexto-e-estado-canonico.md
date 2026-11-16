@@ -2,6 +2,12 @@
 
 **Status:** aceito em 13/11/2026. Fecha o PXOS-3.
 
+> **Refinamento do MVP (15/11/2026):** o [ADR 0006](0006-arquitetura-do-agente-especialista.md)
+> mantém ADK, Temporal e LinkML, amplia o uso do Hindsight com `recall` e distingue
+> contexto de estado canônico: o report semanal usa o ciclo canônico, revisado pelo PM.
+> O kernel monta o agente e tem o workflow do ciclo do agente; a distro os configura na
+> versão publicada. Envio autônomo é evolução futura.
+
 ## Contexto
 
 O PRD (§16) deixou em aberto construir ou adotar a camada de memória. Quatro spikes

@@ -4,6 +4,12 @@
 ADR 0003. Responde ao PRD v0.26 (§5 Agentes, Gatilhos e fluxos; seção "Construção e
 acompanhamento na plataforma").
 
+> **Refinamento do MVP (15/11/2026):** o [ADR 0006](0006-arquitetura-do-agente-especialista.md)
+> mantém ADK, Temporal e LinkML, amplia o uso do Hindsight com `recall` e distingue
+> contexto de estado canônico: o report semanal usa o ciclo canônico, revisado pelo PM.
+> O kernel monta o agente e tem o workflow do ciclo do agente; a distro os configura na
+> versão publicada. Envio autônomo é evolução futura.
+
 ## Contexto
 
 O PRD previa agentes em ADK e "um único motor de fluxos (Cloud Workflows ou Temporal)", com
@@ -82,3 +88,32 @@ não mudaria se o cliente fosse outro.
   (K44, Fase 10). A escolha dos motores não define o provedor de hospedagem.
 - A biblioteca de interface é escolhida no primeiro item da área web.
 - As versões usadas no spike são evidência, não política de versões de produção.
+
+## Nota de escopo — 15/11/2026: MVP antes do builder
+
+O [PRD v0.27](../../pxos-brq-work-prd.html#mvp) antecipa o piloto de um agente por
+projeto, que prepara acompanhamento semanal com contexto contínuo, esclarecimentos em
+threads no Teams e revisão do PM antes de compartilhar com o cliente. O builder vem depois
+do MVP.
+
+O primeiro agente é configuração da distribuição: um arquivo com instruções, ferramentas e
+agenda. A distribuição contribui, no máximo, com código de ferramentas; não monta o agente ADK nem escreve workflows. O workflow do ciclo do agente é do kernel, e a distribuição o configura na mesma versão publicada (ADR 0006).
+O kernel monta o agente ADK a partir da versão aprovada, com o modelo do gateway. O arquivo
+no Git é o rascunho proposto, não a fonte de verdade: um comando da distribuição o propõe
+pelo ciclo governado (no lugar da API ou do MCP previstos na §3), e a versão aprovada fica no
+banco, imutável, com registro da versão em cada execução. O futuro builder usará a mesma
+publicação. Ainda falta construir o comando de publicação, a montagem do agente pelo kernel
+e o agente semanal; o MCP saiu do código ([ADR 0005](0005-poda-para-o-mvp.md)). A área web
+e a composição genérica continuam como evolução de plataforma, sem serem pré-requisito para
+o piloto.
+
+As responsabilidades dos motores não mudam: ADK executa o trabalho do agente em Activities;
+Temporal mantém agenda, espera e retomada. Contexto, fontes, respostas e trabalho em
+andamento persistem no pxOS entre conversas e semanas. Ingerir contexto não exige
+aprovação de cada trecho e não autoriza alterações canônicas ou ações externas; a entrega
+semanal passa pela revisão do PM.
+
+SharePoint entra por Microsoft Graph direto, com carga inicial e consulta incremental
+periódica; Granola por conexão própria do pxOS (API se disponível, ou MCP autenticado após
+validar operação agendada). Acessos, ambiente e condições do piloto permanecem
+[dependências abertas com critérios de resolução](../../pxos-brq-work-prd.html#mvp-dependencias).
