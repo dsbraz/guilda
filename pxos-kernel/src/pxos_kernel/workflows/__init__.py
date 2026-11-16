@@ -2,8 +2,15 @@
 
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
 
-from pxos_kernel.workflows.activities import SyncActivities
-from pxos_kernel.workflows.definitions import SyncConnector, sync_workflow_id
+from pxos_kernel.workflows.activities import CycleActivities, SyncActivities
+from pxos_kernel.workflows.cycle import start_cycle
+from pxos_kernel.workflows.definitions import (
+    AgentCycle,
+    SyncConnector,
+    cycle_workflow_id,
+    schedule_id,
+    sync_workflow_id,
+)
 
 
 def workflow_runner() -> SandboxedWorkflowRunner:
@@ -16,8 +23,13 @@ def workflow_runner() -> SandboxedWorkflowRunner:
 
 
 __all__ = [
+    "AgentCycle",
+    "CycleActivities",
     "SyncActivities",
     "SyncConnector",
+    "cycle_workflow_id",
+    "schedule_id",
+    "start_cycle",
     "sync_workflow_id",
     "workflow_runner",
 ]
