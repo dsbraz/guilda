@@ -32,7 +32,9 @@ from pxos_kernel.agents import (
     propose_deliverable,
     recall_tool,
     run_round,
+    scoped_recall,
 )
+from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.model_access import FakeModels, GatewayModel, ModelGateway, ModelNotAllowed
 from pxos_kernel.ontology import Registry
@@ -86,6 +88,7 @@ async def test_a_round_reads_the_cycle_as_data_with_the_versions_instructions(
         "answers": ["Aisle 3."],
         "corrections": ["Twelve, not ten."],
         "unavailable_sources": ["shelf-log"],
+        "final_round": False,
     }
     assert models.routes == [ROUTE]
 
@@ -93,6 +96,14 @@ async def test_a_round_reads_the_cycle_as_data_with_the_versions_instructions(
 async def test_a_round_may_ask_the_thread_instead(pool: asyncpg.Pool, registry: Registry) -> None:
     agent = await built(pool, registry, FakeModels(reply=ASKS))
     assert await agent.answer(RoundInput()) == RoundOutput(questions=("Which aisle?",))
+
+
+async def test_the_last_round_must_deliver(pool: asyncpg.Pool, registry: Registry) -> None:
+    last = RoundInput(final_round=True)
+    with pytest.raises(InvalidOutput):
+        await (await built(pool, registry, FakeModels(reply=ASKS))).answer(last)
+    delivered = await (await built(pool, registry, FakeModels(reply=DELIVERS))).answer(last)
+    assert delivered == RoundOutput(deliverable=ORDER)
 
 
 @pytest.mark.parametrize(
@@ -145,6 +156,16 @@ async def test_the_recall_tool_takes_only_a_query(pool: asyncpg.Pool, registry: 
     models = FakeModels(reply=DELIVERS)
     await (await built(pool, registry, models)).answer(RoundInput())
     assert declared(models.requests[0])["recall"]["properties"].keys() == {"query"}
+
+
+async def test_the_kernel_scopes_recall_by_the_versions_tags(pool: asyncpg.Pool) -> None:
+    version = await version_in_force(pool)
+    store = FakeContextStore()
+    await store.retain("shelf-log@1", "Erin restocks A-1.", "i", tags=version.recall_tags)
+    await store.retain("payroll@1", "Erin earns more.", "i", tags=("store:office",))
+    await store.retain("untagged@1", "Erin is on leave.", "i")
+
+    assert await scoped_recall(store, version)("Erin") == [("Erin restocks A-1.", "shelf-log@1")]
 
 
 async def test_the_agent_gets_only_the_tools_of_its_version(

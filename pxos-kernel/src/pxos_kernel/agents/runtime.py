@@ -20,6 +20,7 @@ from google.genai import types
 from pydantic import BaseModel, ValidationError, create_model
 
 from pxos_kernel.agents.versions import AgentVersion
+from pxos_kernel.context import ContextStore
 from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import Connection
 from pxos_kernel.model_access import GatewayModel, ModelNotAllowed, Usage, issued_by_gateway
@@ -48,6 +49,9 @@ class RoundInput:
     answers: tuple[str, ...] = ()
     corrections: tuple[str, ...] = ()
     unavailable_sources: tuple[str, ...] = ()
+    final_round: bool = False
+    """The cycle has no round after this one: the agent must deliver, with what it could
+    not confirm as uncertainties."""
 
 
 @dataclass(frozen=True)
@@ -56,6 +60,16 @@ class RoundOutput:
 
     questions: tuple[str, ...] = ()
     deliverable: dict[str, Any] | None = None
+
+
+def scoped_recall(store: ContextStore, version: AgentVersion) -> Recall:
+    """The search the kernel binds for ``version``: only within its recall tags."""
+
+    async def search(query: str) -> list[tuple[str, str]]:
+        found = await store.recall(query, tags=version.recall_tags)
+        return [(recalled.text, recalled.source) for recalled in found]
+
+    return search
 
 
 def recall_tool(search: Recall) -> FunctionTool:
@@ -92,6 +106,8 @@ class Agent:
         questions, deliverable = tuple(parsed.questions or ()), parsed.deliverable
         if bool(questions) == (deliverable is not None):
             raise InvalidOutput("a round answers either questions or the deliverable")
+        if round_input.final_round and deliverable is None:
+            raise InvalidOutput("the last round of a cycle answers the deliverable")
         if deliverable is None:
             return RoundOutput(questions=questions)
         return RoundOutput(deliverable=deliverable.model_dump(mode="json", exclude_none=True))

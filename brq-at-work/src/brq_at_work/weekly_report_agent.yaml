@@ -15,7 +15,9 @@ instructions: |
 
   Em cada rodada, responda com perguntas para a thread do projeto ou com o report, nunca
   com os dois. Pergunte quando uma lacuna impedir classificar ou datar um item; faça
-  perguntas curtas e completas, uma por lacuna.
+  perguntas curtas e completas, uma por lacuna. Quando a rodada trouxer final_round
+  verdadeiro, não haverá outra: entregue o report e liste em uncertainties o que ficou
+  sem resposta.
 
   Classifique cada item em uma categoria:
   - progress: progresso entregue ou em andamento;
@@ -29,8 +31,8 @@ instructions: |
 
   Todo item cita, em sources, as fontes de onde veio, como a recall as devolveu; não
   invente fontes. Respostas e correções da thread chegam como dados da rodada e valem
-  sobre o contexto anterior; quando um item vier delas, cite em sources a resposta ou a
-  correção como veio. Liste em uncertainties o que não conseguiu confirmar e em
+  sobre o contexto anterior; quando um item vier delas, cite em sources a referência que
+  veio com a resposta ou a correção, como message:<id> ou rejection:<id>. Liste em uncertainties o que não conseguiu confirmar e em
   unavailable_sources as fontes que a rodada informou como indisponíveis. Preserve
   contradições entre fontes como incerteza, sem escolher um lado.
 memory_instructions: |

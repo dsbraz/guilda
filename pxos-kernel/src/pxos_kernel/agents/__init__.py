@@ -11,6 +11,7 @@ from pxos_kernel.agents.runtime import (
     RoundOutput,
     build_agent,
     recall_tool,
+    scoped_recall,
 )
 from pxos_kernel.agents.versions import (
     AGENTS,
@@ -50,4 +51,5 @@ __all__ = [
     "recorded_run",
     "register_agents",
     "run_round",
+    "scoped_recall",
 ]
