@@ -21,7 +21,6 @@ class Fact:
     payload: dict[str, Any]
     evidence: dict[str, str]
     valid_from: datetime
-    valid_to: datetime | None
     proposal_id: UUID
     known_at: datetime
 
@@ -38,8 +37,7 @@ async def current(
 
     Revisions are full snapshots from ``valid_from``. Per entity, among those known and
     already in force, the latest ``valid_from`` wins and, on the same date, the highest
-    revision; an expired ``valid_to`` means no fact. RLS leaves out types the actor cannot
-    read.
+    revision. RLS leaves out types the actor cannot read.
     """
     rows = await connection.fetch(
         """
@@ -52,5 +50,4 @@ async def current(
         valid_at,
         known_at,
     )
-    facts = [Fact(**dict(row)) for row in rows]
-    return [fact for fact in facts if fact.valid_to is None or valid_at < fact.valid_to]
+    return [Fact(**dict(row)) for row in rows]

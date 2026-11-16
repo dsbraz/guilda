@@ -73,7 +73,6 @@ class Proposal:
     entity_id: UUID
     base_revision: int
     valid_from: datetime
-    valid_to: datetime | None
     payload: dict[str, Any]
     evidence: dict[str, str]
     digest: str
@@ -113,7 +112,6 @@ async def propose(
     payload: dict[str, Any],
     evidence: Evidence,
     valid_from: datetime,
-    valid_to: datetime | None = None,
     entity_id: UUID | None = None,
     base_revision: int = 0,
 ) -> Proposal:
@@ -131,7 +129,6 @@ async def propose(
         entity_id or uuid4(),
         base_revision,
         valid_from,
-        valid_to,
         payload,
         evidence,
     )
@@ -192,7 +189,6 @@ async def _insert(
     entity_id: UUID,
     base_revision: int,
     valid_from: datetime,
-    valid_to: datetime | None,
     payload: dict[str, Any],
     evidence: Evidence,
 ) -> Proposal:
@@ -207,7 +203,6 @@ async def _insert(
         "entity_id": str(entity_id),
         "base_revision": base_revision,
         "valid_from": valid_from.isoformat(),
-        "valid_to": valid_to.isoformat() if valid_to else None,
         "payload": payload,
         "evidence": evidence.as_dict(),
     }
@@ -216,9 +211,9 @@ async def _insert(
             """
             INSERT INTO pxos.proposals (
                 package, package_version, package_digest, action, type_name, entity_id,
-                base_revision, valid_from, valid_to, payload, evidence, digest,
+                base_revision, valid_from, payload, evidence, digest,
                 author, author_principal
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '', '')
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '', '')
             RETURNING *
             """,
             package.name,
@@ -229,7 +224,6 @@ async def _insert(
             entity_id,
             base_revision,
             valid_from,
-            valid_to,
             payload,
             evidence.as_dict(),
             proposal_digest(content),

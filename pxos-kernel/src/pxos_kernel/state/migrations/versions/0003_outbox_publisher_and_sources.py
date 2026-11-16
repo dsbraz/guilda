@@ -32,11 +32,11 @@ STATEMENTS = [
         IF NEW.decision = 'approved' THEN
             INSERT INTO facts (
                 entity_id, revision, package, type_name, payload, evidence,
-                valid_from, valid_to, proposal_id
+                valid_from, proposal_id
             ) VALUES (
                 proposal.entity_id, proposal.base_revision + 1, proposal.package,
                 proposal.type_name, proposal.payload, proposal.evidence,
-                proposal.valid_from, proposal.valid_to, proposal.id
+                proposal.valid_from, proposal.id
             );
             INSERT INTO outbox (event_type, entity_id, payload) VALUES (
                 'fact.recorded', proposal.entity_id,

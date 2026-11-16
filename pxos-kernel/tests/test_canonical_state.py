@@ -54,7 +54,6 @@ async def new_proposal(
     *,
     quantity: int = 3,
     valid_from: datetime = NOV[1],
-    valid_to: datetime | None = None,
     entity_id: UUID | None = None,
     base_revision: int = 0,
     author: str = "erin",
@@ -67,7 +66,6 @@ async def new_proposal(
             payload=order(quantity),
             evidence=EVIDENCE,
             valid_from=valid_from,
-            valid_to=valid_to,
             entity_id=entity_id,
             base_revision=base_revision,
         )
@@ -120,7 +118,7 @@ async def test_proposal_is_immutable_draft_until_approved(
 async def test_the_digest_is_sha256_of_what_the_reviewer_sees(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
-    proposal = await new_proposal(pool, registry, valid_to=NOV[20])
+    proposal = await new_proposal(pool, registry)
     package = registry.get("retail").package
     content = {
         "package": package.name,
@@ -131,7 +129,6 @@ async def test_the_digest_is_sha256_of_what_the_reviewer_sees(
         "entity_id": str(proposal.entity_id),
         "base_revision": 0,
         "valid_from": NOV[1].isoformat(),
-        "valid_to": NOV[20].isoformat(),
         "payload": proposal.payload,
         "evidence": EVIDENCE.as_dict(),
     }
@@ -367,11 +364,9 @@ async def test_current_facts_of_a_type(pool: asyncpg.Pool, registry: Registry) -
             pool, registry, quantity=5, entity_id=corrected.entity_id, base_revision=1
         ),
     )
-    gone = await new_proposal(pool, registry, quantity=4, valid_to=NOV[10])
-    await approve(pool, registry, gone)
     later = await new_proposal(pool, registry, quantity=9, valid_from=NOV[20])
     await approve(pool, registry, later)
-    ours = {corrected.entity_id, gone.entity_id, later.entity_id}
+    ours = {corrected.entity_id, later.entity_id}
 
     async def quantities(valid_at: datetime) -> dict[UUID, int]:
         async with session(pool, "erin") as connection:
@@ -380,7 +375,7 @@ async def test_current_facts_of_a_type(pool: asyncpg.Pool, registry: Registry) -
             )
         return {f.entity_id: f.payload["quantity"] for f in facts if f.entity_id in ours}
 
-    assert await quantities(NOV[5]) == {corrected.entity_id: 5, gone.entity_id: 4}
+    assert await quantities(NOV[5]) == {corrected.entity_id: 5}
     assert await quantities(NOV[25]) == {corrected.entity_id: 5, later.entity_id: 9}
     async with session(pool, "frank") as connection:
         assert (
@@ -389,8 +384,10 @@ async def test_current_facts_of_a_type(pool: asyncpg.Pool, registry: Registry) -
         )
 
 
-async def test_future_validity_and_finite_interval(pool: asyncpg.Pool, registry: Registry) -> None:
-    created = await new_proposal(pool, registry, quantity=3, valid_to=NOV[20])
+async def test_a_revision_valid_in_the_future_takes_over_on_its_date(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    created = await new_proposal(pool, registry, quantity=3)
     await approve(pool, registry, created)
     future = await new_proposal(
         pool,
@@ -399,13 +396,11 @@ async def test_future_validity_and_finite_interval(pool: asyncpg.Pool, registry:
         entity_id=created.entity_id,
         base_revision=1,
         valid_from=NOV[15],
-        valid_to=NOV[20],
     )
     await approve(pool, registry, future)
 
     assert await read(pool, created.entity_id, NOV[10], LATER) == 3
     assert await read(pool, created.entity_id, NOV[16], LATER) == 8
-    assert await read(pool, created.entity_id, NOV[25], LATER) is None
 
 
 async def test_concurrent_proposals_on_same_revision_have_one_winner(
