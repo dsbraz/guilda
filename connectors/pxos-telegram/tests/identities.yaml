@@ -1,0 +1,32 @@
+# The retail fixture's people, bound to Telegram as `telegram:<user id>`.
+actors:
+  - id: carla
+    kind: internal_person
+    name: Carla
+    roles: [store-manager]
+    channel_ids: [telegram:1001]
+  - id: diego
+    kind: internal_person
+    name: Diego
+    roles: [store-manager]
+    channel_ids: [telegram:1002]
+  - id: erin
+    kind: internal_person
+    name: Erin
+    roles: [store-staff]
+    channel_ids: [telegram:1003]
+  - id: frank
+    kind: internal_person
+    name: Frank
+  - id: vera
+    kind: external_person
+    name: Vera (fornecedora)
+    roles: [store-manager]
+    channel_ids: [telegram:1004]
+  - id: restock-agent
+    kind: agent
+    name: Agente de reposição
+    roles: [agent]
+delegations:
+  - agent: restock-agent
+    person: carla

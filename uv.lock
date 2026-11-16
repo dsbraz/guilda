@@ -10,6 +10,7 @@ members = [
     "pxos-kernel",
     "pxos-sharepoint",
     "pxos-teams",
+    "pxos-telegram",
 ]
 
 [[package]]
@@ -232,6 +233,7 @@ dependencies = [
     { name = "pxos-kernel" },
     { name = "pxos-sharepoint" },
     { name = "pxos-teams" },
+    { name = "pxos-telegram" },
 ]
 
 [package.metadata]
@@ -240,6 +242,7 @@ requires-dist = [
     { name = "pxos-kernel", editable = "pxos-kernel" },
     { name = "pxos-sharepoint", editable = "connectors/pxos-sharepoint" },
     { name = "pxos-teams", editable = "connectors/pxos-teams" },
+    { name = "pxos-telegram", editable = "connectors/pxos-telegram" },
 ]
 
 [[package]]
@@ -1395,6 +1398,7 @@ dependencies = [
     { name = "pxos-kernel" },
     { name = "pxos-sharepoint" },
     { name = "pxos-teams" },
+    { name = "pxos-telegram" },
 ]
 
 [package.dev-dependencies]
@@ -1417,6 +1421,7 @@ requires-dist = [
     { name = "pxos-kernel", editable = "pxos-kernel" },
     { name = "pxos-sharepoint", editable = "connectors/pxos-sharepoint" },
     { name = "pxos-teams", editable = "connectors/pxos-teams" },
+    { name = "pxos-telegram", editable = "connectors/pxos-telegram" },
 ]
 
 [package.metadata.requires-dev]
@@ -1511,6 +1516,23 @@ requires-dist = [
     { name = "httpx", specifier = "==0.28.1" },
     { name = "pxos-kernel", editable = "pxos-kernel" },
     { name = "pyjwt", extras = ["crypto"], specifier = "==2.15.1" },
+    { name = "starlette", specifier = "==1.10.0" },
+]
+
+[[package]]
+name = "pxos-telegram"
+version = "0.1.0"
+source = { editable = "connectors/pxos-telegram" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pxos-kernel" },
+    { name = "starlette" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "pxos-kernel", editable = "pxos-kernel" },
     { name = "starlette", specifier = "==1.10.0" },
 ]
 

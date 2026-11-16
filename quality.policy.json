@@ -17,6 +17,7 @@
     "connectors/pxos-granola/src/pxos_granola",
     "connectors/pxos-sharepoint/src/pxos_sharepoint",
     "connectors/pxos-teams/src/pxos_teams",
+    "connectors/pxos-telegram/src/pxos_telegram",
     "quality"
   ],
   "tests": [
@@ -25,6 +26,7 @@
     "connectors/pxos-granola/tests",
     "connectors/pxos-sharepoint/tests",
     "connectors/pxos-teams/tests",
+    "connectors/pxos-telegram/tests",
     "tests/quality"
   ],
   "lint": [
@@ -65,7 +67,8 @@
     "pxos-kernel/tests/test_vertex_routes.py": "PXOS_VERTEX_PROJECT not set",
     "connectors/pxos-sharepoint/tests/test_sharepoint_live.py": "PXOS_SHAREPOINT_TENANT not set",
     "connectors/pxos-granola/tests/test_granola_live.py": "PXOS_GRANOLA_API_KEY not set",
-    "connectors/pxos-teams/tests/test_teams_live.py": "PXOS_TEAMS_* not set"
+    "connectors/pxos-teams/tests/test_teams_live.py": "PXOS_TEAMS_* not set",
+    "connectors/pxos-telegram/tests/test_telegram_live.py": "PXOS_TELEGRAM_* not set"
   },
   "pending_requirements": [
     "pxos-kernel/tests/acceptance/test_requirements.py",
@@ -79,6 +82,7 @@
   "adapters": [
     "connectors/pxos-granola/src/pxos_granola",
     "connectors/pxos-sharepoint/src/pxos_sharepoint",
-    "connectors/pxos-teams/src/pxos_teams"
+    "connectors/pxos-teams/src/pxos_teams",
+    "connectors/pxos-telegram/src/pxos_telegram"
   ]
 }
