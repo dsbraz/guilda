@@ -19,11 +19,11 @@ actors:
     kind: internal_person
     name: Eva (administradora da plataforma)
     roles: [platform-admin]
-  # Agente especialista do report semanal (weekly_report_agent.yaml): lê sua definição,
-  # pergunta na thread do projeto e propõe o report; quem aprova é o PM.
-  - id: weekly-report-agent
+  # Assistente do projeto (project_assistant.yaml): lê sua definição, pergunta na thread
+  # do projeto e propõe o report semanal; quem aprova é o PM.
+  - id: project-assistant
     kind: agent
-    name: Agente do report semanal
+    name: Assistente do projeto
     roles: [agent]
   # Contato do cliente: identidade própria, sem acesso ao contexto interno (PXOS-61).
   - id: dora

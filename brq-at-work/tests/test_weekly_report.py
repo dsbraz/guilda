@@ -14,6 +14,7 @@ import pytest
 
 from brq_at_work.composition import WEEKLY_REPORT
 from brq_at_work.publish_agent import AGENT_FILE, publish
+from brq_at_work.serve import AGENT
 from db_testing import Database
 from fakes_testing import FakeModels
 from pxos_kernel.agents import (
@@ -27,8 +28,6 @@ from pxos_kernel.identity import session
 from pxos_kernel.model_access import ModelGateway
 from pxos_kernel.ontology import InvalidPayload, Registry
 from pxos_kernel.state import InvalidProposal, review
-
-AGENT = "weekly-report-agent"
 
 REPORT: dict[str, Any] = {
     "summary": "Semana de homologação.",

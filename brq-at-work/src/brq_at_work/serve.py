@@ -19,7 +19,7 @@ from pxos_kernel.model_access import ModelGateway, Route, vertex_models
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 
-AGENT = "weekly-report-agent"
+AGENT = "project-assistant"
 
 
 class ChannelNotWired(PxosError):

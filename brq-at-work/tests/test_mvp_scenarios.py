@@ -31,8 +31,9 @@ import asyncpg
 import pytest
 from temporalio.client import Client, WorkflowHandle
 
-from brq_at_work.composition import bootstrap
+from brq_at_work.composition import ACCESS, bootstrap
 from brq_at_work.publish_agent import AGENT_FILE, publish
+from brq_at_work.serve import AGENT
 from db_testing import Database, create_test_database, drain
 from fakes_testing import FakeChannel, FakeConnector, FakeContextStore
 from model_testing import ROUTE
@@ -47,7 +48,6 @@ from pxos_kernel.workflows import cycle_handlers, start_cycle
 
 from .pilot import QUESTION, TOKENS, Script, continuing, cycle_worker, reviewing, weekly
 
-AGENT = "weekly-report-agent"
 PROJECT = "project:aurora"
 BOARD = "board:restricted"
 THREAD = "projeto-piloto"  # the version's thread
@@ -290,7 +290,7 @@ async def test_continuity(
     # Next week's round brought no correction of its own: it came by recall, in scope.
     next_round = await round_input(context_pool, AGENT, next_week.id, final_round=False)
     assert next_round.corrections == ()
-    recalled = await pilot.store.recall("marco 2", tags=["projeto:piloto"])
+    recalled = await pilot.store.recall("marco 2", tags=list(ACCESS))
     assert correction in {r.source for r in recalled}
 
 

@@ -25,7 +25,7 @@ from google.genai import types
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from brq_at_work.composition import build_registry
+from brq_at_work.composition import ACCESS, build_registry
 from fakes_testing import FakeChannel, FakeConnector, FakeContextStore, FakeModels
 from pxos_kernel.channel import Channel
 from pxos_kernel.context import ContextStore
@@ -35,7 +35,7 @@ from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 from pxos_kernel.workflows import AgentCycle, CycleActivities, workflow_runner
 
-PROJECT = "projeto:piloto"  # the version's recall tag
+PROJECT = ACCESS[0]  # the version's recall tag
 QUESTION = "A entrega de sexta saiu?"
 TOKENS = (1_000, 100)
 """What each model call of a round reports; a round recalls, then answers: two calls."""

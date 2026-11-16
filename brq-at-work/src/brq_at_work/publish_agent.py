@@ -1,4 +1,4 @@
-"""Propose the weekly report agent's definition file as its next version (ADR 0006 §5).
+"""Propose the project assistant's definition file as its next version (ADR 0006 §5).
 
 A person proposes it; a platform admin approves it through the review cycle. The file
 and its digest are the evidence, so the approved version points to what was reviewed.
@@ -18,7 +18,7 @@ from brq_at_work.composition import ROOT, build_registry
 from pxos_kernel.agents import propose_version
 from pxos_kernel.state import Evidence, Proposal, create_pool
 
-AGENT_FILE = ROOT / "weekly_report_agent.yaml"
+AGENT_FILE = ROOT / "project_assistant.yaml"
 
 
 async def publish(dsn: str, path: Path, *, author: str) -> Proposal:

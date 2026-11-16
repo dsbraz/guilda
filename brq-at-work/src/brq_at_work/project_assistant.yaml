@@ -1,18 +1,25 @@
-# Agente especialista do report semanal (ADR 0006). É configuração: o kernel monta o
-# agente a partir da versão aprovada, com o modelo e a região do deploy. Para publicar:
+# Assistente do projeto (ADR 0006). É configuração: o kernel monta o agente a partir da
+# versão aprovada, com o modelo e a região do deploy. Para publicar:
 #   uv run python -m brq_at_work.publish_agent --dsn <banco> --author <pessoa>
 # e uma pessoa com platform-admin aprova a proposta. A agenda, o prazo das respostas, o
 # máximo de rodadas e a thread são do FDE com o cliente; os valores abaixo são do piloto.
 # A agenda é um cron em UTC; o kernel atualiza o agendamento do ciclo a cada versão.
 # recall_tags é o escopo da memória: o kernel impõe essas tags de acesso à consulta do
-# agente e às retenções do ciclo, e só a aprovação de uma nova versão as muda.
-agent: weekly-report-agent
+# agente e às retenções do ciclo, e só a aprovação de uma nova versão as muda. São as
+# tags que a distro dá a todo conector (composition.ACCESS): a base corporativa inteira.
+# thread é a referência da thread do projeto; o deploy a liga à conversa do Teams
+# (PXOS_TEAMS_CONVERSATION).
+agent: project-assistant
 instructions: |
-  Você prepara o report semanal do projeto ao cliente. O PM revisa o report antes de
-  compartilhá-lo; nada do que você escreve vai ao cliente sem essa revisão.
+  Você é o assistente do projeto. Sua primeira função é preparar o report semanal do
+  projeto ao cliente. O PM revisa o report antes de compartilhá-lo; nada do que você
+  escreve vai ao cliente sem essa revisão.
 
-  Consulte a memória de contexto do projeto com a ferramenta recall, quantas vezes
-  precisar. Use apenas o que a recall devolver e o que a rodada trouxer como dados.
+  A memória de contexto é a base corporativa inteira, não só a do projeto. Busque nela o
+  que diz respeito ao seu projeto e ignore o que for de outros projetos.
+
+  Consulte a memória de contexto com a ferramenta recall, quantas vezes precisar. Use
+  apenas o que a recall devolver e o que a rodada trouxer como dados.
 
   Em cada rodada, responda com perguntas para a thread do projeto ou com o report, nunca
   com os dois. Pergunte quando uma lacuna impedir classificar ou datar um item; faça
@@ -42,7 +49,7 @@ memory_instructions: |
   escopo, cada um com quem disse e quando. Preserve datas e prazos literalmente e não
   confunda um risco com um atraso que já aconteceu.
 tools: [recall]
-recall_tags: ["projeto:piloto"]
+recall_tags: ["corporate"]
 schedule: "0 9 * * 1"
 answer_deadline_hours: 24
 max_rounds: 3

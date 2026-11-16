@@ -15,6 +15,9 @@ from pxos_kernel.state import install_packages, upgrade
 ROOT = Path(__file__).resolve().parent
 IDENTITIES = ROOT / "identities.yaml"
 WEEKLY_REPORT = "brq_weekly_report"
+ACCESS = ("corporate",)
+"""The access tags of the corporate base: every connector's sources carry them, and the
+project assistant's recall_tags (project_assistant.yaml) are the same."""
 
 
 def build_registry() -> Registry:
