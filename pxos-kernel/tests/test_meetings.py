@@ -10,7 +10,7 @@ from db_testing import Database
 from fakes_testing import FakeContextStore, FakeTranscriptSource
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import ConnectorUnavailable, sync
-from pxos_kernel.meetings import Meeting, MeetingConnector, Recording
+from pxos_kernel.meetings import Meeting, MeetingConnector, Recording, RecordingGone
 
 
 def test_attendees_recording_the_same_meeting_name_it_the_same_way() -> None:
@@ -86,6 +86,23 @@ class TranscriptsDown(FakeTranscriptSource):
         if self.down:
             raise ConnectorUnavailable(f"{self.name} transcripts cannot be reached")
         return await super().transcript(recording)
+
+
+class Vanishing(FakeTranscriptSource):
+    """A tool whose recordings in ``gone`` vanished after it listed them."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.gone: set[str] = set()
+
+    async def transcript(self, recording: str) -> str:
+        if recording in self.gone:
+            raise RecordingGone(recording)
+        return await super().transcript(recording)
+
+
+def vanishing() -> Vanishing:
+    return Vanishing(f"tool-{uuid4()}")
 
 
 class BrokenStore(FakeContextStore):
@@ -191,6 +208,69 @@ async def test_deleting_the_chosen_recording_falls_back_to_the_next(pool: asyncp
 
     assert described(store, weekly) == source.transcripts[shorter.id]
     assert await state(pool, weekly) == "available"
+
+
+async def test_a_chosen_recording_gone_before_its_transcript_falls_back_in_the_same_pass(
+    pool: asyncpg.Pool,
+) -> None:
+    source, store, weekly = vanishing(), FakeContextStore(), meeting()
+    shorter, longer = recording(weekly, 1800), recording(weekly, 3600)
+    put(source, shorter, longer)
+    source.gone.add(longer.id)
+
+    assert await sync_meetings(pool, store, source) is True
+
+    assert described(store, weekly) == source.transcripts[shorter.id]
+    assert len(store.retained) == 1
+    assert await sync_meetings(pool, store, source) is True
+    assert len(store.retained) == 1
+
+
+async def test_a_meeting_whose_only_recording_is_gone_is_not_retained(
+    pool: asyncpg.Pool,
+) -> None:
+    source, store, weekly = vanishing(), FakeContextStore(), meeting()
+    only = recording(weekly, 1800)
+    put(source, only)
+    source.gone.add(only.id)
+
+    assert await sync_meetings(pool, store, source) is True
+
+    assert described(store, weekly) is None
+    assert await state(pool, weekly) is None
+    assert await cursor(pool, source) == "1"
+
+
+async def test_a_retained_meeting_whose_last_recording_is_gone_is_forgotten_in_the_same_pass(
+    pool: asyncpg.Pool,
+) -> None:
+    source, store, weekly = vanishing(), FakeContextStore(), meeting()
+    only = recording(weekly, 1800)
+    put(source, only)
+    await sync_meetings(pool, store, source)
+    source.put(recording(weekly, 1800, id=only.id, version="2"), "Erin: corrected.\n")
+    source.gone.add(only.id)
+
+    assert await sync_meetings(pool, store, source) is True
+
+    assert described(store, weekly) is None
+    assert await state(pool, weekly) == "deleted"
+
+
+async def test_a_gone_recording_falling_back_to_the_one_retained_retains_nothing_new(
+    pool: asyncpg.Pool,
+) -> None:
+    source, store, weekly = vanishing(), FakeContextStore(), meeting()
+    shorter, longer = recording(weekly, 1800), recording(weekly, 3600)
+    put(source, shorter)
+    await sync_meetings(pool, store, source)
+    put(source, longer)
+    source.gone.add(longer.id)
+
+    assert await sync_meetings(pool, store, source) is True
+
+    assert described(store, weekly) == source.transcripts[shorter.id]
+    assert len(store.retained) == 1
 
 
 async def test_deleting_every_recording_forgets_the_meeting(pool: asyncpg.Pool) -> None:

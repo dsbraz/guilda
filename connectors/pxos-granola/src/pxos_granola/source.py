@@ -14,7 +14,8 @@ boundary come again whether the filter is strict or not, and the kernel's idempo
 absorbs them. Granola lists only notes with a generated summary.
 
 Removed recordings are listed notes with ``deleted_at`` (Granola shows them only to keys
-that reach every workspace note) and notes that vanish between listing and reading. A note
+that reach every workspace note) and notes that vanish between listing and reading. A
+transcript asked for a note that vanished since raises the kernel's ``RecordingGone``. A note
 that leaves the key's reach without changing (unshared, moved out of the space, space
 closed to the API) is not in any delta; Granola's webhooks do not announce it either.
 
@@ -32,15 +33,11 @@ from typing import Any
 import httpx
 
 from pxos_kernel.ingestion import ConnectorUnavailable
-from pxos_kernel.meetings import Meeting, Recording, RecordingChanges
+from pxos_kernel.meetings import Meeting, Recording, RecordingChanges, RecordingGone
 
 BASE_URL = "https://public-api.granola.ai"
 BACKOFF = (1.0, 2.0, 4.0, 8.0, 16.0)
 OVERLAP = timedelta(seconds=1)
-
-
-class RecordingNotFound(LookupError):
-    """The recording does not exist or the key no longer reaches it."""
 
 
 class GranolaTranscripts:
@@ -78,9 +75,9 @@ class GranolaTranscripts:
         for note in notes:
             try:
                 if note["deleted_at"]:
-                    raise RecordingNotFound(note["id"])
+                    raise RecordingGone(note["id"])
                 recordings.append(await self._recording(note))
-            except RecordingNotFound:
+            except RecordingGone:
                 removed.append(note["id"])
         stamps = [note["updated_at"] for note in notes] + ([cursor] if cursor else [])
         return RecordingChanges(
@@ -130,7 +127,7 @@ class GranolaTranscripts:
             await self._sleep(delay)
             response = await self._send(path, params)
         if response.status_code == 404 and path != "/v1/notes":
-            raise RecordingNotFound(path.split("/")[3])
+            raise RecordingGone(path.split("/")[3])
         if response.is_error:
             raise ConnectorUnavailable(f"granola answered {response.status_code}")
         body: dict[str, Any] = response.json()

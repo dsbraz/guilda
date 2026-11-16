@@ -14,8 +14,13 @@ from typing import Protocol
 
 import asyncpg
 
+from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import Connection, session
 from pxos_kernel.ingestion import Changes, SourceDocument
+
+
+class RecordingGone(PxosError):
+    """The recording no longer exists at the source, or the source no longer reaches it."""
 
 
 @dataclass(frozen=True)
@@ -64,6 +69,7 @@ class TranscriptSource(Protocol):
 
     async def transcript(self, recording: str) -> str:
         """The transcript of ``recording`` as text, with its speakers; raises
+        ``RecordingGone`` when the recording vanished since it was listed, and
         ``ConnectorUnavailable`` when the tool cannot be reached."""
         ...
 
@@ -77,6 +83,11 @@ class MeetingConnector:
     ingested, never from the delta, so a pass replayed after a failure finds the same work
     left. A meeting whose chosen recording, version or access changed is ingested under a
     new version; one with no recording left is deleted.
+
+    A chosen recording gone by the time its transcript is read is dropped from those kept,
+    and the meeting falls back to its next recording in the same pass: syncs may be a cycle
+    apart. The drop commits before the cursor moves, so a replay that lists the recording
+    again only drops it again.
     """
 
     def __init__(self, pool: asyncpg.Pool, source: TranscriptSource, *, agent: str) -> None:
@@ -90,17 +101,35 @@ class MeetingConnector:
         async with session(self._pool, self._agent) as connection:
             await _record(connection, self.name, delta)
             chosen = await connection.fetch(_CHOSEN, self.name)
-            orphans = await connection.fetch(_ORPHANS, self.name)
         documents = []
         for row in chosen:
-            version = _version(row)
-            if version is not None:
-                documents.append(await self._document(row, version))
+            if (document := await self._chosen_document(row)) is not None:
+                documents.append(document)
+        async with session(self._pool, self._agent) as connection:
+            orphans = await connection.fetch(_ORPHANS, self.name)
         return Changes(
             cursor=delta.cursor,
             documents=tuple(documents),
             deleted=tuple(row["source"] for row in orphans),
         )
+
+    async def _chosen_document(self, row: asyncpg.Record | None) -> SourceDocument | None:
+        """The document of the meeting's chosen recording, falling back past those gone;
+        None when the one to describe it is retained already or none is left."""
+        while row is not None and (version := _version(row)) is not None:
+            try:
+                return await self._document(row, version)
+            except RecordingGone:
+                async with session(self._pool, self._agent) as connection:
+                    await connection.execute(
+                        "DELETE FROM pxos.meeting_recordings WHERE source = $1 AND recording = $2",
+                        self.name,
+                        row["recording"],
+                    )
+                    row = await connection.fetchrow(
+                        _CHOSEN + " WHERE c.meeting = $2", self.name, row["meeting"]
+                    )
+        return None
 
     async def _document(self, row: asyncpg.Record, version: str) -> SourceDocument:
         transcript = await self._source.transcript(row["recording"])

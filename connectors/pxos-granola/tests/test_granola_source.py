@@ -12,9 +12,9 @@ from typing import Any
 import httpx
 import pytest
 
-from pxos_granola import GranolaTranscripts, RecordingNotFound
+from pxos_granola import GranolaTranscripts
 from pxos_kernel.ingestion import ConnectorUnavailable
-from pxos_kernel.meetings import Meeting, Recording
+from pxos_kernel.meetings import Meeting, Recording, RecordingGone
 
 KEY = "grn_secretkey123"
 PRIVATE = "Segredo: demitir o fornecedor"
@@ -279,8 +279,8 @@ async def test_private_notes_never_leave_the_source() -> None:
     assert all("include" not in r.url.params for r in granola.requests)
 
 
-async def test_the_transcript_of_a_note_no_longer_visible_is_not_found() -> None:
-    with pytest.raises(RecordingNotFound, match="not_aaaaaaaaaaaaaa"):
+async def test_the_transcript_of_a_note_no_longer_visible_is_gone() -> None:
+    with pytest.raises(RecordingGone, match="not_aaaaaaaaaaaaaa"):
         await FakeGranola().source().transcript("not_aaaaaaaaaaaaaa")
 
 
