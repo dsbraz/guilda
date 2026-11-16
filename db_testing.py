@@ -21,6 +21,9 @@ ADMIN_DSN = os.environ.get(
     "PXOS_TEST_DATABASE_URL", "postgresql://pxos:pxos-local@127.0.0.1:25432/postgres"
 )
 PASSWORD = "pxos-test"
+SUFFIX = os.environ.get("PXOS_TEST_DB_SUFFIX", "")
+"""Appended to every test database name, so suites in separate worktrees share one
+Postgres without recreating each other's databases."""
 
 
 @dataclass(frozen=True)
@@ -43,6 +46,7 @@ def _with(dsn: str, *, database: str, user: str | None = None, password: str | N
 
 def create_test_database(name: str) -> Database:
     """Recreate ``name``, migrate it and make sure the application and publisher logins exist."""
+    name += SUFFIX
 
     async def recreate() -> None:
         admin = await asyncpg.connect(ADMIN_DSN)
