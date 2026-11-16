@@ -8,10 +8,10 @@ the time the transcript spans, read from the transcript itself because Granola e
 duration. The access tags are configured: a workspace key reads only notes shared in the
 workspace's spaces, optionally narrowed to one space or folder.
 
-The cursor is the latest ``updated_at`` listed. Granola returns notes updated strictly
-after ``updated_after``, so each poll asks from one second before the cursor: notes updated
-at the boundary come again, and the kernel's idempotence absorbs them. Granola lists only
-notes with a generated summary.
+The cursor is the latest ``updated_at`` listed. Granola documents ``updated_after`` only as
+"updated after", so each poll asks from one second before the cursor: notes updated at the
+boundary come again whether the filter is strict or not, and the kernel's idempotence
+absorbs them. Granola lists only notes with a generated summary.
 
 Removed recordings are listed notes with ``deleted_at`` (Granola shows them only to keys
 that reach every workspace note) and notes that vanish between listing and reading. A note
@@ -19,7 +19,8 @@ that leaves the key's reach without changing (unshared, moved out of the space, 
 closed to the API) is not in any delta; Granola's webhooks do not announce it either.
 
 The private notes of a note are never read. A rate-limited request waits and retries; when
-Granola cannot be reached or refuses the key, ``ConnectorUnavailable`` names only the
+Granola cannot be reached, refuses the key or its scope cannot list notes (404),
+``ConnectorUnavailable`` names only the
 error's type or status, never content.
 """
 
@@ -128,7 +129,7 @@ class GranolaTranscripts:
                 break
             await self._sleep(delay)
             response = await self._send(path, params)
-        if response.status_code == 404:
+        if response.status_code == 404 and path != "/v1/notes":
             raise RecordingNotFound(path.split("/")[3])
         if response.is_error:
             raise ConnectorUnavailable(f"granola answered {response.status_code}")

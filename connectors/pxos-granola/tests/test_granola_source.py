@@ -329,3 +329,11 @@ async def test_granola_unreachable_is_unavailable_without_leaking(
         assert KEY not in str(raised.value) and PRIVATE not in str(raised.value)
         error = raised.value
         assert error.__cause__ is None and (error.__suppress_context__ or not error.__context__)
+
+
+async def test_a_key_whose_scope_cannot_list_notes_makes_granola_unavailable() -> None:
+    not_found = httpx.MockTransport(lambda _: httpx.Response(404, json={"code": "NOT_FOUND"}))
+    source = GranolaTranscripts(KEY, access=("corporate",), transport=not_found)
+
+    with pytest.raises(ConnectorUnavailable, match="404"):
+        await source.changes(None)
