@@ -7,9 +7,7 @@ Slice 11 proves the conversation and the correction up to the agent: the questio
 posted in the project's thread, the team's answer is kept with its author and cycle and
 wakes the cycle through the outbox, and a correction, in the thread or as the reason of a
 rejection, becomes context for the next cycle with who made it. Writing the answer into
-the report and redoing it belong to the agent and its cycle (slices 12 and 13). The PM's
-rejection of a report waits for the report type (slice 12): until then the rejection
-shown is of an agent version, the governed cycle this installation already has.
+the report and redoing it belong to the agent's cycle (slice 13).
 """
 
 from collections.abc import AsyncIterator
@@ -20,8 +18,8 @@ from uuid import UUID, uuid4
 import asyncpg
 import pytest
 
+from brq_at_work.composition import WEEKLY_REPORT
 from db_testing import Database, drain
-from pxos_kernel.agents import AGENTS
 from pxos_kernel.channel import FakeChannel
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.conversation import (
@@ -36,7 +34,7 @@ from pxos_kernel.identity import NotAuthorized, session
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import Event, Evidence, create_pool, propose, review
 
-AGENT = "report-agent"
+AGENT = "weekly-report-agent"
 THREAD = "teams:projeto-alfa"
 INSTRUCTIONS = "Guarde cada correção do time com quem a fez."
 
@@ -101,21 +99,26 @@ async def test_clarification(pool: asyncpg.Pool, publisher: asyncpg.Pool) -> Non
 
 
 async def rejected(pool: asyncpg.Pool, registry: Registry, reason: str) -> UUID:
-    """A version of the agent proposed by Ana and rejected by Eva with ``reason``."""
-    async with session(pool, "ana") as connection:
+    """A weekly report proposed by the agent and rejected by Ana, the PM, with ``reason``."""
+    async with session(pool, AGENT) as connection:
         proposal = await propose(
             connection,
-            registry.get(AGENTS),
-            "publish_agent_version",
+            registry.get(WEEKLY_REPORT),
+            "propose_weekly_report",
             payload={
-                "agent": AGENT,
-                "instructions": "Prepare o report semanal.",
-                "memory_instructions": INSTRUCTIONS,
+                "summary": "Semana do projeto Alfa.",
+                "items": [
+                    {
+                        "category": "confirmed_delay",
+                        "text": "O marco 2 atrasou.",
+                        "sources": ["ata-2026-11-10"],
+                    }
+                ],
             },
-            evidence=Evidence(source="test:ana", quote="Nova versão.", context_ref=f"t:{uuid4()}"),
+            evidence=Evidence(source="test:run", quote="Report", context_ref=f"t:{uuid4()}"),
             valid_from=datetime.now(UTC),
         )
-    async with session(pool, "eva") as connection:
+    async with session(pool, "ana") as connection:
         await review(
             connection, registry, proposal.id, "rejected", digest=proposal.digest, reason=reason
         )
@@ -148,7 +151,7 @@ async def test_continuity(pool: asyncpg.Pool, publisher: asyncpg.Pool, registry:
         f"Message from ana in cycle {this_week}: Não atrasou: o prazo foi renegociado para 30/11."
     )
     assert store.texts[reason_key] == (
-        f"Correction from eva: proposal {proposal_id} (AgentVersion) was rejected"
+        f"Correction from ana: proposal {proposal_id} (WeeklyReport) was rejected"
         " because: Distinga atraso confirmado de renegociado."
     )
     async with session(pool, AGENT) as connection:

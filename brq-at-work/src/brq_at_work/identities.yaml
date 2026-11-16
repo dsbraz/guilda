@@ -19,8 +19,8 @@ actors:
     kind: internal_person
     name: Eva (administradora da plataforma)
     roles: [platform-admin]
-  # Agente especialista do report semanal (weekly_report_agent.yaml): lê sua definição e
-  # propõe o report; quem aprova é o PM.
+  # Agente especialista do report semanal (weekly_report_agent.yaml): lê sua definição,
+  # pergunta na thread do projeto e propõe o report; quem aprova é o PM.
   - id: weekly-report-agent
     kind: agent
     name: Agente do report semanal
@@ -30,8 +30,3 @@ actors:
     kind: external_person
     name: Dora (cliente)
     channel_ids: [teams:dora]
-  # Posta as perguntas na thread do projeto e lê as respostas (ADR 0006).
-  - id: report-agent
-    kind: agent
-    name: Agente do report semanal
-    roles: [agent]
