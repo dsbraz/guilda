@@ -30,19 +30,18 @@ STATEMENTS = [
         SELECT * INTO STRICT proposal FROM proposals WHERE id = NEW.proposal_id;
         IF NEW.decision = 'approved' THEN
             INSERT INTO facts (
-                entity_id, revision, package, type_name, operation, payload, evidence,
+                entity_id, revision, package, type_name, payload, evidence,
                 valid_from, valid_to, proposal_id
             ) VALUES (
                 proposal.entity_id, proposal.base_revision + 1, proposal.package,
-                proposal.type_name, proposal.operation, proposal.payload, proposal.evidence,
+                proposal.type_name, proposal.payload, proposal.evidence,
                 proposal.valid_from, proposal.valid_to, proposal.id
             );
             INSERT INTO outbox (event_type, entity_id, payload) VALUES (
                 'fact.recorded', proposal.entity_id,
                 jsonb_build_object(
                     'proposal_id', proposal.id, 'revision', proposal.base_revision + 1,
-                    'package', proposal.package, 'type_name', proposal.type_name,
-                    'operation', proposal.operation
+                    'package', proposal.package, 'type_name', proposal.type_name
                 )
             );
         ELSE

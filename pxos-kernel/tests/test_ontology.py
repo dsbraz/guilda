@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import retail_fixture.generated as retail_models
 import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 
@@ -13,7 +12,6 @@ from pxos_kernel.ontology import (
     ActionType,
     InvalidPackage,
     Kind,
-    Registry,
     load_package,
 )
 from pxos_kernel.ontology.loader import class_kind, is_compatible
@@ -37,7 +35,7 @@ def write_package(tmp_path: Path, schema: dict[str, Any], manifest: dict[str, An
 
 def test_base_has_minimal_types_with_kind_and_portuguese_labels() -> None:
     base = SchemaView(str(BASE_SCHEMA))
-    assert set(base.all_classes()) == {"Organization", "Actor", "Role", "Event", "Evidence"}
+    assert set(base.all_classes()) == {"Actor"}
     assert base.schema.version
     for name in base.all_classes():
         assert class_kind(base, name, "pxos_base") in Kind
@@ -50,7 +48,7 @@ def test_fixture_package_extends_base() -> None:
     assert package.name == "retail"
     assert package.version == "0.1.0"
     assert package.base_version == "0.1.0"
-    assert package.kinds == {"RestockOrder": Kind.CANONICAL, "ShelfObservation": Kind.CONTEXT}
+    assert package.kinds == {"RestockOrder": Kind.CANONICAL}
     assert package.readers == {"RestockOrder": ("store-staff", "store-manager")}
     assert package.actions == (
         ActionType(
@@ -80,22 +78,21 @@ def test_digest_covers_manifest_and_ontology(tmp_path: Path) -> None:
 def test_package_must_import_base(tmp_path: Path) -> None:
     schema, manifest = retail()
     schema["imports"] = ["linkml:types"]
-    schema["classes"]["RestockOrder"].pop("is_a")
     with pytest.raises(InvalidPackage, match="must import pxos_base"):
         load_package(write_package(tmp_path, schema, manifest))
 
 
 def test_package_must_declare_kind_for_every_type(tmp_path: Path) -> None:
     schema, manifest = retail()
-    del schema["classes"]["ShelfObservation"]["annotations"]
-    with pytest.raises(InvalidPackage, match="retail: ShelfObservation must declare pxos.kind"):
+    del schema["classes"]["RestockOrder"]["annotations"]
+    with pytest.raises(InvalidPackage, match="retail: RestockOrder must declare pxos.kind"):
         load_package(write_package(tmp_path, schema, manifest))
 
 
 def test_package_cannot_redefine_base_type(tmp_path: Path) -> None:
     schema, manifest = retail()
-    schema["classes"]["Role"] = {"annotations": {"pxos.kind": "canonical"}}
-    manifest["types"].append({"name": "Role", "readers": ["store-staff"]})
+    schema["classes"]["Actor"] = {"annotations": {"pxos.kind": "canonical"}}
+    manifest["types"].append({"name": "Actor", "readers": ["store-staff"]})
     with pytest.raises(InvalidPackage, match="redefines base types"):
         load_package(write_package(tmp_path, schema, manifest))
 
@@ -132,7 +129,10 @@ def test_malformed_version_is_an_invalid_package() -> None:
         ({"name": "other"}, "must match the LinkML schema"),
         ({"version": "1"}, "invalid manifest"),
         ({"owner": "someone"}, "invalid manifest"),
-        ({"types": [{"name": "RestockOrder", "readers": ["store-manager"]}]}, "exactly"),
+        (
+            {"types": [{"name": "RestockOrder", "readers": ["store-manager"]}, {"name": "Aisle"}]},
+            "exactly",
+        ),
     ],
 )
 def test_manifest_is_validated(tmp_path: Path, change: dict[str, Any], message: str) -> None:
@@ -141,18 +141,11 @@ def test_manifest_is_validated(tmp_path: Path, change: dict[str, Any], message: 
         load_package(write_package(tmp_path, schema, {**manifest, **change}))
 
 
-def test_canonical_types_need_readers_and_context_types_have_none(tmp_path: Path) -> None:
+def test_canonical_types_need_readers(tmp_path: Path) -> None:
     schema, manifest = retail()
     manifest["types"][0].pop("readers")
     with pytest.raises(
         InvalidPackage, match="retail: canonical type RestockOrder must declare readers"
-    ):
-        load_package(write_package(tmp_path, schema, manifest))
-
-    schema, manifest = retail()
-    manifest["types"][1]["readers"] = ["store-staff"]
-    with pytest.raises(
-        InvalidPackage, match="retail: context type ShelfObservation cannot declare readers"
     ):
         load_package(write_package(tmp_path, schema, manifest))
 
@@ -162,8 +155,7 @@ def test_canonical_types_need_readers_and_context_types_have_none(tmp_path: Path
     [
         ({"approver": None}, "invalid manifest"),
         ({"autonomy": "full"}, "invalid manifest"),
-        ({"creates": "ShelfObservation"}, "retail: create_restock_order must create a canonical"),
-        ({"creates": "Role"}, "must create a canonical type"),
+        ({"creates": "Actor"}, "retail: create_restock_order must create a canonical type"),
         ({"approver": "cashier"}, "retail: approver of create_restock_order must read"),
     ],
 )
@@ -227,16 +219,6 @@ def test_a_manifest_error_says_what_is_wrong(tmp_path: Path) -> None:
 
 def test_a_class_with_other_annotations_still_needs_a_kind(tmp_path: Path) -> None:
     schema, manifest = retail()
-    schema["classes"]["ShelfObservation"]["annotations"] = {"note": "sem tipo"}
-    with pytest.raises(InvalidPackage, match="retail: ShelfObservation must declare pxos.kind"):
+    schema["classes"]["RestockOrder"]["annotations"] = {"note": "sem tipo"}
+    with pytest.raises(InvalidPackage, match="retail: RestockOrder must declare pxos.kind"):
         load_package(write_package(tmp_path, schema, manifest))
-
-
-def test_a_context_type_sorting_first_does_not_hide_the_canonical_ones(tmp_path: Path) -> None:
-    schema, manifest = retail()
-    schema["classes"]["AisleNote"] = schema["classes"].pop("ShelfObservation")
-    manifest["types"][1]["name"] = "AisleNote"
-    package_dir = write_package(tmp_path, schema, manifest)
-    assert load_package(package_dir).references == {"RestockOrder": {"assignee": "Actor"}}
-    registry = Registry()
-    assert set(registry.register(package_dir, retail_models).models) == {"RestockOrder"}

@@ -14,14 +14,11 @@ from pxos_kernel.state.canonical import (
     StalePackage,
     StaleRevision,
     get_proposal,
-    get_review,
-    proposals_from,
     propose,
-    propose_invalidation,
     review,
 )
 from pxos_kernel.state.db import create_pool, grant_connect
-from pxos_kernel.state.facts import Fact, as_of, current, history
+from pxos_kernel.state.facts import Fact, current
 from pxos_kernel.state.migrate import upgrade
 from pxos_kernel.state.outbox import Event, Handler, publish
 from pxos_kernel.state.packages import install_packages
@@ -42,17 +39,12 @@ __all__ = [
     "SelfApproval",
     "StalePackage",
     "StaleRevision",
-    "as_of",
     "create_pool",
     "current",
     "get_proposal",
-    "get_review",
-    "proposals_from",
     "grant_connect",
-    "history",
     "install_packages",
     "propose",
-    "propose_invalidation",
     "publish",
     "review",
     "upgrade",

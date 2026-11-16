@@ -2,7 +2,7 @@
 name = "pxos"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pxos-kernel"]
+dependencies = ["pxos-kernel", "brq-at-work"]
 
 [tool.uv]
 package = false
@@ -12,7 +12,7 @@ pxos-kernel = { workspace = true }
 brq-at-work = { workspace = true }
 
 [tool.uv.workspace]
-members = ["pxos-kernel"]
+members = ["pxos-kernel", "brq-at-work"]
 exclude = ["spikes/*"]
 
 [tool.ruff]

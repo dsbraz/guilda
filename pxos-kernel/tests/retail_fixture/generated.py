@@ -75,10 +75,6 @@ class ActorKind(str, Enum):
 
 
 
-class Organization(ConfiguredBaseModel):
-    name: str = Field(default=..., title="nome")
-
-
 class Actor(ConfiguredBaseModel):
     """
     Pessoa interna, pessoa externa ou agente.
@@ -87,40 +83,14 @@ class Actor(ConfiguredBaseModel):
     actor_kind: ActorKind = Field(default=..., title="tipo de ator")
 
 
-class Role(ConfiguredBaseModel):
-    name: str = Field(default=..., title="nome")
-
-
-class Event(ConfiguredBaseModel):
+class RestockOrder(ConfiguredBaseModel):
     occurred_at: datetime  = Field(default=..., title="ocorreu em")
-
-
-class Evidence(ConfiguredBaseModel):
-    """
-    Referência à fonte e trecho literal que sustentam uma proposta.
-    """
-    source: str = Field(default=..., title="fonte")
-    quote: str = Field(default=..., title="trecho")
-    context_ref: str = Field(default=..., title="referência de contexto")
-
-
-class RestockOrder(Event):
     sku: str = Field(default=..., title="SKU")
     quantity: int = Field(default=..., title="quantidade", ge=1)
     assignee: Optional[str] = Field(default=None, title="responsável")
-    occurred_at: datetime  = Field(default=..., title="ocorreu em")
-
-
-class ShelfObservation(ConfiguredBaseModel):
-    note: str = Field(default=..., title="nota")
 
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
-Organization.model_rebuild()
 Actor.model_rebuild()
-Role.model_rebuild()
-Event.model_rebuild()
-Evidence.model_rebuild()
 RestockOrder.model_rebuild()
-ShelfObservation.model_rebuild()

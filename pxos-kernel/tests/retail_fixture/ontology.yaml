@@ -17,10 +17,13 @@ imports:
 classes:
   RestockOrder:
     title: Pedido de reposição
-    is_a: Event
     annotations:
       pxos.kind: canonical
     attributes:
+      occurred_at:
+        title: ocorreu em
+        range: datetime
+        required: true
       sku:
         title: SKU
         required: true
@@ -34,11 +37,3 @@ classes:
         annotations:
           pxos.refers_to: Actor
 
-  ShelfObservation:
-    title: Observação de gôndola
-    annotations:
-      pxos.kind: context
-    attributes:
-      note:
-        title: nota
-        required: true

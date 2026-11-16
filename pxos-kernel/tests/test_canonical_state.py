@@ -14,7 +14,7 @@ import pytest
 import retail_fixture.generated as retail_models
 import yaml
 
-from db_testing import Database
+from db_testing import Database, history
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import InvalidPayload, Registry
 from pxos_kernel.state import (
@@ -28,14 +28,9 @@ from pxos_kernel.state import (
     SelfApproval,
     StalePackage,
     StaleRevision,
-    as_of,
     current,
     get_proposal,
-    get_review,
-    history,
-    proposals_from,
     propose,
-    propose_invalidation,
     review,
 )
 
@@ -85,8 +80,10 @@ async def approve(pool: asyncpg.Pool, registry: Registry, proposal: Proposal) ->
 
 async def read(pool: asyncpg.Pool, entity_id: UUID, valid_at: datetime, known_at: datetime) -> Any:
     async with session(pool, "erin") as connection:
-        fact = await as_of(connection, entity_id, valid_at=valid_at, known_at=known_at)
-    return None if fact is None else fact.payload["quantity"]
+        facts = await current(
+            connection, "retail", "RestockOrder", valid_at=valid_at, known_at=known_at
+        )
+    return next((f.payload["quantity"] for f in facts if f.entity_id == entity_id), None)
 
 
 async def events(database: Database, entity_id: UUID) -> list[str]:
@@ -133,7 +130,6 @@ async def test_the_digest_is_sha256_of_what_the_reviewer_sees(
         "type_name": "RestockOrder",
         "entity_id": str(proposal.entity_id),
         "base_revision": 0,
-        "operation": "assert",
         "valid_from": NOV[1].isoformat(),
         "valid_to": NOV[20].isoformat(),
         "payload": proposal.payload,
@@ -141,41 +137,6 @@ async def test_the_digest_is_sha256_of_what_the_reviewer_sees(
     }
     encoded = json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
     assert proposal.digest == hashlib.sha256(encoded).hexdigest()
-
-
-async def test_proposals_of_a_context_and_their_review_can_be_read(
-    pool: asyncpg.Pool, registry: Registry
-) -> None:
-    evidence = Evidence(source="fixture:shelf-log", quote="Repor", context_ref="fixture:ctx-read")
-    proposals = []
-    for quantity in (1, 2):
-        async with session(pool, "erin") as connection:
-            proposals.append(
-                await propose(
-                    connection,
-                    registry.get("retail"),
-                    "create_restock_order",
-                    payload=order(quantity),
-                    evidence=evidence,
-                    valid_from=NOV[1],
-                )
-            )
-    async with session(pool, "erin") as connection:
-        assert await proposals_from(connection, "fixture:ctx-read") == proposals
-        assert await proposals_from(connection, "fixture:ctx-none") == []
-        assert await get_review(connection, proposals[0].id) is None
-
-    await approve(pool, registry, proposals[0])
-
-    async with session(pool, "erin") as connection:
-        decided = await get_review(connection, proposals[0].id)
-    assert decided is not None
-    assert (decided.proposal_id, decided.decision, decided.reviewer) == (
-        proposals[0].id,
-        "approved",
-        "carla",
-    )
-    assert decided.proposal_digest == proposals[0].digest
 
 
 async def test_rejection_records_reason_without_publishing(
@@ -396,9 +357,7 @@ async def test_retroactive_correction_and_two_date_reading(
     assert await read(pool, entity, datetime(2026, 10, 31, tzinfo=UTC), second.known_at) is None
 
 
-async def test_current_facts_of_a_type_read_like_as_of(
-    pool: asyncpg.Pool, registry: Registry
-) -> None:
+async def test_current_facts_of_a_type(pool: asyncpg.Pool, registry: Registry) -> None:
     corrected = await new_proposal(pool, registry, quantity=3)
     await approve(pool, registry, corrected)
     await approve(
@@ -408,19 +367,8 @@ async def test_current_facts_of_a_type_read_like_as_of(
             pool, registry, quantity=5, entity_id=corrected.entity_id, base_revision=1
         ),
     )
-    gone = await new_proposal(pool, registry, quantity=4)
+    gone = await new_proposal(pool, registry, quantity=4, valid_to=NOV[10])
     await approve(pool, registry, gone)
-    async with session(pool, "erin") as connection:
-        invalidation = await propose_invalidation(
-            connection,
-            registry.get("retail"),
-            "create_restock_order",
-            entity_id=gone.entity_id,
-            base_revision=1,
-            valid_from=NOV[10],
-            evidence=EVIDENCE,
-        )
-    await approve(pool, registry, invalidation)
     later = await new_proposal(pool, registry, quantity=9, valid_from=NOV[20])
     await approve(pool, registry, later)
     ours = {corrected.entity_id, gone.entity_id, later.entity_id}
@@ -458,31 +406,6 @@ async def test_future_validity_and_finite_interval(pool: asyncpg.Pool, registry:
     assert await read(pool, created.entity_id, NOV[10], LATER) == 3
     assert await read(pool, created.entity_id, NOV[16], LATER) == 8
     assert await read(pool, created.entity_id, NOV[25], LATER) is None
-
-
-async def test_invalidation_has_a_date_and_keeps_history(
-    pool: asyncpg.Pool, registry: Registry
-) -> None:
-    created = await new_proposal(pool, registry)
-    await approve(pool, registry, created)
-    async with session(pool, "erin") as connection:
-        invalidation = await propose_invalidation(
-            connection,
-            registry.get("retail"),
-            "create_restock_order",
-            entity_id=created.entity_id,
-            base_revision=1,
-            valid_from=NOV[10],
-            evidence=EVIDENCE,
-        )
-    await approve(pool, registry, invalidation)
-
-    async with session(pool, "erin") as connection:
-        first, second = await history(connection, created.entity_id)
-    assert second.operation == "invalidate"
-    assert await read(pool, created.entity_id, NOV[12], LATER) is None
-    assert await read(pool, created.entity_id, NOV[5], LATER) == 3
-    assert await read(pool, created.entity_id, NOV[12], first.known_at) == 3
 
 
 async def test_concurrent_proposals_on_same_revision_have_one_winner(

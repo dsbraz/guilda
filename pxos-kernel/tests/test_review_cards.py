@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
-from db_testing import Database
+from db_testing import Database, history
 from pxos_kernel.channel import FakeChannel, decide, route_cards
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import Registry
@@ -22,7 +22,6 @@ from pxos_kernel.state import (
     Event,
     Evidence,
     Proposal,
-    history,
     propose,
 )
 

@@ -2,7 +2,6 @@
 
 from pxos_kernel.ontology.loader import (
     BASE_SCHEMA,
-    METAMODEL_SCHEMA,
     ActionType,
     InvalidPackage,
     Kind,
@@ -13,7 +12,6 @@ from pxos_kernel.ontology.registry import InvalidPayload, RegisteredPackage, Reg
 
 __all__ = [
     "BASE_SCHEMA",
-    "METAMODEL_SCHEMA",
     "ActionType",
     "InvalidPackage",
     "InvalidPayload",

@@ -18,7 +18,6 @@ from pxos_kernel.identity import Connection, NotAuthorized
 from pxos_kernel.ontology import RegisteredPackage, Registry
 
 Decision = Literal["approved", "rejected"]
-Operation = Literal["assert", "invalidate"]
 
 
 class InvalidProposal(PxosError):
@@ -73,7 +72,6 @@ class Proposal:
     type_name: str
     entity_id: UUID
     base_revision: int
-    operation: Operation
     valid_from: datetime
     valid_to: datetime | None
     payload: dict[str, Any]
@@ -132,39 +130,9 @@ async def propose(
         action_type.creates,
         entity_id or uuid4(),
         base_revision,
-        "assert",
         valid_from,
         valid_to,
         payload,
-        evidence,
-    )
-
-
-async def propose_invalidation(
-    connection: Connection,
-    registered: RegisteredPackage,
-    action: str,
-    *,
-    entity_id: UUID,
-    base_revision: int,
-    valid_from: datetime,
-    evidence: Evidence,
-) -> Proposal:
-    """Propose that an entity stops being valid from ``valid_from``; history stays."""
-    if base_revision < 1:
-        raise InvalidProposal("only an existing fact can be invalidated")
-    action_type = registered.package.action(action)
-    return await _insert(
-        connection,
-        registered,
-        action,
-        action_type.creates,
-        entity_id,
-        base_revision,
-        "invalidate",
-        valid_from,
-        None,
-        {},
         evidence,
     )
 
@@ -216,26 +184,6 @@ async def get_proposal(connection: Connection, proposal_id: UUID) -> Proposal:
     return Proposal(**dict(row))
 
 
-async def proposals_from(connection: Connection, context_ref: str) -> list[Proposal]:
-    """The proposals the session can read whose evidence points at ``context_ref``."""
-    rows = await connection.fetch(
-        """
-        SELECT * FROM pxos.proposals WHERE evidence->>'context_ref' = $1
-        ORDER BY created_at, id
-        """,
-        context_ref,
-    )
-    return [Proposal(**dict(row)) for row in rows]
-
-
-async def get_review(connection: Connection, proposal_id: UUID) -> Review | None:
-    """The decision on a proposal the session can read, or None while it is pending."""
-    row = await connection.fetchrow(
-        "SELECT * FROM pxos.reviews WHERE proposal_id = $1", proposal_id
-    )
-    return None if row is None else Review(**dict(row))
-
-
 async def _insert(
     connection: Connection,
     registered: RegisteredPackage,
@@ -243,7 +191,6 @@ async def _insert(
     type_name: str,
     entity_id: UUID,
     base_revision: int,
-    operation: Operation,
     valid_from: datetime,
     valid_to: datetime | None,
     payload: dict[str, Any],
@@ -259,7 +206,6 @@ async def _insert(
         "type_name": type_name,
         "entity_id": str(entity_id),
         "base_revision": base_revision,
-        "operation": operation,
         "valid_from": valid_from.isoformat(),
         "valid_to": valid_to.isoformat() if valid_to else None,
         "payload": payload,
@@ -270,9 +216,9 @@ async def _insert(
             """
             INSERT INTO pxos.proposals (
                 package, package_version, package_digest, action, type_name, entity_id,
-                base_revision, operation, valid_from, valid_to, payload, evidence, digest,
+                base_revision, valid_from, valid_to, payload, evidence, digest,
                 author, author_principal
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, '', '')
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '', '')
             RETURNING *
             """,
             package.name,
@@ -282,7 +228,6 @@ async def _insert(
             type_name,
             entity_id,
             base_revision,
-            operation,
             valid_from,
             valid_to,
             payload,

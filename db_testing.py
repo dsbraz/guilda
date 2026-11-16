@@ -14,7 +14,8 @@ from urllib.parse import urlsplit, urlunsplit
 
 import asyncpg
 
-from pxos_kernel.state import Handler, grant_connect, publish, upgrade
+from pxos_kernel.identity import Connection
+from pxos_kernel.state import Fact, Handler, grant_connect, publish, upgrade
 
 ADMIN_DSN = os.environ.get(
     "PXOS_TEST_DATABASE_URL", "postgresql://pxos:pxos-local@127.0.0.1:25432/postgres"
@@ -109,3 +110,11 @@ async def drain(publisher: asyncpg.Pool, handlers: Mapping[str, Handler]) -> int
     test instead of hanging it."""
     async with asyncio.timeout(30):
         return await publish(publisher, handlers)
+
+
+async def history(connection: Connection, entity_id: object) -> list[Fact]:
+    """Every revision of an entity the session can read, oldest first."""
+    rows = await connection.fetch(
+        "SELECT * FROM pxos.facts WHERE entity_id = $1 ORDER BY revision", entity_id
+    )
+    return [Fact(**dict(row)) for row in rows]

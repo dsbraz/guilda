@@ -19,7 +19,7 @@ def check_outcomes(rows: list[dict[str, Any]], policy: dict[str, Any]) -> list[s
             if not allowed or allowed not in row.get("reason", ""):
                 failures.append(f"unexpected skip: {row['nodeid']}")
         if row["outcome"] == "xfailed":
-            if file != policy["pending_requirements"] or row.get("strict") is not True:
+            if file not in policy["pending_requirements"] or row.get("strict") is not True:
                 failures.append(f"unexpected/non-strict xfail: {row['nodeid']}")
     return failures
 

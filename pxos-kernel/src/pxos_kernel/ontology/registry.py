@@ -12,7 +12,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from pxos_kernel.ontology.loader import InvalidPackage, Kind, Package, load_package
+from pxos_kernel.ontology.loader import InvalidPackage, Package, load_package
 
 
 class InvalidPayload(InvalidPackage):
@@ -43,9 +43,7 @@ class Registry:
         if package.name in self._packages:
             raise InvalidPackage(f"{package.name}: package already registered")
         resolved = {}
-        for type_name, kind in package.kinds.items():
-            if kind is not Kind.CANONICAL:
-                continue
+        for type_name in package.kinds:
             model = getattr(models, type_name, None)
             if not (isinstance(model, type) and issubclass(model, BaseModel)):
                 raise InvalidPackage(f"{package.name}: generated model {type_name} not found")

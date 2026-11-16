@@ -34,7 +34,6 @@ class InvalidPackage(PxosError):
 
 class Kind(StrEnum):
     CANONICAL = "canonical"
-    CONTEXT = "context"
 
 
 @dataclass(frozen=True)
@@ -117,7 +116,7 @@ def class_kind(view: SchemaView, class_name: str, package: str) -> Kind:
         return Kind(value or "")
     except ValueError:
         raise InvalidPackage(
-            f"{package}: {class_name} must declare {KIND_ANNOTATION} as canonical or context"
+            f"{package}: {class_name} must declare {KIND_ANNOTATION} as canonical"
         ) from None
 
 
@@ -144,9 +143,7 @@ def _readers(
     for type_name, roles in declared.items():
         if kinds[type_name] is Kind.CANONICAL and not roles:
             raise InvalidPackage(f"{package}: canonical type {type_name} must declare readers")
-        if kinds[type_name] is Kind.CONTEXT and roles:
-            raise InvalidPackage(f"{package}: context type {type_name} cannot declare readers")
-    return {type_name: roles for type_name, roles in declared.items() if roles}
+    return declared
 
 
 def _actions(
@@ -180,9 +177,7 @@ def _references(
     view: SchemaView, kinds: dict[str, Kind], package: str
 ) -> dict[str, dict[str, str]]:
     references: dict[str, dict[str, str]] = {}
-    for type_name, kind in kinds.items():
-        if kind is not Kind.CANONICAL:
-            continue
+    for type_name in kinds:
         for slot in view.class_induced_slots(type_name):
             target = _annotation(slot.annotations, REFERS_TO_ANNOTATION)
             if target is None:

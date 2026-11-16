@@ -33,7 +33,7 @@ STATEMENTS = [
             SELECT FROM facts
             WHERE entity_id = NEW.definition AND revision = NEW.revision
               AND package = 'pxos_agents' AND type_name = 'AgentVersion'
-              AND operation = 'assert' AND payload->>'agent' = NEW.agent
+              AND payload->>'agent' = NEW.agent
         ) THEN
             RAISE EXCEPTION 'version %/% is not a definition of %',
                 NEW.definition, NEW.revision, NEW.agent

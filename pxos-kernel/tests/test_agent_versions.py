@@ -15,7 +15,7 @@ import asyncpg
 import pytest
 from conftest import installation
 
-from db_testing import Database
+from db_testing import Database, history
 from model_testing import ROUTE
 from pxos_kernel.agents import (
     AGENTS,
@@ -32,7 +32,6 @@ from pxos_kernel.state import (
     Proposal,
     SelfApproval,
     create_pool,
-    history,
     propose,
     review,
 )

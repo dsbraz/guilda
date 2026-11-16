@@ -10,10 +10,10 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
-from db_testing import Database, on_database
+from db_testing import Database, history, on_database
 from pxos_kernel.identity import NotAuthorized, session
 from pxos_kernel.ontology import Registry
-from pxos_kernel.state import Evidence, history, propose, review
+from pxos_kernel.state import Evidence, propose, review
 
 
 def pending(issue: str, scope: str) -> pytest.MarkDecorator:
@@ -57,10 +57,10 @@ async def test_req_03_every_fact_has_a_source(pool: asyncpg.Pool, registry: Regi
                 """
                 INSERT INTO pxos.proposals (
                     package, package_version, package_digest, action, type_name, entity_id,
-                    base_revision, operation, valid_from, payload, evidence, digest,
+                    base_revision, valid_from, payload, evidence, digest,
                     author, author_principal
                 ) VALUES ($1, $2, $3, 'create_restock_order', 'RestockOrder',
-                          gen_random_uuid(), 0, 'assert', now(), '{}', $4, 'x', '', '')
+                          gen_random_uuid(), 0, now(), '{}', $4, 'x', '', '')
                 """,
                 proposal.package,
                 proposal.package_version,

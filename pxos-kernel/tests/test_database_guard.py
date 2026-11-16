@@ -74,9 +74,9 @@ async def test_application_login_has_no_owner_powers(database: Database) -> None
         "DELETE FROM pxos.proposals",
         "UPDATE pxos.reviews SET decision = 'rejected'",
         "DELETE FROM pxos.reviews",
-        "INSERT INTO pxos.facts (entity_id, revision, package, type_name, operation, payload,"
+        "INSERT INTO pxos.facts (entity_id, revision, package, type_name, payload,"
         " evidence, valid_from, proposal_id) VALUES (gen_random_uuid(), 1, 'retail',"
-        " 'RestockOrder', 'assert', '{}', '{}', now(), gen_random_uuid())",
+        " 'RestockOrder', '{}', '{}', now(), gen_random_uuid())",
         "INSERT INTO pxos.outbox (event_type, entity_id, payload)"
         " VALUES ('x', gen_random_uuid(), '{}')",
         "SELECT * FROM pxos.outbox",
@@ -228,9 +228,9 @@ EXTERNAL_STATEMENTS = [
     "SELECT * FROM pxos.proposals",
     "SELECT * FROM pxos.reviews",
     "INSERT INTO pxos.proposals (package, package_version, package_digest, action, type_name,"
-    " entity_id, base_revision, operation, valid_from, payload, evidence, digest) VALUES"
+    " entity_id, base_revision, valid_from, payload, evidence, digest) VALUES"
     " ('retail', '1', 'x', 'create_restock_order', 'RestockOrder', gen_random_uuid(), 0,"
-    " 'assert', now(), '{}', '{}', 'x')",
+    " now(), '{}', '{}', 'x')",
     "INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest)"
     " VALUES (gen_random_uuid(), 'approved', 'x')",
 ]
