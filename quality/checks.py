@@ -37,7 +37,11 @@ def sizes(policy: dict[str, Any], root: Path) -> tuple[dict[str, Any], list[str]
 
 def fast(policy: dict[str, Any], root: Path, output: Path) -> dict[str, Any]:
     config = output / "imports.ini"
-    config.write_text(architecture_config([root / p for p in policy["sources"][:2]]))
+    config.write_text(
+        architecture_config(
+            [root / p for p in [*policy["sources"][:2], *policy.get("adapters", [])]]
+        )
+    )
     commands = {
         "lint": ["ruff", "check", *ruff_args(policy), *policy["lint"]],
         "format": ["ruff", "format", "--check", *policy["lint"]],

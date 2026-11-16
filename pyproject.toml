@@ -2,7 +2,7 @@
 name = "pxos"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pxos-kernel", "brq-at-work"]
+dependencies = ["pxos-kernel", "brq-at-work", "pxos-granola", "pxos-sharepoint", "pxos-teams"]
 
 [tool.uv]
 package = false
@@ -10,9 +10,12 @@ package = false
 [tool.uv.sources]
 pxos-kernel = { workspace = true }
 brq-at-work = { workspace = true }
+pxos-granola = { workspace = true }
+pxos-sharepoint = { workspace = true }
+pxos-teams = { workspace = true }
 
 [tool.uv.workspace]
-members = ["pxos-kernel", "brq-at-work"]
+members = ["pxos-kernel", "brq-at-work", "connectors/*"]
 exclude = ["spikes/*"]
 
 [tool.ruff]
@@ -24,7 +27,7 @@ extend-exclude = ["spikes", "**/generated.py"]
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["pxos_kernel", "brq_at_work"]
+known-first-party = ["pxos_kernel", "brq_at_work", "pxos_granola", "pxos_sharepoint", "pxos_teams"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -38,10 +41,21 @@ files = [
     "pxos-kernel/tests",
     "brq-at-work/src",
     "brq-at-work/tests",
+    "connectors/pxos-granola/src",
+    "connectors/pxos-sharepoint/src",
+    "connectors/pxos-teams/src",
     "quality",
     "tests/quality",
 ]
-mypy_path = [".", "pxos-kernel/src", "brq-at-work/src", "pxos-kernel/tests"]
+mypy_path = [
+    ".",
+    "pxos-kernel/src",
+    "brq-at-work/src",
+    "connectors/pxos-granola/src",
+    "connectors/pxos-sharepoint/src",
+    "connectors/pxos-teams/src",
+    "pxos-kernel/tests",
+]
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
@@ -53,7 +67,14 @@ module = ["*.generated"]
 ignore_errors = true
 
 [tool.pytest.ini_options]
-testpaths = ["pxos-kernel/tests", "brq-at-work/tests", "tests/quality"]
+testpaths = [
+    "pxos-kernel/tests",
+    "brq-at-work/tests",
+    "connectors/pxos-granola/tests",
+    "connectors/pxos-sharepoint/tests",
+    "connectors/pxos-teams/tests",
+    "tests/quality",
+]
 pythonpath = [".", "pxos-kernel/tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

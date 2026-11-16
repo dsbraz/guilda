@@ -1,0 +1,13 @@
+[project]
+name = "pxos-granola"
+version = "0.1.0"
+description = "Transcrições de reuniões do Granola para o pxOS"
+requires-python = ">=3.12,<3.13"
+dependencies = ["pxos-kernel"]
+
+[tool.uv.sources]
+pxos-kernel = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"

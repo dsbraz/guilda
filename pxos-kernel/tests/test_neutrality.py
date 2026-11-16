@@ -18,10 +18,8 @@ DOMAIN_SUBSTRINGS = [
     "commitment",
     "workstream",
     "work_stream",
-    "meeting",
     "compromisso",
     "frente de trabalho",
-    "reuni",
 ]
 
 # Short terms collide with common words (budget, steams), so they match whole words.

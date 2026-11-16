@@ -51,7 +51,7 @@ def fixture_repository(root: Path) -> dict[str, Any]:
     for name in ["kernel", "distribution", "quality"]:
         (root / name).mkdir()
         (root / name / "__init__.py").write_text("")
-    return {**load(), "sources": ["kernel", "distribution", "quality"]}
+    return {**load(), "sources": ["kernel", "distribution", "quality"], "adapters": []}
 
 
 def test_fast_runs_all_commands_even_after_failure(

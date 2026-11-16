@@ -27,3 +27,12 @@ def test_policy_hash_is_order_independent_and_captures_limits() -> None:
 def test_exclusions_preserve_manual_sources() -> None:
     assert excluded("pxos-kernel/src/pxos_kernel/state/migrations/env.py", load())
     assert not excluded("pxos-kernel/src/pxos_kernel/state/db.py", load())
+
+
+def test_each_adapter_is_its_own_area(tmp_path: Path) -> None:
+    source = tmp_path / "connectors/pxos-granola/src/pxos_granola"
+    source.mkdir(parents=True)
+    (source / "notes.py").write_text("x = 1")
+    adapter = "connectors/pxos-granola/src/pxos_granola"
+    policy = {**load(), "sources": [adapter], "adapters": [adapter]}
+    assert areas(policy, tmp_path) == {"pxos_granola": [source / "notes.py"]}

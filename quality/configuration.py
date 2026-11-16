@@ -32,6 +32,28 @@ def architecture_config(packages: list[Path]) -> str:
         f"source_modules = {names[0]}",
         f"forbidden_modules = {names[1]}",
     ]
+    adapters = names[2:]
+    if adapters:
+        lines += [
+            "",
+            "[importlinter:contract:adapters]",
+            "name = kernel imports no adapter",
+            "type = forbidden",
+            f"source_modules = {names[0]}",
+            "forbidden_modules =",
+            *(f"    {name}" for name in adapters),
+        ]
+    for adapter in adapters:
+        others = [names[1], *(name for name in adapters if name != adapter)]
+        lines += [
+            "",
+            f"[importlinter:contract:apart-{adapter}]",
+            f"name = {adapter} imports neither the distribution nor another adapter",
+            "type = forbidden",
+            f"source_modules = {adapter}",
+            "forbidden_modules =",
+            *(f"    {name}" for name in others),
+        ]
     for package in packages:
         lines += [
             "",
