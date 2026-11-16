@@ -8,6 +8,7 @@ cycle's effort is read back from what was recorded: rounds, questions, answers,
 rejections, the time the reviewer took, tokens and cost.
 """
 
+import asyncio
 import json
 from datetime import timedelta
 from decimal import Decimal
@@ -15,8 +16,9 @@ from uuid import uuid4
 
 import asyncpg
 import pytest
-from conftest import AGENT
+from conftest import AGENT, RESTOCK_AGENT, installation
 
+from agents_testing import publish
 from model_testing import ROUTE
 from pxos_kernel.agents import (
     AgentVersion,
@@ -38,7 +40,9 @@ from pxos_kernel.identity import session
 from pxos_kernel.ingestion import FakeConnector, SourceDocument, sync
 from pxos_kernel.model_access import FakeModels, ModelGateway
 from pxos_kernel.ontology import Registry
-from pxos_kernel.state import review
+from pxos_kernel.state import create_pool, review
+from pxos_kernel.workflows import CycleActivities
+from pxos_kernel.workflows.definitions import Round
 
 ORDER = {"sku": "A-1", "quantity": 12, "occurred_at": "2026-11-14T09:00:00Z"}
 ASKS = json.dumps({"questions": ["Which aisle?", "How many boxes?"], "deliverable": None})
@@ -139,3 +143,41 @@ async def test_a_cycle_that_did_not_run_took_no_effort(pool: asyncpg.Pool) -> No
         effort = await cycle_effort(connection, f"cycle:{uuid4()}")
     assert (effort.rounds, effort.questions, effort.answers, effort.rejections) == (0, 0, 0, 0)
     assert (effort.review_time, effort.input_tokens, effort.cost) == (timedelta(0), 0, Decimal(0))
+
+
+async def test_a_round_runs_the_version_the_cycle_pinned(registry: Registry) -> None:
+    """A version approved mid-cycle waits for the next cycle: the round runs the pinned one."""
+    database = await asyncio.to_thread(installation, "pxos_test_pinned", registry, ROUTE)
+    pool = await create_pool(database.app_dsn)
+    try:
+        await publish(pool, registry, RESTOCK_AGENT, author="gina", approver="paula")
+        steps = CycleActivities(
+            pool,
+            FakeContextStore(),
+            [],
+            ModelGateway(pool, FakeModels(reply=DELIVERS)),
+            registry,
+            FakeChannel(),
+        )
+        pinned = await steps.pin(AGENT)
+        changed = {**RESTOCK_AGENT, "instructions": "Read it differently."}
+        await publish(
+            pool,
+            registry,
+            changed,
+            author="gina",
+            approver="paula",
+            change=await version_in_force(pool),
+        )
+        cycle = f"week-{uuid4()}"
+        step = Round(AGENT, cycle, pinned.entity_id, pinned.revision, round=1, final=False)
+        await steps.run_round(step)
+
+        async with session(pool, AGENT) as connection:
+            ran = await connection.fetchval(
+                "SELECT revision FROM pxos.agent_runs WHERE cycle = $1", cycle
+            )
+        assert ran == pinned.revision
+        assert (await version_in_force(pool)).revision == pinned.revision + 1
+    finally:
+        await pool.close()
