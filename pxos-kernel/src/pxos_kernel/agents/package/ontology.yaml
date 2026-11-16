@@ -42,6 +42,14 @@ classes:
         description: Ferramentas que o kernel monta para o agente.
         range: AgentTool
         multivalued: true
+      recall_tags:
+        title: escopo da consulta à memória
+        description: >-
+          Tags de acesso que o kernel impõe à consulta e às retenções do ciclo; nunca vêm do
+          modelo. A consulta só alcança o que foi retido com uma delas.
+        multivalued: true
+        required: true
+        minimum_cardinality: 1
       schedule:
         title: agenda
         description: Quando o ciclo começa, em cron de cinco campos.

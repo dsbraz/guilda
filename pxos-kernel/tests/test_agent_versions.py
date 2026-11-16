@@ -22,6 +22,7 @@ from pxos_kernel.agents import (
     AmbiguousDefinition,
     NoApprovedVersion,
     approved_version,
+    pinned_version,
     propose_version,
 )
 from pxos_kernel.identity import session
@@ -46,6 +47,7 @@ def definition(instructions: str = "Read each restock promise.") -> dict[str, An
         "instructions": instructions,
         "memory_instructions": "Extract every restock promise, one per fact.",
         "tools": ["recall"],
+        "recall_tags": ["store:aisle-3"],
         "schedule": "0 9 * * 1",
         "answer_deadline_hours": 24,
         "max_rounds": 3,
@@ -149,6 +151,7 @@ async def test_the_agent_runs_only_the_approved_version_in_force(
         "thread:aisle-3",
         ("retail", "create_restock_order"),
     )
+    assert version.recall_tags == ("store:aisle-3",)
 
     rejected = await proposed(agents_pool, registry, definition("v2"), change=first, revision=1)
     await decided(agents_pool, registry, rejected, "rejected")
@@ -174,6 +177,7 @@ async def test_the_agent_runs_only_the_approved_version_in_force(
         {"answer_deadline_hours": 0},
         {"max_rounds": 0},
         {"deliverable": "create_restock_order"},
+        {"recall_tags": []},
     ],
 )
 def test_a_definition_names_only_known_tools_and_a_valid_cycle(
@@ -181,6 +185,25 @@ def test_a_definition_names_only_known_tools_and_a_valid_cycle(
 ) -> None:
     with pytest.raises(InvalidPayload):
         registry.get(AGENTS).validate("AgentVersion", {**definition(), **change})
+
+
+async def test_a_cycle_reads_the_version_it_pinned_after_a_newer_one(
+    agents_pool: asyncpg.Pool, registry: Registry
+) -> None:
+    first = await proposed(agents_pool, registry, definition("v1"))
+    await decided(agents_pool, registry, first)
+    pinned = await in_force(agents_pool)
+    second = await proposed(agents_pool, registry, definition("v2"), change=first, revision=1)
+    await decided(agents_pool, registry, second)
+
+    async with session(agents_pool, AGENT) as connection:
+        assert await pinned_version(connection, AGENT, first.entity_id, 1) == pinned
+        assert (await pinned_version(connection, AGENT, first.entity_id, 2)).instructions == "v2"
+        with pytest.raises(NoApprovedVersion):
+            await pinned_version(connection, AGENT, first.entity_id, 3)
+    async with session(agents_pool, "paula") as connection:
+        with pytest.raises(NoApprovedVersion):  # a version of another agent
+            await pinned_version(connection, "paula", first.entity_id, 1)
 
 
 async def test_only_platform_admins_and_agents_read_definitions(

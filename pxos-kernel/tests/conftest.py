@@ -51,6 +51,7 @@ RESTOCK_AGENT = {
     "instructions": "Read the restock promise: its {sku}, quantity and verbatim quote.",
     "memory_instructions": MEMORY_INSTRUCTIONS,
     "tools": ["recall"],
+    "recall_tags": ["store:aisle-3"],
     "schedule": "0 9 * * 1",
     "answer_deadline_hours": 24,
     "max_rounds": 2,

@@ -3,6 +3,8 @@
 #   uv run python -m brq_at_work.publish_agent --dsn <banco> --author <pessoa>
 # e uma pessoa com platform-admin aprova a proposta. A agenda, o prazo das respostas, o
 # máximo de rodadas e a thread são do FDE com o cliente; os valores abaixo são do piloto.
+# recall_tags é o escopo da memória: o kernel impõe essas tags de acesso à consulta do
+# agente e às retenções do ciclo, e só a aprovação de uma nova versão as muda.
 agent: weekly-report-agent
 instructions: |
   Você prepara o report semanal do projeto ao cliente. O PM revisa o report antes de
@@ -37,6 +39,7 @@ memory_instructions: |
   escopo, cada um com quem disse e quando. Preserve datas e prazos literalmente e não
   confunda um risco com um atraso que já aconteceu.
 tools: [recall]
+recall_tags: ["projeto:piloto"]
 schedule: "0 9 * * 1"
 answer_deadline_hours: 24
 max_rounds: 3

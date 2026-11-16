@@ -95,6 +95,7 @@ class AgentVersion(ConfiguredBaseModel):
     instructions: str = Field(default=..., title="instruções", description="""O que o agente faz.""")
     memory_instructions: str = Field(default=..., title="instruções para a memória de contexto", description="""O que a memória de contexto extrai de cada fonte.""")
     tools: Optional[list[AgentTool]] = Field(default=None, title="ferramentas", description="""Ferramentas que o kernel monta para o agente.""")
+    recall_tags: list[str] = Field(default=..., title="escopo da consulta à memória", description="""Tags de acesso que o kernel impõe à consulta e às retenções do ciclo; nunca vêm do modelo. A consulta só alcança o que foi retido com uma delas.""", min_length=1)
     schedule: str = Field(default=..., title="agenda", description="""Quando o ciclo começa, em cron de cinco campos.""")
     answer_deadline_hours: int = Field(default=..., title="prazo das respostas em horas", ge=1)
     max_rounds: int = Field(default=..., title="máximo de rodadas", ge=1)

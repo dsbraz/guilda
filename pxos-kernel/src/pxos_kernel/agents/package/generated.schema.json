@@ -64,6 +64,14 @@
                     "description": "O que a mem\u00f3ria de contexto extrai de cada fonte.",
                     "type": "string"
                 },
+                "recall_tags": {
+                    "description": "Tags de acesso que o kernel imp\u00f5e \u00e0 consulta e \u00e0s reten\u00e7\u00f5es do ciclo; nunca v\u00eam do modelo. A consulta s\u00f3 alcan\u00e7a o que foi retido com uma delas.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
                 "schedule": {
                     "description": "Quando o ciclo come\u00e7a, em cron de cinco campos.",
                     "pattern": "^\\S+( \\S+){4}$",
@@ -88,6 +96,7 @@
                 "agent",
                 "instructions",
                 "memory_instructions",
+                "recall_tags",
                 "schedule",
                 "answer_deadline_hours",
                 "max_rounds",
