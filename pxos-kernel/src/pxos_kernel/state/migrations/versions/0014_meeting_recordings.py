@@ -1,0 +1,48 @@
+"""Recordings of meetings, one description per meeting (meeting transcripts port).
+
+- pxos.meeting_recordings keeps each recording a transcript source reported: its
+  meeting's key and calendar identity, its version, how many seconds it covers and its
+  access tags. Never its transcript: that goes to the context memory only;
+- a source's recording is unique; a recording removed at the source is deleted here, so
+  the remaining recordings of a meeting are those the source still has;
+- only agents reach it, under RLS: the agent that ingests a source reads and writes its
+  recordings; a person reads nothing and writes nothing, and no session reaches nothing.
+"""
+
+from alembic import op
+
+revision = "0014"
+down_revision = "0013"
+
+STATEMENTS = [
+    """
+    CREATE TABLE pxos.meeting_recordings (
+        source text NOT NULL CHECK (source <> ''),
+        recording text NOT NULL CHECK (recording <> ''),
+        meeting text NOT NULL CHECK (meeting <> ''),
+        organizer text NOT NULL,
+        start timestamptz NOT NULL,
+        title text NOT NULL,
+        version text NOT NULL,
+        seconds double precision NOT NULL CHECK (seconds >= 0),
+        access text[] NOT NULL,
+        PRIMARY KEY (source, recording)
+    )
+    """,
+    "CREATE INDEX meeting_recordings_meeting ON pxos.meeting_recordings (source, meeting)",
+    "GRANT SELECT, INSERT, UPDATE, DELETE ON pxos.meeting_recordings TO pxos_app",
+    "ALTER TABLE pxos.meeting_recordings ENABLE ROW LEVEL SECURITY",
+    "ALTER TABLE pxos.meeting_recordings FORCE ROW LEVEL SECURITY",
+    """
+    CREATE POLICY meeting_recordings_agents ON pxos.meeting_recordings
+    USING (EXISTS (SELECT FROM pxos.actors WHERE id = pxos.current_actor() AND kind = 'agent'))
+    WITH CHECK (
+        EXISTS (SELECT FROM pxos.actors WHERE id = pxos.current_actor() AND kind = 'agent')
+    )
+    """,
+]
+
+
+def upgrade() -> None:
+    for statement in STATEMENTS:
+        op.execute(statement)

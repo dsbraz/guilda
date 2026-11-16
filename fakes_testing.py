@@ -16,6 +16,7 @@ from pydantic import PrivateAttr
 from pxos_kernel.channel import Card
 from pxos_kernel.context import Recalled
 from pxos_kernel.ingestion import Changes, ConnectorUnavailable, SourceDocument
+from pxos_kernel.meetings import Recording, RecordingChanges
 from pxos_kernel.model_access import Route
 
 
@@ -49,6 +50,41 @@ class FakeConnector:
             deleted=tuple(source for source, (kind, _) in last.items() if kind == "deleted"),
             revoked=tuple(source for source, (kind, _) in last.items() if kind == "revoked"),
         )
+
+
+class FakeTranscriptSource:
+    """A transcription tool in memory: recordings are put with their transcript or removed,
+    and the delta since a cursor holds the last change to each recording."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.available = True
+        self.transcripts: dict[str, str] = {}
+        self._log: list[tuple[str, Recording | None]] = []
+
+    def put(self, recording: Recording, transcript: str) -> None:
+        self.transcripts[recording.id] = transcript
+        self._log.append((recording.id, recording))
+
+    def remove(self, recording: str) -> None:
+        self._log.append((recording, None))
+
+    async def changes(self, cursor: str | None) -> RecordingChanges:
+        self._reachable()
+        last = dict(self._log[int(cursor or 0) :])
+        return RecordingChanges(
+            cursor=str(len(self._log)),
+            recordings=tuple(r for r in last.values() if r is not None),
+            removed=tuple(id for id, r in last.items() if r is None),
+        )
+
+    async def transcript(self, recording: str) -> str:
+        self._reachable()
+        return self.transcripts[recording]
+
+    def _reachable(self) -> None:
+        if not self.available:
+            raise ConnectorUnavailable(f"{self.name} cannot be reached")
 
 
 class FakeChannel:

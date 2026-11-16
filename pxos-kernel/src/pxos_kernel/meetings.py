@@ -11,6 +11,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
 
+import asyncpg
+
+from pxos_kernel.identity import Connection, session
+from pxos_kernel.ingestion import Changes, SourceDocument
+
 
 @dataclass(frozen=True)
 class Meeting:
@@ -60,3 +65,110 @@ class TranscriptSource(Protocol):
         """The transcript of ``recording`` as text, with its speakers; raises
         ``ConnectorUnavailable`` when the tool cannot be reached."""
         ...
+
+
+class MeetingConnector:
+    """A transcript source as a connector: one source per meeting, ``meeting:<key>``,
+    described by its most complete recording (most seconds; the lowest id on a tie).
+
+    Each delta updates the recordings kept for the source, without content, as ``agent``.
+    What to ingest or forget is then read from the recordings kept and from what was
+    ingested, never from the delta, so a pass replayed after a failure finds the same work
+    left. A meeting whose chosen recording or version changed is ingested under a new
+    version; one with no recording left is deleted.
+    """
+
+    def __init__(self, pool: asyncpg.Pool, source: TranscriptSource, *, agent: str) -> None:
+        self.name = source.name
+        self._pool = pool
+        self._source = source
+        self._agent = agent
+
+    async def changes(self, cursor: str | None) -> Changes:
+        delta = await self._source.changes(cursor)
+        async with session(self._pool, self._agent) as connection:
+            await _record(connection, self.name, delta)
+            chosen = await connection.fetch(_CHOSEN, self.name)
+            orphans = await connection.fetch(_ORPHANS, self.name)
+        documents = []
+        for row in chosen:
+            version = _version(row)
+            if version is not None:
+                documents.append(await self._document(row, version))
+        return Changes(
+            cursor=delta.cursor,
+            documents=tuple(documents),
+            deleted=tuple(row["source"] for row in orphans),
+        )
+
+    async def _document(self, row: asyncpg.Record, version: str) -> SourceDocument:
+        transcript = await self._source.transcript(row["recording"])
+        start = row["start"].astimezone(UTC).isoformat()
+        header = f"Meeting: {row['title']}\nStart: {start}\nOrganizer: {row['organizer']}\n\n"
+        return SourceDocument(
+            source=f"meeting:{row['meeting']}",
+            version=version,
+            text=header + transcript,
+            access=tuple(row["access"]),
+        )
+
+
+async def _record(connection: Connection, source: str, delta: RecordingChanges) -> None:
+    await connection.executemany(
+        """
+        INSERT INTO pxos.meeting_recordings
+            (source, recording, meeting, organizer, start, title, version, seconds, access)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (source, recording) DO UPDATE SET meeting = EXCLUDED.meeting,
+            organizer = EXCLUDED.organizer, start = EXCLUDED.start, title = EXCLUDED.title,
+            version = EXCLUDED.version, seconds = EXCLUDED.seconds, access = EXCLUDED.access
+        """,
+        [
+            (source, r.id, r.meeting.key, r.meeting.organizer, r.meeting.start, r.meeting.title)
+            + (r.version, r.seconds, list(r.access))
+            for r in delta.recordings
+        ],
+    )
+    await connection.execute(
+        "DELETE FROM pxos.meeting_recordings WHERE source = $1 AND recording = ANY($2::text[])",
+        source,
+        list(delta.removed),
+    )
+
+
+_CHOSEN = """
+    SELECT c.*, s.version AS ingested, s.retained
+    FROM (
+        SELECT DISTINCT ON (meeting) * FROM pxos.meeting_recordings WHERE source = $1
+        ORDER BY meeting, seconds DESC, recording COLLATE "C"
+    ) c
+    LEFT JOIN pxos.source_states s ON s.source = 'meeting:' || c.meeting
+"""
+"""Each meeting's chosen recording, with what was ingested for the meeting."""
+
+_ORPHANS = """
+    SELECT s.source FROM pxos.source_states s
+    WHERE s.connector = $1 AND s.state NOT IN ('deleted', 'no_access')
+    AND NOT EXISTS (
+        SELECT FROM pxos.meeting_recordings r
+        WHERE r.source = $1 AND 'meeting:' || r.meeting = s.source
+    )
+"""
+"""The meetings of the source still kept in the context memory with no recording left."""
+
+
+def _version(row: asyncpg.Record) -> str | None:
+    """The version to ingest the chosen recording under; None when it is retained already.
+
+    It names the recording and its version, and a count of the descriptions the meeting
+    had: going back to a recording ingested before is a new version, since each source
+    version is ingested once. One ingested but not retained keeps its version.
+    """
+    chosen = f"{row['recording']}@{row['version']}"
+    ingested: str | None = row["ingested"]
+    if ingested is None:
+        return f"{chosen}#1"
+    current, _, count = ingested.rpartition("#")
+    if current == chosen:
+        return None if row["retained"] else ingested
+    return f"{chosen}#{int(count) + 1}"
