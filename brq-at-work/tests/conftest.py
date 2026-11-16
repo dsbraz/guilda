@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 
 import asyncpg
 import pytest
@@ -8,6 +8,7 @@ from db_testing import Database, create_test_database
 from model_testing import ROUTE
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
+from temporal_testing import dev_server
 
 
 @pytest.fixture(scope="session")
@@ -27,3 +28,9 @@ async def pool(database: Database) -> AsyncIterator[asyncpg.Pool]:
     pool = await create_pool(database.app_dsn)
     yield pool
     await pool.close()
+
+
+@pytest.fixture(scope="session")
+def temporal_address() -> Iterator[str]:
+    with dev_server() as address:
+        yield address

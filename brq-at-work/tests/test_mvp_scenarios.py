@@ -1,58 +1,64 @@
-"""Acceptance scenarios of the MVP (PRD v0.27, §MVP): the weekly project follow-up agent.
+"""Acceptance scenarios of the MVP (PRD v0.27, §MVP): the weekly project follow-up agent,
+run by the kernel's cycle with fakes for SharePoint, Granola, Teams and the model, on the
+Temporal development server.
 
-Each stays a strict expected failure until the slice that delivers it replaces it with the
-real test, run with fakes for SharePoint, Granola and Teams.
+The context: sources are ingested once per version, deleted or revoked ones are
+forgotten, an unreachable connector is flagged, and recall in the project's scope never
+returns a restricted source.
 
-Slice 11 proves the conversation and the correction up to the agent: the question is
-posted in the project's thread, the team's answer is kept with its author and cycle and
-wakes the cycle through the outbox, and a correction, in the thread or as the reason of a
-rejection, becomes context for the next cycle with who made it. Writing the answer into
-the report and redoing it belong to the agent's cycle (slice 13).
-
-Slice 10 proves the context: sources are ingested once per version, deleted or revoked
-ones are forgotten, an unreachable connector is flagged, and recall in the project's
-scope never returns a restricted source.
+The cycle: a gap becomes a question in the project's thread and the team's answer goes
+into the report with ``message:<id>`` as its source; the PM reviews the card, with its
+sources and uncertainties, rejects with a reason and approves what the agent redid, and
+nothing reaches the client; the reason is retained in the version's recall scope, so the
+next cycle does not repeat the error; a worker killed while the cycle waits for an answer
+or a review loses nothing and delivers once; and each cycle's effort is readable.
 """
 
 import asyncio
-from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+import os
+import signal
+import subprocess
+import sys
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from datetime import timedelta
+from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import asyncpg
 import pytest
+from temporalio.client import Client, WorkflowHandle
 
-from brq_at_work.composition import WEEKLY_REPORT, bootstrap
+from brq_at_work.composition import bootstrap
 from brq_at_work.publish_agent import AGENT_FILE, publish
 from db_testing import Database, create_test_database, drain
-from pxos_kernel.channel import FakeChannel
+from model_testing import ROUTE
+from pxos_kernel.agents import cycle_effort, round_input
+from pxos_kernel.channel import Card, FakeChannel, decide
 from pxos_kernel.context import FakeContextStore
-from pxos_kernel.conversation import (
-    Inbound,
-    conversation,
-    post,
-    receive,
-    retain_message,
-    retain_rejection,
-)
+from pxos_kernel.conversation import Inbound, Message, conversation, receive
 from pxos_kernel.identity import NotAuthorized, session
 from pxos_kernel.ingestion import FakeConnector, SourceDocument, sync
 from pxos_kernel.ontology import Registry
-from pxos_kernel.state import Event, Evidence, create_pool, propose, review
+from pxos_kernel.state import Decision, Proposal, create_pool, review
+from pxos_kernel.workflows import cycle_handlers, start_cycle
+
+from .pilot import QUESTION, TOKENS, Script, continuing, cycle_worker, reviewing, weekly
 
 AGENT = "weekly-report-agent"
 PROJECT = "project:aurora"
 BOARD = "board:restricted"
-THREAD = "teams:projeto-alfa"
-INSTRUCTIONS = "Guarde cada correção do time com quem a fez."
+THREAD = "projeto-piloto"  # the version's thread
+PILOT = Path(__file__).with_name("pilot.py")
 
 
 @pytest.fixture(scope="module")
 def installation(registry: Registry) -> Database:
     """A BRQ@work installation whose weekly agent is published from the distro's file."""
     database = create_test_database("pxos_test_brq_context")
-    bootstrap(database.owner_dsn, registry)
+    bootstrap(database.owner_dsn, registry, route=ROUTE)
 
     async def published() -> None:
         draft = await publish(database.app_dsn, AGENT_FILE, author="bruno")
@@ -74,6 +80,19 @@ async def context_pool(installation: Database) -> AsyncIterator[asyncpg.Pool]:
     await pool.close()
 
 
+@pytest.fixture
+async def publisher(installation: Database) -> AsyncIterator[asyncpg.Pool]:
+    pool = await create_pool(installation.publisher_dsn)
+    await drain(pool, {})
+    yield pool
+    await pool.close()
+
+
+@pytest.fixture
+async def temporal(temporal_address: str) -> Client:
+    return await Client.connect(temporal_address)
+
+
 def source(name: str, access: str, version: str = "1") -> SourceDocument:
     return SourceDocument(
         source=f"sharepoint:aurora/{name}",
@@ -89,10 +108,6 @@ async def states(pool: asyncpg.Pool, connector: str) -> dict[str, str]:
             "SELECT source, state FROM pxos.source_states WHERE connector = $1", connector
         )
     return {row["source"]: row["state"] for row in rows}
-
-
-def pending(slice_: str, scope: str) -> pytest.MarkDecorator:
-    return pytest.mark.xfail(raises=NotImplementedError, strict=True, reason=f"{slice_}: {scope}")
 
 
 async def test_update_without_duplication(context_pool: asyncpg.Pool) -> None:
@@ -114,118 +129,282 @@ async def test_update_without_duplication(context_pool: asyncpg.Pool) -> None:
     assert [key for key, _ in store.retained] == [status.source, status.source]
 
 
-class TextStore(FakeContextStore):
-    """The reference store, also keeping the text retained under each key."""
+@dataclass
+class Pilot:
+    """The kernel's cycle of the weekly agent, and the outbox publisher that wakes it."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.texts: dict[str, str] = {}
+    temporal: Client
+    pool: asyncpg.Pool
+    publisher: asyncpg.Pool
+    registry: Registry
+    queue: str = field(default_factory=lambda: f"pilot-{uuid4()}")
+    store: FakeContextStore = field(default_factory=FakeContextStore)
+    channel: FakeChannel = field(default_factory=FakeChannel)
 
-    async def retain(self, key: str, text: str, instructions: str, **options: Any) -> None:
-        await super().retain(key, text, instructions, **options)
-        self.texts[key] = text
+    async def start(self) -> WorkflowHandle[Any, str]:
+        return await start_cycle(self.temporal, AGENT, f"semana-{uuid4()}", task_queue=self.queue)
+
+    async def wake(self) -> None:
+        """Publish the outbox: cards to the PM, answers and reviews to the cycle."""
+        handlers = cycle_handlers(
+            self.pool,
+            self.registry,
+            self.store,
+            self.channel,
+            self.temporal,
+            agent=AGENT,
+            task_queue=self.queue,
+        )
+        await drain(self.publisher, handlers)
+
+    async def card(self, proposal: Proposal) -> Card:
+        await self.wake()
+        return self.channel.cards["ana"][proposal.id]
+
+    async def decide(
+        self, proposal: Proposal, decision: Decision, reason: str | None = None
+    ) -> None:
+        """Ana, the PM, decides on the card she got, through the channel."""
+        card = await self.card(proposal)
+        await decide(self.pool, self.registry, "teams:ana", card, decision, reason=reason)
+        await self.wake()
 
 
-@pytest.fixture
-async def publisher(database: Database) -> AsyncIterator[asyncpg.Pool]:
-    pool = await create_pool(database.publisher_dsn)
-    await drain(pool, {})
-    yield pool
-    await pool.close()
+@asynccontextmanager
+async def piloting(
+    temporal: Client,
+    pool: asyncpg.Pool,
+    publisher: asyncpg.Pool,
+    registry: Registry,
+    script: Script,
+) -> AsyncIterator[Pilot]:
+    pilot = Pilot(temporal, pool, publisher, registry)
+    async with cycle_worker(
+        temporal,
+        pool,
+        registry,
+        script,
+        queue=pilot.queue,
+        store=pilot.store,
+        channel=pilot.channel,
+    ):
+        yield pilot
+
+
+async def until[T](probe: Callable[[], Awaitable[T | None]], timeout: float = 30) -> T:
+    async with asyncio.timeout(timeout):
+        while (found := await probe()) is None:
+            await asyncio.sleep(0.2)
+        return found
+
+
+async def proposals(pool: asyncpg.Pool, cycle: str) -> list[Proposal]:
+    async with session(pool, AGENT) as connection:
+        rows = await connection.fetch(
+            "SELECT p.* FROM pxos.proposals p JOIN pxos.agent_runs a"
+            " ON p.evidence->>'source' = 'agent-run:' || a.id WHERE a.cycle = $1"
+            " ORDER BY p.created_at",
+            cycle,
+        )
+    return [Proposal(**dict(row)) for row in rows]
+
+
+async def proposed(pool: asyncpg.Pool, cycle: str, number: int = 1) -> Proposal:
+    async def probe() -> Proposal | None:
+        found = await proposals(pool, cycle)
+        return found[number - 1] if len(found) >= number else None
+
+    return await until(probe)
+
+
+async def asked(pool: asyncpg.Pool, cycle: str) -> Message:
+    """The agent's post of questions in ``cycle``, once it is kept."""
+
+    async def probe() -> Message | None:
+        async with session(pool, AGENT) as connection:
+            posts = [m for m in await conversation(connection, cycle) if m.sender is None]
+        return posts[0] if posts else None
+
+    return await until(probe)
 
 
 def said(sender: str, text: str) -> Inbound:
     return Inbound(thread=THREAD, channel_message=f"m-{uuid4()}", sender=sender, text=text)
 
 
-async def test_clarification(pool: asyncpg.Pool, publisher: asyncpg.Pool) -> None:
-    """A gap becomes a question in the thread; the team's answer is kept for the cycle."""
-    channel = FakeChannel()
-    cycle = f"semana-{uuid4()}"
+async def outcome(handle: WorkflowHandle[Any, str]) -> str:
+    return await asyncio.wait_for(handle.result(), timeout=60)
 
-    question = await post(
-        pool, channel, AGENT, thread=THREAD, cycle=cycle, text="A entrega de sexta saiu?"
+
+async def test_clarification(
+    temporal: Client, context_pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry
+) -> None:
+    """A gap becomes a question in the thread; the answer goes into the report, cited."""
+    async with piloting(temporal, context_pool, publisher, registry, weekly) as pilot:
+        handle = await pilot.start()
+        question = await asked(context_pool, handle.id)
+        answer = await receive(context_pool, said("teams:bruno", "Saiu na segunda: sem ambiente."))
+        for stranger in ("teams:dora", "teams:convidado"):
+            with pytest.raises(NotAuthorized):
+                await receive(context_pool, said(stranger, "Saiu sim."))
+        await pilot.wake()
+        report = await proposed(context_pool, handle.id)
+        await pilot.decide(report, "approved")
+        assert await outcome(handle) == "approved"
+
+    assert pilot.channel.threads[THREAD] == [QUESTION]
+    assert (question.text, answer.author, answer.cycle) == (QUESTION, "bruno", handle.id)
+    (item,) = report.payload["items"]
+    assert item["sources"] == [f"message:{answer.id}"]
+    assert item["text"] == "Entrega de sexta: Saiu na segunda: sem ambiente."
+
+
+async def test_continuity(
+    temporal: Client, context_pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry
+) -> None:
+    """This week's correction holds in the next cycle, which does not repeat the error."""
+    reason = "Não atrasou: o prazo foi renegociado para 30/11."
+    async with piloting(temporal, context_pool, publisher, registry, continuing) as pilot:
+        this_week = await pilot.start()
+        wrong = await proposed(context_pool, this_week.id)
+        await pilot.decide(wrong, "rejected", reason)
+        fixed = await proposed(context_pool, this_week.id, 2)
+        await pilot.decide(fixed, "approved")
+        assert await outcome(this_week) == "approved"
+
+        next_week = await pilot.start()
+        report = await proposed(context_pool, next_week.id)
+        await pilot.decide(report, "approved")
+        assert await outcome(next_week) == "approved"
+
+    (delayed,) = wrong.payload["items"]
+    assert delayed["category"] == "confirmed_delay"
+    assert [s.split("/")[1] for s in delayed["sources"]] == ["ata-2026-11-10"]  # no board note
+    correction = f"rejection:{wrong.id}"
+    renegotiated = {
+        "category": "renegotiated_deadline",
+        "text": "O prazo do marco 2 foi renegociado para 30/11.",
+        "sources": [correction],
+    }
+    assert fixed.payload["items"] == report.payload["items"] == [renegotiated]
+    # Next week's round brought no correction of its own: it came by recall, in scope.
+    next_round = await round_input(context_pool, AGENT, next_week.id, final_round=False)
+    assert next_round.corrections == ()
+    recalled = await pilot.store.recall("marco 2", tags=["projeto:piloto"])
+    assert correction in {r.source for r in recalled}
+
+
+async def test_pm_reviews_the_deliverable(
+    temporal: Client, context_pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry
+) -> None:
+    """The PM reviews the report, with sources and uncertainties, before the client."""
+    async with piloting(temporal, context_pool, publisher, registry, reviewing) as pilot:
+        handle = await pilot.start()
+        risk = await proposed(context_pool, handle.id)
+        first = await pilot.card(risk)
+        await pilot.decide(risk, "rejected", "A data já passou: é atraso confirmado.")
+        delay = await proposed(context_pool, handle.id, 2)
+        second = await pilot.card(delay)
+        await pilot.decide(delay, "approved")
+        assert await outcome(handle) == "approved"
+
+    (item,) = first.payload["items"]
+    assert (item["category"], first.payload["uncertainties"]) == (
+        "delay_risk",
+        ["O cliente ainda não confirmou o novo escopo."],
     )
-    woken: list[Event] = []
-
-    async def wake(event: Event) -> None:
-        woken.append(event)
-
-    answer = await receive(pool, said("teams:bruno", "Saiu na segunda: faltou ambiente."))
-    for stranger in ("teams:dora", "teams:convidado"):
-        with pytest.raises(NotAuthorized):
-            await receive(pool, said(stranger, "Saiu sim."))
-    await drain(publisher, {"message.received": wake})
-
-    assert channel.threads[THREAD][-1] == "A entrega de sexta saiu?"
-    assert (answer.author, answer.cycle) == ("bruno", cycle)
-    async with session(pool, AGENT) as connection:
-        assert await conversation(connection, cycle) == [question, answer]
-    assert [event.payload for event in woken] == [{"message_id": str(answer.id), "cycle": cycle}]
+    assert item["sources"] and first.source.startswith("agent-run:")
+    (item,) = second.payload["items"]
+    assert item["category"] == "confirmed_delay"
+    assert item["sources"][-1] == f"rejection:{risk.id}"
+    # Nothing goes to the client: Dora gets no card and no post.
+    assert set(pilot.channel.cards) == {"ana"}
+    assert dict(pilot.channel.threads) == {}
 
 
-async def rejected(pool: asyncpg.Pool, registry: Registry, reason: str) -> UUID:
-    """A weekly report proposed by the agent and rejected by Ana, the PM, with ``reason``."""
-    async with session(pool, AGENT) as connection:
-        proposal = await propose(
-            connection,
-            registry.get(WEEKLY_REPORT),
-            "propose_weekly_report",
-            payload={
-                "summary": "Semana do projeto Alfa.",
-                "items": [
-                    {
-                        "category": "confirmed_delay",
-                        "text": "O marco 2 atrasou.",
-                        "sources": ["ata-2026-11-10"],
-                    }
-                ],
-            },
-            evidence=Evidence(source="test:run", quote="Report", context_ref=f"t:{uuid4()}"),
-            valid_from=datetime.now(UTC),
-        )
-    async with session(pool, "ana") as connection:
-        await review(
-            connection, registry, proposal.id, "rejected", digest=proposal.digest, reason=reason
-        )
-    return proposal.id
+async def test_pm_total_effort_is_measurable(
+    temporal: Client, context_pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry
+) -> None:
+    """Each cycle's rounds, questions, answers, rejections, review time and cost read back."""
+    async with piloting(temporal, context_pool, publisher, registry, weekly) as pilot:
+        handle = await pilot.start()
+        await asked(context_pool, handle.id)
+        await receive(context_pool, said("teams:bruno", "Saiu, com um dia de atraso."))
+        await pilot.wake()
+        await pilot.decide(await proposed(context_pool, handle.id), "rejected", "Cite a ata.")
+        await pilot.decide(await proposed(context_pool, handle.id, 2), "approved")
+        assert await outcome(handle) == "approved"
+
+    async with session(context_pool, AGENT) as connection:
+        effort = await cycle_effort(connection, handle.id)
+    calls = 3 * 2  # three rounds, each a recall and an answer
+    input_tokens, output_tokens = calls * TOKENS[0], calls * TOKENS[1]
+    assert (effort.rounds, effort.questions, effort.answers, effort.rejections) == (3, 1, 1, 1)
+    assert effort.review_time > timedelta(0)
+    assert (effort.input_tokens, effort.output_tokens) == (input_tokens, output_tokens)
+    cost = input_tokens * ROUTE.input_price + output_tokens * ROUTE.output_price
+    assert effort.cost == cost / 1_000_000
 
 
-async def test_continuity(pool: asyncpg.Pool, publisher: asyncpg.Pool, registry: Registry) -> None:
-    """This week's corrections are context for the next cycle, with who made them."""
-    this_week = f"semana-{uuid4()}"
-    await post(
-        pool, FakeChannel(), AGENT, thread=THREAD, cycle=this_week, text="O marco 2 atrasou?"
+@asynccontextmanager
+async def worker_process(dsn: str, address: str, queue: str) -> AsyncIterator[None]:
+    """A worker of the cycle in its own process, killed with SIGKILL on the way out."""
+    process = subprocess.Popen(
+        [sys.executable, str(PILOT), dsn, address, queue], stdout=subprocess.PIPE, text=True
     )
-    correction = await receive(
-        pool, said("teams:ana", "Não atrasou: o prazo foi renegociado para 30/11.")
-    )
-    proposal_id = await rejected(pool, registry, "Distinga atraso confirmado de renegociado.")
-    store = TextStore()
+    try:
+        assert process.stdout is not None
+        assert (await asyncio.to_thread(process.stdout.readline)).strip() == "ready"
+        yield
+    finally:
+        os.kill(process.pid, signal.SIGKILL)
+        await asyncio.to_thread(process.wait)
 
-    async def retain_answer(event: Event) -> None:
-        await retain_message(
-            pool, store, AGENT, UUID(event.payload["message_id"]), INSTRUCTIONS, tags=[PROJECT]
-        )
 
-    async def retain_reason(event: Event) -> None:
-        await retain_rejection(
-            pool, store, AGENT, UUID(event.payload["proposal_id"]), INSTRUCTIONS, tags=[PROJECT]
-        )
+async def settled(handle: WorkflowHandle[Any, str], activities: int) -> None:
+    """Wait until ``activities`` steps completed and the cycle waits, nothing running."""
 
-    await drain(publisher, {"message.received": retain_answer, "proposal.rejected": retain_reason})
+    async def probe() -> bool | None:
+        events = (await handle.fetch_history()).events
+        done = sum(e.HasField("activity_task_completed_event_attributes") for e in events)
+        running = (await handle.describe()).raw_description
+        idle = not running.pending_activities and not running.HasField("pending_workflow_task")
+        return True if done == activities and idle else None
 
-    answer_key, reason_key = f"message:{correction.id}", f"rejection:{proposal_id}"
-    assert store.retained == [(answer_key, INSTRUCTIONS), (reason_key, INSTRUCTIONS)]
-    assert store.texts[answer_key] == (
-        f"Message from ana in cycle {this_week}: Não atrasou: o prazo foi renegociado para 30/11."
-    )
-    assert store.texts[reason_key] == (
-        f"Correction from ana: proposal {proposal_id} (WeeklyReport) was rejected"
-        " because: Distinga atraso confirmado de renegociado."
-    )
-    async with session(pool, AGENT) as connection:
-        assert correction in await conversation(connection, this_week)
+    await until(probe)
+
+
+async def test_resumption(
+    temporal: Client,
+    temporal_address: str,
+    installation: Database,
+    context_pool: asyncpg.Pool,
+    publisher: asyncpg.Pool,
+    registry: Registry,
+) -> None:
+    """Killing the worker while the cycle waits keeps what arrived and delivers once."""
+    pilot = Pilot(temporal, context_pool, publisher, registry)
+    run = (installation.app_dsn, temporal_address, pilot.queue)
+
+    async with worker_process(*run):
+        handle = await pilot.start()
+        question = await asked(context_pool, handle.id)
+        await settled(handle, 4)  # pinned, synced, ran round 1, posted: waits for an answer
+    answer = await receive(context_pool, said("teams:bruno", "Saiu na terça."))
+    await pilot.wake()  # the answer arrives while no worker runs
+
+    async with worker_process(*run):
+        report = await proposed(context_pool, handle.id)
+        await settled(handle, 6)  # ran round 2, proposed: waits for the review
+    await pilot.decide(report, "approved")  # the PM decides while no worker runs
+
+    async with worker_process(*run):
+        assert await outcome(handle) == "approved"
+
+    assert await proposals(context_pool, handle.id) == [report]
+    assert report.payload["items"][0]["sources"] == [f"message:{answer.id}"]
+    async with session(context_pool, AGENT) as connection:
+        assert await conversation(connection, handle.id) == [question, answer]
 
 
 async def test_sources_and_access(context_pool: asyncpg.Pool) -> None:
@@ -257,18 +436,3 @@ async def test_sources_and_access(context_pool: asyncpg.Pool) -> None:
     assert await sync(context_pool, store, sharepoint, agent=AGENT) is False
     assert (await states(context_pool, sharepoint.name))[status.source] == "unavailable"
     assert await store.recall("atrasos do diagnóstico", tags=[PROJECT]) == recalled
-
-
-@pending("fatia 13", "reinício durante a espera preserva respostas e não duplica entregas")
-def test_resumption() -> None:
-    raise NotImplementedError
-
-
-@pending("fatia 11", "o PM revisa o status antes de compartilhar com o cliente")
-def test_pm_reviews_the_deliverable() -> None:
-    raise NotImplementedError
-
-
-@pending("fatia 13", "cada execução registra uso e custo para medir o esforço total")
-def test_pm_total_effort_is_measurable() -> None:
-    raise NotImplementedError
