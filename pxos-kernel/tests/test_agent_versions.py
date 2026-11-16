@@ -22,6 +22,7 @@ from pxos_kernel.agents import (
     AmbiguousDefinition,
     NoApprovedVersion,
     approved_version,
+    propose_version,
 )
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import InvalidPayload, Registry
@@ -201,3 +202,21 @@ async def test_two_definitions_of_one_agent_run_neither(
         await decided(agents_pool, registry, draft)
     with pytest.raises(AmbiguousDefinition):
         await in_force(agents_pool)
+
+
+async def test_a_new_definition_changes_the_version_in_force(
+    agents_pool: asyncpg.Pool, registry: Registry
+) -> None:
+    """Whoever proposes it need not read definitions: the kernel finds the version in force."""
+    for revision, text in ((1, "v1"), (2, "v2")):
+        draft = await propose_version(
+            agents_pool,
+            registry,
+            definition(text),
+            author="frank",
+            evidence=Evidence(source="distro:agent.yaml@d", quote=text, context_ref="distro:d"),
+        )
+        assert draft.author == "frank"
+        await decided(agents_pool, registry, draft)
+        version = await in_force(agents_pool)
+        assert (version.revision, version.instructions) == (revision, text)

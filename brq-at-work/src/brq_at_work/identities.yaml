@@ -19,6 +19,12 @@ actors:
     kind: internal_person
     name: Eva (administradora da plataforma)
     roles: [platform-admin]
+  # Agente especialista do report semanal (weekly_report_agent.yaml): lê sua definição e
+  # propõe o report; quem aprova é o PM.
+  - id: weekly-report-agent
+    kind: agent
+    name: Agente do report semanal
+    roles: [agent]
   # Contato do cliente: identidade própria, sem acesso ao contexto interno (PXOS-61).
   - id: dora
     kind: external_person

@@ -9,13 +9,16 @@ in force runs.
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID
+
+import asyncpg
 
 from pxos_kernel.agents.package import generated
 from pxos_kernel.errors import PxosError
-from pxos_kernel.identity import Connection
+from pxos_kernel.identity import Connection, session
 from pxos_kernel.ontology import RegisteredPackage, Registry
-from pxos_kernel.state import current, get_proposal
+from pxos_kernel.state import Evidence, Proposal, current, get_proposal, propose
 
 AGENTS = "pxos_agents"
 PACKAGE_DIR = Path(__file__).resolve().parent / "package"
@@ -81,6 +84,34 @@ async def approved_version(connection: Connection, agent: str) -> AgentVersion:
         thread=fact.payload["thread"],
         deliverable=(package, action),
     )
+
+
+async def propose_version(
+    pool: asyncpg.Pool,
+    registry: Registry,
+    payload: dict[str, Any],
+    *,
+    author: str,
+    evidence: Evidence,
+) -> Proposal:
+    """Propose ``payload`` as ``author``: a change of its agent's version in force, or the
+    agent's first version. The agent reads its own definitions, so the author need not."""
+    async with session(pool, payload["agent"]) as connection:
+        try:
+            base: AgentVersion | None = await approved_version(connection, payload["agent"])
+        except NoApprovedVersion:
+            base = None
+    async with session(pool, author) as connection:
+        return await propose(
+            connection,
+            registry.get(AGENTS),
+            "publish_agent_version",
+            payload=payload,
+            evidence=evidence,
+            valid_from=datetime.now(UTC),
+            entity_id=None if base is None else base.entity_id,
+            base_revision=0 if base is None else base.revision,
+        )
 
 
 @dataclass(frozen=True)
