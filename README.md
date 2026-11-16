@@ -5,11 +5,29 @@ O kernel está em construção, em fatias verticais (ver o roadmap); spikes são
 
 ## Conteúdo
 
-- [PRD](pxos-brq-work-prd.html)
+- [PRD v0.27](pxos-brq-work-prd.html) e [escopo do MVP: acompanhamento de projeto](pxos-brq-work-prd.html#mvp)
 - [Roadmap](ROADMAP.md) e [backlog](BACKLOG-KERNEL.md)
 - [Decisões de arquitetura](docs/adr/)
 - [Ontologia e governança](spikes/ontology-governance/README.md)
 - [Graphiti](spikes/graphiti-memory/README.md) e [Hindsight](spikes/hindsight-memory/README.md)
+
+## Primeiro marco: piloto com um time real
+
+Um agente por projeto acompanha a semana, esclarece lacunas em threads no Teams e prepara
+um status revisável pelo PM, usando contexto contínuo de SharePoint e Granola. O agente é
+configuração da BRQ@work (instruções, ferramentas e agenda), publicada com aprovação; o
+kernel monta o agente ADK com o modelo do gateway, e o Temporal cuida de agenda, espera e
+retomada. ADK, Temporal e LinkML permanecem; a distro configura o agente e o ciclo semanal, e o
+kernel monta o agente e conduz o ciclo. A recuperação do Hindsight será ampliada, e só o
+report revisado pelo PM vira fato canônico. Envio autônomo por e-mail ou
+WhatsApp é evolução futura, condicionada à autorização de execução
+([ADR 0006](docs/adr/0006-arquitetura-do-agente-especialista.md)). Builder e kernel completo ficam como evolução posterior. Acessos, ambiente,
+participantes e agenda ainda são [dependências abertas](pxos-brq-work-prd.html#mvp-dependencias).
+
+![Ciclo semanal do MVP](docs/diagrams/mvp-acompanhamento.png)
+
+Diagrama: [PNG](docs/diagrams/mvp-acompanhamento.png) · [fonte SVG](docs/diagrams/mvp-acompanhamento.svg).
+Em terminal com protocolo Kitty, por exemplo: `kitten icat docs/diagrams/mvp-acompanhamento.png`.
 
 ## Desenvolvimento
 
@@ -34,17 +52,10 @@ Modelos Pydantic e JSON Schema são gerados do LinkML de cada pacote (`generated
 
 ```sh
 uv run python -m pxos_kernel.ontology.generate pxos-kernel/tests/retail_fixture \
-  pxos-kernel/src/pxos_kernel/agents/package brq-at-work/src/brq_at_work/ontology/work_context
+  pxos-kernel/src/pxos_kernel/agents/package
 ```
 
 O teste de snapshot e o CI (`--check`) falham se o gerado divergir do LinkML.
-
-Para ver o ciclo canônico funcionando (proposta, recusas, aprovação, correção e leitura
-em duas datas) num banco local `pxos_demo`:
-
-```sh
-PYTHONPATH=. uv run python brq-at-work/examples/slice1_demo.py
-```
 
 No CI, a memória de contexto é o adaptador falso. A execução real é opt-in e local, com o
 Hindsight sobre o Postgres do Compose e o modelo no Vertex (gasta tokens no projeto
@@ -70,48 +81,11 @@ set -a; . ./.env; set +a
 GOOGLE_APPLICATION_CREDENTIALS=... uv run pytest pxos-kernel/tests/test_vertex_routes.py
 ```
 
-Para usar o contexto de trabalho por MCP (fatia 3), suba o servidor local. Ele recria o banco
-`pxos_mcp` com um compromisso aprovado e usa um IdP de desenvolvimento, cuja chave fica em
-`.secrets/`:
-
-```sh
-PYTHONPATH=. uv run python brq-at-work/examples/mcp_local.py serve
-```
-
-Em outro terminal, emita o token de um ator e registre o servidor no Claude Code. Um agente
-agindo por uma pessoa usa `token bruno --agent meeting-agent`:
-
-```sh
-TOKEN=$(PYTHONPATH=. uv run python brq-at-work/examples/mcp_local.py token celia)
-claude mcp add --transport http brq-at-work http://127.0.0.1:18000/mcp \
-  --header "Authorization: Bearer $TOKEN"
-```
-
-O token vale 12 horas; depois disso, emita outro e registre o servidor de novo (`claude mcp
-remove brq-at-work` antes do `add`). As tools são `list_commitments`, `timeline` e
-`create_commitment`, além de `list_agent_versions` e `publish_agent_version` (fatia 7). A
-proposta de compromisso segue para a gerente de projeto; enquanto não há canal real, a
-aprovação do card é feita com `mcp_local.py approve <proposal_id> --as ana`.
-
-O MCP só aceita um token se o banco aceitar o ator dele (fatia 4). A Dora é contato do
-cliente, uma atora externa: o token dela (`token dora`) é assinado pelo IdP da instalação e
-mesmo assim recebe 401, assim como o de um ator desconhecido ou de um agente sem delegação.
-Cada instalação tem banco, logins e IdP próprios; o login de uma não abre o banco de outra.
-
-O escriba também roda como workflow no Temporal (fatia 5): o workflow recebe só a referência
-do transcrito, a Activity ingere como o agente e devolve ids de proposta, e o workflow espera a
-decisão da gerente de projeto. O publicador da outbox avisa o workflow quando a proposta é
-aprovada ou rejeitada; a decisão vale quando lida no banco. O histórico do Temporal guarda ids,
-nunca o que foi dito.
-
-O escriba roda a partir de uma versão publicada (fatia 7). A definição dele (instruções do
-agente ADK, instruções para a memória de contexto e a ação que propõe) é uma proposta de
-`publish_agent_version`, aprovada por quem tem o papel `platform-admin`; na BRQ@work, a Eva.
-Uma instalação nova não roda o escriba até haver versão aprovada: o bootstrap não cria
-nenhuma, e `brq_at_work.scribe.DRAFT` é só o texto proposto como primeira versão. Uma versão
-nova muda a mesma entidade (`entity_id` e `base_revision` na tool). Na ingestão, um agente
-ADK montado pelo kernel, com o modelo do gateway, lê cada fato extraído; cada execução
-registra a versão que rodou.
+O MCP, a política de ação de agentes e o escriba saíram do código em 15/11/2026, por estarem
+fora do MVP ([ADR 0005](docs/adr/0005-poda-para-o-mvp.md)). Os sete cenários de aceitação do
+MVP estão em `brq-at-work/tests/test_mvp_scenarios.py`, como falha esperada estrita até cada
+fatia entregá-los. Um banco local criado antes disso precisa ser recriado, porque a cadeia de
+migrações foi editada.
 
 O CI de produto (`.github/workflows/ci.yml`) roda os mesmos checks. Os experimentos em
 `spikes/` ficam fora do workspace e do CI; seus procedimentos estão nas respectivas pastas.

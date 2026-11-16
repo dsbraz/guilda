@@ -1,6 +1,6 @@
 > Linear: projeto pxOS (brq-px), https://linear.app/brq-px/project/pxos-38c291a57da8. O issue Kn deste arquivo é o PXOS-n.
 
-# Backlog do kernel do pxOS (F0–F10), revisão 4
+# Backlog do kernel do pxOS (F0–F10), revisão 5
 
 **Escopo:** só o kernel, ou seja, a Parte A do PRD, o §4 e o §13 no que for do kernel. A BRQ@work (F11) fica fora, no projeto BRQ@work do Linear.
 
@@ -15,6 +15,51 @@
 - **Instalação dedicada por cliente** é o padrão. Dentro dela continuam valendo as permissões internas. O modo compartilhado fica adiado.
 
 **Revisão 4** (14/11/2026, PRD v0.26): [ADR 0004](docs/adr/0004-agentes-workflows-e-plataforma-de-construcao.md) adota Google ADK para agentes e Temporal como único motor de processos duráveis, e faz da área web do pxOS o lugar único para configurar a instalação, construir agentes, compor workflows, publicar e acompanhar. Toda mudança feita na plataforma vira versão publicada, imutável, com digest e aprovada por um papel; definições de agentes e workflows deixam de ficar no Git. Código de conectores e ferramentas e a ontologia continuam em código; editar a ontologia pela interface fica fora do escopo atual. K34 e K36 foram reescritos, e K65 a K68 entram na F8. Os itens novos usam o número do Linear (PXOS-65 a 68), para manter Kn = PXOS-n.
+
+## Revisão 5 · recorte do MVP (15/11/2026, PRD v0.27)
+
+O primeiro marco passa a ser o piloto do [agente de acompanhamento de projeto](pxos-brq-work-prd.html#mvp), antes do kernel completo. A ordem de entrega está na [sequência prioritária do roadmap](ROADMAP.md#sequência-prioritária-mvp--piloto). O agente é configuração da BRQ@work (instruções, ferramentas e agenda), sem builder: a distribuição contribui no máximo com código de ferramentas e configura o ciclo semanal, e o kernel monta o agente ADK a partir da versão aprovada, com o modelo do gateway, e conduz o ciclo no Temporal. Publicação governada e versão por execução permanecem no K34, com Temporal no K35/K36.
+
+A matriz abaixo mapeia requisitos compostos aos itens existentes, sem duplicar a propriedade de cada mecanismo na matriz final. Referência a um item não significa que ele esteja concluído: a coluna do meio diz o que existe no código em 15/11/2026, depois da poda da fatia 9. O kernel oferece mecanismos neutros; conectores reais, instruções do agente e jornada do projeto pertencem à BRQ@work. F11.n é referência ao roadmap, não número de issue.
+
+| Requisito do MVP | Itens existentes do kernel | Distribuição / lacuna a detalhar |
+|---|---|---|
+| SharePoint: carga inicial, delta periódico, identificação, versão e origem | K18 parcial (contrato do conector sem delta nem exclusão); K19 parcial (ingestão idempotente por versão da fonte); K25 parcial (só retenção no Hindsight); K20 e K22 não existem | F11.1: conector Graph direto, site/biblioteca e permissões restritas a validar |
+| Granola: conexão própria e operação agendada | K18 e K25 parciais, como acima; K22 não existe | F11.2: confirmar API ou MCP autenticado; demonstrar acesso fora da conversa e escopo autorizado |
+| Contexto contínuo, fontes e respostas recuperáveis | K25 parcial (retenção sem recuperação); K16 não existe; K30 saiu do código na fatia 9 | F11.4/6: vincular contexto e trabalho em andamento ao projeto e à semana; consulta ampla ainda a completar |
+| Exclusões, restrições e perda de acesso | K08 parcial (RLS e isolamento por instalação); K10 e K16 não existem; K18 sem escopo nem estado da fonte | Conectores propagam exclusões e revogações; validar derivados e indisponibilidade explícita no status |
+| Pedidos, perguntas, respostas e correções em threads | K23 parcial (canal falso só de cards de revisão, sem thread nem entrada; a decisão pelo canal não confere o ator); K09 parcial (identidades fixas); K29 saiu do código na fatia 9 | F11.3: Teams real; correlacionar thread, projeto, pessoa e trabalho; liberação TI pendente |
+| Status semanal com evidências e revisão do PM | K24 revisa propostas canônicas e grava fato; o report semanal reusa esse ciclo (ADR 0006). K34 parcial (versões e registro de execução, sem montagem do agente) | `WeeklyReport` canônico num pacote da distro, com o PM como aprovador: o ciclo do K07/K24 já dá versão com digest, recusa no banco a quem não é PM e correção por rejeição com motivo. F11.4/6: função de acompanhamento (progresso, mudanças, riscos, decisões) e lacunas. A ingestão de contexto sem confirmar cada trecho já é do kernel (fatia 9) |
+| Correções válidas no ciclo seguinte | K07 correção canônica (não se aplica a contexto); K25 sem recuperação | Distinguir correção de contexto da alteração canônica; evitar repetir a informação corrigida |
+| Agenda, espera e retomada sem duplicar entregas | K36 parcial (workflow de ingestão só com referências); K35 não existe (sem Schedules); K19 parcial | Correlacionar respostas recebidas e entrega semanal; validar reinício durante espera no canal real |
+| Versão aprovada da definição em cada execução | K34 parcial: versões publicadas e registro da versão em cada execução da ingestão. Nenhum caminho do produto publica versão desde a saída do MCP | Comando da distro que propõe o arquivo do agente; o kernel monta o agente da versão aprovada e registra cada execução semanal; o futuro K66 usa a mesma publicação |
+| Uso, qualidade e esforço do PM | K14, K17 e K41 não existem: não há uso nem custo por execução | Linha de base e medição de preparação + esclarecimentos + revisão com o time piloto |
+| Ambiente do piloto | K08/K09 parciais (isolamento por instalação, identidades fixas); K11 parcial (gateway de modelos por rota de deploy); K25 (Hindsight operado), K36 (namespace e workers), K10, K12, K13 e K44 não existem | Definir ambiente e operação, credenciais por ambiente, persistência e recuperação antes do uso real |
+
+**Lacunas de domínio ainda sem issue atribuída neste documento:** conectores reais Graph/Granola, conversa em threads no Teams, função semanal, persistência das respostas/correções da jornada e protocolo do piloto. Detalhá-las no backlog da BRQ@work, preservando os identificadores atuais; não criar números provisórios. Este alinhamento documental não cria nem altera issues no Linear.
+
+**Dependências abertas:** projeto/participantes, Teams/TI, site/biblioteca e Graph, acesso efetivo ao Granola, ambiente, agenda e duração. Cada uma tem [critério de resolução no PRD](pxos-brq-work-prd.html#mvp-dependencias). Os [sete cenários de aceitação](pxos-brq-work-prd.html#mvp-aceitacao) devem ser demonstrados pela implementação e pelo piloto. Requisitos do §4 ainda não entregues continuam como `xfail` estrito; este recorte não os declara atendidos.
+
+**Poda da fatia 9** ([ADR 0005](docs/adr/0005-poda-para-o-mvp.md)): saíram do código o MCP e o OIDC (K29/K30), a política de ação e a autonomia (K31 parcial), o escriba com a proposta por fato e a espera de revisão no Temporal, o pacote de contexto de trabalho, a invalidação e as leituras de fatos sem uso e a ontologia base além de `Actor`. Os reqs. 1 e 6 voltaram a `xfail` estrito; seguem verdes os reqs. 3, 4 e 5. Os sete cenários do MVP estão em `brq-at-work/tests/test_mvp_scenarios.py`. As próximas fatias (10 a 14) estão na sequência prioritária do roadmap.
+
+**Após o MVP:** K65–K68 (área web completa, builder, composição genérica e configuração), K43 (hospedagem de apps), carteira e conectores de ação em Bud/portal; K30–K33 voltam como evolução das ações externas e do acesso por MCP. As partes necessárias à segurança e governança do próprio piloto não são adiadas.
+
+**Refinamento arquitetural do MVP** ([ADR 0006](docs/adr/0006-arquitetura-do-agente-especialista.md)):
+ADK, Temporal e LinkML permanecem. Ampliar Hindsight com recuperação autorizada (`recall`
+com escopo imposto pelo kernel, K16/K25), sem duplicar extração ou memória no kernel;
+`reflect` e observações só depois de um teste de expurgo. O report semanal é um tipo
+canônico de um pacote LinkML da distro, revisado pelo PM pelo ciclo existente; o PM corrige
+rejeitando com motivo. O vocabulário específico fica na distro, em LinkML só onde há
+consumidor (as categorias do report); conceitos gerais entram no kernel só com consumidor.
+Fatia 12 liga o pacote do report, as instruções e o `recall` ao agente montado pelo kernel;
+fatia 13 entrega o workflow do ciclo do agente no kernel, configurado pela versão
+publicada (K35/K36). Revisar o report não aprova cada fato citado. Publicação governada do agente permanece. E-mail/WhatsApp e envio autônomo
+ficam após o MVP, exigindo ferramentas, autorização de destinatários/conteúdo e revisão
+explícita da política de ações irreversíveis; não há novas issues atribuídas nesta etapa.
+
+## Histórico das fatias
+
+O histórico abaixo descreve o que cada fatia entregou. Depois da poda da fatia 9, as fatias 2, 3, 5 e 8 saíram do código; da 7 ficaram as versões publicadas e o registro de execução, sem o escriba nem a publicação pelo MCP; da 1, o pacote de contexto de trabalho saiu.
 
 **Fatia 1** (primeira entrega de código): K01 (PXOS-1), K04 base mínima e metamodelo (PXOS-47), K05 Pydantic e JSON Schema (PXOS-48), K06 manifesto e registro de pacote (PXOS-49), RLS do K08 (PXOS-50), identidades fixas do K09 (PXOS-51) e K07 inteiro (PXOS-7); na BRQ@work, o pacote de contexto de trabalho (PXOS-46), cujo teste de integração é o critério de saída. K03 já está fechado pelo ADR 0001. Saída: o pacote de contexto de trabalho da BRQ@work e um pacote fixture de outro domínio fazem o ciclo proposta → aprovação → fato → correção, com leitura em duas datas, e nenhum tipo de domínio aparece em `pxos-kernel/`.
 
@@ -89,7 +134,7 @@ A extração de contexto é do Hindsight (ADR 0001). Esta fase não reconstrói 
 - **K33 Caminho síncrono.** Ação pré-aprovada avaliada e executada na mesma chamada, sem fila; nada que exija aprovação entra nesse caminho. A meta de p95 é definida e medida aqui. Aceite: o req. 7 fica verde.
 
 ## F8 · Construção e operação de agentes e workflows
-- **K34 Runtime de agentes.** Google ADK (ADR 0004). A definição do agente é uma versão publicada no banco da plataforma, imutável, com digest e aprovada por um papel: função, instruções, contexto permitido, modelo, ferramentas, saída esperada, responsável e autonomia. Antes da interface (K66), publica-se pela API ou pelo MCP; as definições não ficam no Git. A execução registra a versão que rodou. Identidade própria por agente, fase de autonomia, leitura com delegação, chamadas de modelo pelo K11 e métricas de progressão (aprovação sem ajuste, incidentes) para decisão do sponsor. Agente falso de referência. Aceite: o agente de referência, a partir de uma versão publicada, lê via MCP e age via gateway na fase 1.
+- **K34 Runtime de agentes.** Google ADK (ADR 0004). A definição do agente é uma versão publicada no banco da plataforma, imutável, com digest e aprovada por um papel: função, instruções, contexto permitido, ferramentas, agenda, saída esperada, responsável e autonomia. O modelo não faz parte da definição: vem da rota de deploy da instalação (K11). Antes da interface (K66), a distribuição mantém a definição como configuração e um comando dela a propõe pelo ciclo governado; o arquivo é rascunho, e a versão aprovada fica no banco. O kernel monta o agente ADK a partir da versão aprovada, com o modelo do gateway; a distribuição não monta agentes. A execução registra a versão que rodou. Identidade própria por agente, fase de autonomia, leitura com delegação, chamadas de modelo pelo K11 e métricas de progressão (aprovação sem ajuste, incidentes) para decisão do sponsor. Agente falso de referência. Aceite: o agente de referência, a partir de uma versão publicada, lê via MCP e age via gateway na fase 1. No MVP, o aceite é o agente semanal montado pelo kernel a partir da versão publicada, com cada execução registrando a versão.
 - **K35 Gatilhos por agenda e por evento.** Agenda por Temporal Schedules, no horário de cada pessoa ou papel; evento a partir das mudanças publicadas pelo K07 (outbox). Aceite: os dois gatilhos acionam o agente de referência.
 - **K36 Fluxos de longa duração.** Temporal como único motor (ADR 0004; sem motor próprio). A chamada ADK roda numa Activity. A decisão de revisão é registrada no kernel (K24) e chega ao workflow como sinal a partir da outbox, sem segunda fila; expiração e revogação são conferidas no kernel. O workflow carrega só referências, nunca conteúdo ou dados pessoais. Namespace Temporal e credenciais de worker por instalação; o worker abre a sessão no banco como o agente, agindo pela pessoa. Aceite: um fluxo de fixture com etapa humana completa quando aprovado, expira no prazo e retoma após queda do worker sem repetir etapas concluídas.
 - **K65 Área web: aprovações, execuções e memória.** Primeiro passo da plataforma (ADR 0004). Login pelo IdP da instalação. Aprovações sobre a mesma fila do K24, com decisão única entre web e canais. Painel de execuções por instalação, função, período e estado, com etapa, versão, evidência, ferramentas, aprovação, resultado, custo e erro, correlacionando Temporal e ADK com proposta e ação do gateway; só intervenções autorizadas, sem retry cego para efeito incerto. Consulta à memória: contexto, fatos vigentes, fontes e histórico. A biblioteca de interface é escolhida aqui. Aceite: uma decisão tomada no canal falso aparece na web, e vice-versa; um usuário não vê execução ou fato que o banco não lhe permite.

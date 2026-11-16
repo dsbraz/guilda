@@ -2,12 +2,12 @@
 
 ## Contexto
 
-O PRD `pxos-brq-work-prd.html` (v0.26) descreve o **kernel do pxOS** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B), em construção por fatias verticais. Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026. O spike ADK + Temporal foi concluído em 14/11/2026; o mantenedor aprovou a adoção dos dois motores e a criação e operação de agentes e workflows dentro da plataforma.
+O PRD `pxos-brq-work-prd.html` (v0.27) descreve o **kernel do pxOS** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B), em construção por fatias verticais. Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026. O spike ADK + Temporal foi concluído em 14/11/2026; o mantenedor aprovou a adoção dos dois motores e a criação e operação de agentes e workflows dentro da plataforma.
 
 Decisões já tomadas:
 - **Entregável:** roadmap em fases, com marcos, dependências, gates e critérios de saída.
-- **Primeiro marco:** **kernel completo**, ou seja, os 13 contêineres do §5 e os 13 requisitos do §4. A construção começa por uma **fatia vertical** (ver Fase 0–2) que já roda o pacote de contexto de trabalho da BRQ@work.
-- **Memória:** contexto no Hindsight sobre AlloyDB; estado canônico tipado e governado próprio em PostgreSQL ([ADR 0001](docs/adr/0001-memoria-contexto-e-estado-canonico.md)). Graphiti, Neo4j, Mem0 e LangExtract rejeitados.
+- **Primeiro marco:** piloto do [agente de acompanhamento de projeto](pxos-brq-work-prd.html#mvp) com um time real, status semanal revisado pelo PM e contexto contínuo. **Kernel completo** permanece como marco posterior, com os 13 contêineres do §5 e os 13 requisitos do §4.
+- **Memória:** contexto no Hindsight sobre PostgreSQL + pgvector (AlloyDB como opção de implantação); estado canônico tipado e governado próprio em PostgreSQL ([ADR 0001](docs/adr/0001-memoria-contexto-e-estado-canonico.md)). Graphiti, Neo4j, Mem0 e LangExtract rejeitados.
 - **Fronteira kernel/distribuição** por natureza, com o mantenedor como árbitro ([ADR 0002](docs/adr/0002-fronteira-kernel-distribuicao.md)).
 - **Arquitetura e padrões de código** em [ADR 0003](docs/adr/0003-arquitetura-e-padroes-de-codigo.md).
 - **Agentes e workflows:** Google ADK para agentes; Temporal como único motor de processos duráveis. ADK roda em Activities quando participa de um workflow. Aprovação, identidade e execução autorizada permanecem no kernel; o histórico dos motores não substitui a memória corporativa. [Evidência do spike](spikes/adk-temporal/reports/ADR-001.md): 13 testes passaram, incluindo Gemini real, retomada e execução incerta. Integração e operação de produção ainda precisam ser entregues ([ADR 0004](docs/adr/0004-agentes-workflows-e-plataforma-de-construcao.md)).
@@ -16,7 +16,7 @@ Decisões já tomadas:
 - **Implantação:** instalação dedicada por cliente é o padrão, e dentro dela valem as permissões internas. O modo compartilhado fica adiado.
 - **Time:** você e eu. O gargalo é o seu tempo de revisão e os acessos externos (TI, jurídico, GCP), não a escrita de código. Por isso o plano é sequenciado por critério de saída, sem datas.
 
-**Risco aceito:** o próprio PRD aponta o risco "kernel com a forma da BRQ@work". Construir o kernel primeiro inverte esse risco: o kernel fica sem validação de uso diário. A mitigação é um **conjunto de fixtures de referência** que exercita o kernel como duas distribuições diferentes fariam:
+**Riscos:** o piloto antecipa a validação de uso diário, sem esperar o kernel completo. Para evitar um "kernel com a forma da BRQ@work", preservamos a fronteira do ADR 0002 e um **conjunto de fixtures de referência** que exercita o kernel como duas distribuições diferentes fariam:
 - 2 instalações, com permissão restrita entre pessoas dentro de uma;
 - 1 conector falso de conteúdo e 1 de registros operacionais;
 - 1 canal falso;
@@ -28,19 +28,41 @@ Assim cada fase tem um critério executável.
 
 - **Local primeiro** (CLAUDE.md): Docker Compose com portas só em loopback, Postgres 16 + pgvector local e emuladores (Pub/Sub, Firestore/Datastore se preciso). Cada serviço GCP (Vertex, Agent Gateway, eventual Agent Engine, BigQuery, Secret Manager) fica atrás de um **adaptador** com implementação local e GCP. ADK e Temporal rodam localmente; a implantação de produção será validada sem trocar o motor de workflows. Isso também atende o requisito 12 (portabilidade).
 - **Monorepo:** workspace uv na raiz com `pxos-kernel/` (kernel) e `brq-at-work/` (distribuição), `docs/adr/` e `spikes/`. Outras pastas (`infra/`, `evals/`, Constituição) nascem com a issue que as usa.
-- **Stack:** Python 3.12, LinkML, Pydantic, asyncpg com SQL explícito, Alembic, PostgreSQL/AlloyDB, Hindsight, Google ADK, Temporal, pytest e Terraform (ADR 0003). O MCP básico já foi entregue na fatia 3. A Fase 8 implementa a integração dos motores escolhidos; as versões do spike são evidência, não uma política de versões de produção.
+- **Stack:** Python 3.12, LinkML, Pydantic, asyncpg com SQL explícito, Alembic, PostgreSQL/AlloyDB, Hindsight, Google ADK, Temporal, pytest e Terraform (ADR 0003). O MCP básico entregue na fatia 3 saiu do código em 15/11/2026, por estar fora do MVP ([ADR 0005](docs/adr/0005-poda-para-o-mvp.md)). A Fase 8 implementa a integração dos motores escolhidos; as versões do spike são evidência, não uma política de versões de produção.
 - **Requisitos viram testes:** cada um dos 13 requisitos do §4 vira um teste automatizado de aceitação, que roda no CI desde que existe.
-- **Medição desde o começo:** traces (OpenTelemetry) e conjuntos de avaliação começam na primeira chamada de modelo, não no fim.
+- **Medição desde o começo (intenção):** traces (OpenTelemetry) e conjuntos de avaliação devem começar na primeira chamada de modelo, não no fim. Ainda não há medição no código; o piloto exige ao menos uso e custo por execução (fatia 13).
 - **Git:** integração direta na `main` enquanto o time for o mantenedor e o agente (AGENTS.md).
 
-## Fases
+## Sequência prioritária: MVP → piloto
+
+**Recorte de produção (16/11/2026):** as fatias 10 a 13 rodam os sete cenários com conectores, canal, memória e modelo falsos; isso é prova de conceito, não MVP. O MVP vai para produção e valida a hipótese de valor com o sistema conectado onde o trabalho acontece: base corporativa com acesso igual para pessoas e agentes, seguindo a visibilidade na origem; transcrições do Granola pela chave da workspace, juntadas por reunião no kernel; documentos do SharePoint pelo Graph; canal Teams; assistente de projeto cuja primeira função é o status report; processo de execução e compose numa VM do GCP. Cada adaptador é um pacote próprio em `connectors/`, reutilizável por qualquer distro, preparando um futuro marketplace de conectores ([ADR 0002](docs/adr/0002-fronteira-kernel-distribuicao.md), [ADR 0006](docs/adr/0006-arquitetura-do-agente-especialista.md)). Agenda de projeto, outras funções e agentes, Claude como canal e o marketplace ficam depois do MVP. A verificação de cada integração depende dos acessos da BRQ: workspace corporativa do Granola (Business ou Enterprise), app do Entra com `Sites.Selected`, bot do Teams liberado pela TI e projeto GCP.
+
+Revisão de 15/11/2026. Esta sequência orienta as próximas entregas utilizáveis e atravessa as fases técnicas abaixo; F0–F11 preservam os identificadores e o histórico, não são uma fila obrigatória antes do piloto. As fatias já entregues continuam sendo a base, sem declarar concluídas as lacunas do MVP.
+
+| Entrega | Critério de saída | Base existente / trabalho a completar |
+|---|---|---|
+| 1. Acesso às fontes | Projeto e participantes definidos; Graph restrito ao site/biblioteca demonstrado; Granola com conexão própria por API ou MCP e operação agendada validada | F0, F4, F11.1–2; acesso/TI ainda abertos |
+| 2. Contexto atualizado | Carga inicial e incremental periódico preservam origem/versão, não duplicam; exclusões e perda de acesso são respeitadas | Fatia 10: ingestão só de contexto (já entregue), delta, exclusão, estado da fonte, esquecer e recuperar com autorização |
+| 3. Interação no Teams | Pedidos, perguntas proativas, respostas, correções e revisão vinculados às threads do projeto | Fatia 11: porta de thread com canal falso, vínculo de identidade, decisão pelo canal conferindo quem decide e motivo de rejeição do report retido como correção (o report usa o ciclo canônico, sem tabela nova); adaptador Teams na distro (F11.3); liberação TI pendente |
+| 4. Acompanhamento semanal | Agente por projeto produz progresso, mudanças, riscos e decisões; usa respostas/correções e versão aprovada; Temporal agenda, espera e retoma sem duplicar entrega | Fatia 12: agente como configuração da distro (instruções, ferramentas, agenda), publicado por comando da distro e montado pelo kernel com o modelo do gateway (K34), sem builder; pacote LinkML do report semanal (tipo canônico, aprovador PM) e ferramenta de recuperação no Hindsight (ADR 0006). Fatia 13: workflow do ciclo do agente no kernel, configurado pela versão publicada, com Schedule, espera e entrega única (K35/K36) |
+| 5. Piloto com time real — primeiro marco | PM usa o status após revisão, com fontes e incertezas explícitas; comparar esforço total com a linha de base e comprovar continuidade entre semanas | Fatia 14 (recorte de produção): adaptadores Granola, SharePoint e Teams em `connectors/`, junção de reuniões no kernel, fakes fora do produto, processo de execução e deploy na VM com Vertex e Hindsight reais; medir preparação + esclarecimentos + revisão, com apoio de K17/K41 |
+
+As fatias 10, 11 e 12 podem andar em paralelo; a 13 as junta e roda os sete cenários com fakes; a 14 depende dos acessos. Os cenários estão em `brq-at-work/tests/test_mvp_scenarios.py`, como falha esperada estrita até cada fatia entregá-los.
+
+As [dependências e seus critérios de resolução](pxos-brq-work-prd.html#mvp-dependencias) e os [cenários de aceitação](pxos-brq-work-prd.html#mvp-aceitacao) são o contrato do piloto. Projeto/participantes, Teams/TI, Graph, Granola, ambiente, agenda e duração permanecem abertos. Resolver acessos e validar o ambiente antes do uso real; não presumir APIs, credenciais ou infraestrutura disponíveis.
+
+**Refinamento arquitetural:** [ADR 0006](docs/adr/0006-arquitetura-do-agente-especialista.md) mantém ADK, Temporal e LinkML e amplia o uso do Hindsight. Vocabulário específico e configuração do agente e do ciclo ficam na distro; integração, autorização, montagem do agente, workflow do ciclo e revisão ficam no kernel. Só o report semanal vira fato canônico, revisado pelo PM; riscos e decisões das fontes continuam contexto. A avaliação do piloto cobre distinção entre risco, atraso e prazo renegociado, fontes e correções.
+
+**Depois do MVP:** ferramentas de e-mail/WhatsApp e envio autônomo do report sob autorização explícita, com revisão prévia da política de ações irreversíveis; builder (K66), composição genérica de workflows (K67), área web/configuração completa (K65/K68), carteira, hospedagem de apps e ações em Bud/portal. K32/K33 seguem no backlog para a evolução das ações externas, sem bloquear o piloto apenas por sua ordem numérica. Publicação governada do K34 permanece necessária desde o primeiro agente. MCP (K30) e política de ação (K31) saíram do código e voltam depois do MVP. O piloto não dispensa os controles de acesso, dados e revisão de seu próprio escopo.
+
+## Fases técnicas e evolução posterior
 
 ### Fase 0: Fundação e destravamentos
 - Estrutura do monorepo, Compose de desenvolvimento e CI de produto (lint, tipos, testes, contrato de importação e neutralidade).
 - Fixtures de referência (descritas acima) e o esqueleto dos 13 testes de requisito, marcados como `xfail`.
 - **Serviços gerenciados** (Agent Gateway com Service Extensions, eventual Agent Engine, Claude no Vertex, Gemini em southamerica-east1): a validação acontece nas issues que os usam (K11, K31, K34). O spike ADK + Temporal usou Gemini no Vertex global, sem validar esses serviços ou residência no Brasil. Hospedagem do Temporal, disponibilidade, custo e atualização dos workers ficam como gates de produção na Fase 10.
 - **Memória:** decidida no ADR 0001 (concluído).
-- **Abrir já as frentes externas** (prazo longo, só bloqueiam a Parte B): permissões no Entra ID e contas de serviço, API do portal de alocação e horas, modelo de acesso ao Granola, política de transcrições com cliente e residência de dados (jurídico).
+- **Abrir já as frentes externas** (prazo longo, bloqueiam as respectivas entregas do piloto): permissões no Entra ID e contas de serviço, API do portal de alocação e horas, modelo de acesso ao Granola, política de transcrições com cliente e residência de dados (jurídico).
 - **Saída:** `docker compose up` sobe a base, o CI roda, os ADRs 0001–0003 estão aceitos e as frentes externas têm dono e status.
 
 **Fatia 1 (atravessa F0–F2):** PXOS-1 (K01), as sub-issues PXOS-47 a 51 (partes de K04, K05, K06, K08 e K09), PXOS-7 (K07) e, na BRQ@work, o pacote de contexto de trabalho (PXOS-46). **Saída:** um compromisso é proposto com evidência, aprovado pelo papel declarado, lido em duas datas e corrigido sem perder histórico; o pacote fixture de outro domínio faz o mesmo ciclo; nenhum tipo de domínio aparece em `pxos-kernel/`.
@@ -123,14 +145,14 @@ Edição da ontologia pela interface fica fora desta fase e do marco do kernel; 
   - a "distribuição de referência" instala do zero em local e em um projeto GCP de homologação;
   - o requisito 13 é verificado: nenhum código de domínio no kernel.
 
-### Fase 11+: BRQ@work (Parte B, sequência grossa)
-Para começar, precisa dos gates de TI e jurídico da Fase 0 resolvidos.
+### Fase 11+: BRQ@work (Parte B, recortes para o MVP e expansão)
+Os recortes de fontes, Teams e status semanal entram na sequência prioritária acima, antes do marco kernel completo. Cada integração exige os respectivos gates de TI e dados da Fase 0 resolvidos.
 1. Pacote de projetos e operação, conector do Microsoft 365 (Graph: SharePoint/OneDrive delta, canais, calendário, renovação de assinaturas) e cadastro de projeto.
 2. Conector do Granola (conforme o modelo de acesso decidido) e mapeamento de reunião para projeto por calendário e série.
 3. Canal Teams (bot e cards) e Claude Enterprise via MCP, com Entra ID.
-4. Escriba pós-reunião, em fase 1. **Piloto com 1 ou 2 projetos.**
-5. Conector do Bud e conector do portal pelo FDE (se houver API; sem API, o agente só sugere). Validar idempotência, controle de versão e comprovantes antes de autorizar movimentações de alocação.
-6. Configurar e publicar agentes/workflows de briefing do dia e pré-reunião, status semanal e programação de alocação; acompanhar suas execuções na plataforma. Validar o status semanal com os acontecimentos do período e esclarecimento de lacunas; validar movimentação com proposta, aprovação, escrita no portal e confirmação no contexto.
+4. Acompanhamento semanal de um projeto: agente configurado na distro e montado pelo kernel, contexto contínuo, esclarecimentos no Teams e status revisado pelo PM. **Piloto com um time real**, conforme os cenários do MVP.
+5. **Após o MVP:** conector do Bud e conector do portal pelo FDE (se houver API; sem API, o agente só sugere). Validar idempotência, controle de versão e comprovantes antes de autorizar movimentações de alocação.
+6. O status semanal entra no MVP; depois, ampliar a construção na plataforma para configurar e publicar agentes/workflows de briefing do dia e pré-reunião, status semanal e programação de alocação; acompanhar suas execuções na plataforma. Validar o status semanal com os acontecimentos do período e esclarecimento de lacunas; validar movimentação com proposta, aprovação, escrita no portal e confirmação no contexto.
 7. App de visão de carteira. Expansão para cerca de 250 pessoas de PX, acompanhando as métricas do §14.
 
 ## Rastreabilidade
@@ -174,7 +196,7 @@ Para começar, precisa dos gates de TI e jurídico da Fase 0 resolvidos.
 | Compartilhada vs. dedicada | dedicada como padrão; compartilhada adiada | F10 (só se surgir demanda) |
 | Governança da fronteira do kernel | resolvida (ADR 0002) | — |
 | Motores de agentes e workflows | ADK + Temporal adotados em 14/11/2026 | F8 (integração, construção e operação) |
-| Hospedagem Temporal e workers ADK | F8 (local e desenho) | F10 (produção: disponibilidade, residência, custo e upgrades) |
+| Hospedagem Temporal e workers ADK | F8 (local e desenho) | Piloto: fatia 14 (ambiente operado, com reinício durante espera). F10: produção (disponibilidade, residência, custo e upgrades) |
 | Interface de criação e acompanhamento | escopo decidido (ADR 0004); tecnologia na F8 | saída da F8 |
 | Edição da ontologia pela interface | fora do escopo atual | depois do marco do kernel, se houver demanda |
 | Permissões do Entra ID e contas de serviço | F0 (TI) | F11.3 |
@@ -187,7 +209,7 @@ Para começar, precisa dos gates de TI e jurídico da Fase 0 resolvidos.
 ## Verificação
 
 - O CI roda lint, tipos, testes unitários e a **suíte dos 13 requisitos** contra as fixtures, a cada commit.
-- Avaliação contínua: os conjuntos de referência de extração e junção rodam a cada mudança de prompt, modelo ou ontologia, com limiares.
+- Avaliação contínua (intenção, ainda sem código): os conjuntos de referência de extração e junção rodam a cada mudança de prompt, modelo ou ontologia, com limiares.
 - Ponta a ponta local: `docker compose up`, injetar eventos dos conectores falsos e verificar fatos no estado vivo, card no canal falso, aprovação, ação executada e auditoria registrada.
 - Agentes/workflows: testes de produto para publicação, contexto suficiente, esclarecimento, retomada, permissão no painel e execução segura. O spike fica isolado em `spikes/adk-temporal/`; seus 13 testes não substituem esses critérios nem entram no CI de produto.
 - O marco do kernel é validado instalando a distribuição de referência num projeto GCP de homologação. Isso só acontece com o seu pedido explícito.
@@ -250,5 +272,11 @@ disso e a revisão de proposta já executada. Toda chamada fica na auditoria; pe
 continuam propondo. O req. 6 saiu de `xfail`. Ficaram fora o executor em sistemas externos, cofre de
 credenciais e Agent Gateway (PXOS-32), o caminho síncrono com meta de latência (PXOS-33,
 req. 7) e expiração e delegação de aprovação.
-O escopo da próxima fatia é decidido com o mantenedor, e cada fase começa com confirmação
-explícita.
+A fatia 9 (15/11/2026) podou o que o MVP não usa ([ADR 0005](docs/adr/0005-poda-para-o-mvp.md)):
+saíram o MCP e o OIDC (fatias 3 e 8), a política de ação e a autonomia (fatia 8), o escriba
+e a espera de revisão no Temporal (fatias 2 e 5), o pacote de contexto de trabalho, a
+invalidação e as leituras de fatos sem uso, e a ontologia base além de `Actor`. A ingestão
+ficou só de contexto e registra a versão do agente que rodou. Os reqs. 1 e 6 voltaram a
+`xfail`; seguem verdes os reqs. 3, 4 e 5. Hoje nenhum caminho do produto publica versão de
+agente; isso volta na fatia 12. As próximas são as fatias 10 a 14 da sequência prioritária.
+O escopo de cada fatia é confirmado com o mantenedor antes de começar.
