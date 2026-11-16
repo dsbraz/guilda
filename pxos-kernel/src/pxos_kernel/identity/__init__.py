@@ -5,6 +5,7 @@ from pxos_kernel.identity.identities import (
     Delegation,
     Identities,
     InvalidIdentities,
+    bound_actor,
     install_identities,
     read_identities,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "Identities",
     "InvalidIdentities",
     "NotAuthorized",
+    "bound_actor",
     "install_identities",
     "read_identities",
     "session",

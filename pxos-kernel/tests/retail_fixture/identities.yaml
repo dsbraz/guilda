@@ -3,14 +3,17 @@ actors:
     kind: internal_person
     name: Carla
     roles: [store-manager]
+    channel_ids: [chat:carla]
   - id: diego
     kind: internal_person
     name: Diego
     roles: [store-manager]
+    channel_ids: [chat:diego]
   - id: erin
     kind: internal_person
     name: Erin
     roles: [store-staff]
+    channel_ids: [chat:erin]
   - id: gina
     kind: internal_person
     name: Gina
@@ -28,6 +31,7 @@ actors:
     kind: external_person
     name: Vera (fornecedora)
     roles: [store-manager]
+    channel_ids: [chat:vera]
   - id: restock-agent
     kind: agent
     name: Agente de reposição

@@ -2,8 +2,9 @@
 
 People, external actors (customers, suppliers) and agents are actors with roles; a
 delegation lets an agent act on behalf of an internal person with only that person's
-roles. The database refuses any session of an external actor (PXOS-61). The owner
-connection writes them at bootstrap; the application role can only read them.
+roles. The database refuses any session of an external actor (PXOS-61). An actor may be
+bound to its identities on a channel, so a message or a click there names the actor. The
+owner connection writes them at bootstrap; the application role can only read them.
 """
 
 from pathlib import Path
@@ -14,6 +15,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from pxos_kernel.errors import PxosError
+from pxos_kernel.identity.session import Connection, NotAuthorized
 
 
 class InvalidIdentities(PxosError):
@@ -29,6 +31,7 @@ class Actor(_Strict):
     kind: Literal["internal_person", "external_person", "agent"]
     name: str
     roles: tuple[str, ...] = ()
+    channel_ids: tuple[str, ...] = ()
 
 
 class Delegation(_Strict):
@@ -77,3 +80,22 @@ async def install_identities(owner: asyncpg.Connection, identities: Identities) 
             "INSERT INTO pxos.delegations (agent_id, person_id) VALUES ($1, $2)",
             [(item.agent, item.person) for item in identities.delegations],
         )
+        await owner.execute("DELETE FROM pxos.channel_identities")
+        await owner.executemany(
+            "INSERT INTO pxos.channel_identities (channel_id, actor_id) VALUES ($1, $2)",
+            [
+                (channel_id, actor.id)
+                for actor in identities.actors
+                for channel_id in actor.channel_ids
+            ],
+        )
+
+
+async def bound_actor(connection: Connection, channel_id: str) -> str:
+    """The actor bound to ``channel_id``; NotAuthorized when it is bound to nobody."""
+    actor = await connection.fetchval(
+        "SELECT actor_id FROM pxos.channel_identities WHERE channel_id = $1", channel_id
+    )
+    if actor is None:
+        raise NotAuthorized(f"{channel_id} is bound to no actor")
+    return str(actor)
