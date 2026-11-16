@@ -58,7 +58,49 @@ gcloud compute addresses describe pxos-ip --region="$REGIAO" --format='value(add
 O Caddy obtém e renova o certificado sozinho na primeira subida, desde que o DNS já
 aponte para a VM e as portas 80 e 443 estejam abertas.
 
-## 4. Subir
+## 4. Adaptadores: SharePoint, Granola e Teams
+
+Os três são obrigatórios. Sem alguma variável obrigatória, o app não sobe e o log nomeia a
+que falta. Todas vão em `deploy/.env` (modelo e comentários em `.env.example`). Todo
+conector entrega suas fontes com as tags de acesso da distro (`corporate`), as mesmas do
+`recall_tags` do assistente.
+
+| Variável | Uso |
+| --- | --- |
+| `PXOS_SHAREPOINT_TENANT`, `PXOS_SHAREPOINT_CLIENT_ID` | Tenant e app do Entra que lê a biblioteca |
+| `PXOS_SHAREPOINT_CLIENT_SECRET` | Segredo do app; ou `PXOS_SHAREPOINT_CERTIFICATE_KEY` + `PXOS_SHAREPOINT_CERTIFICATE` (PEM da chave e do certificado) |
+| `PXOS_SHAREPOINT_DRIVE_ID`, `PXOS_SHAREPOINT_FOLDER_ID` | Drive da biblioteca; pasta opcional |
+| `PXOS_GRANOLA_API_KEY` | Chave de API do workspace do Granola |
+| `PXOS_GRANOLA_SPACE_ID`, `PXOS_GRANOLA_FOLDER_ID` | Opcionais: restringem a um espaço ou pasta |
+| `PXOS_TEAMS_APP_ID`, `PXOS_TEAMS_TENANT_ID` | Azure Bot (single tenant) e seu tenant |
+| `PXOS_TEAMS_SERVICE_URL` | Bot Connector da região, ex. `https://smba.trafficmanager.net/teams/` |
+| `PXOS_TEAMS_SECRET` | Segredo do bot; ou `PXOS_TEAMS_CERTIFICATE_KEY` + `PXOS_TEAMS_CERTIFICATE_THUMBPRINT` |
+| `PXOS_TEAMS_CONVERSATION` | Conversa da thread do projeto (canal ou cadeia de respostas) |
+
+Cada app usa um segredo ou um certificado, nunca os dois. Um PEM vai entre aspas duplas
+no `.env`, com as quebras de linha do arquivo. O compose define `PXOS_TEAMS_CARDS_PATH`
+num volume (`app-state`): é onde o canal guarda a mensagem de cada card, para
+substituí-la depois de um restart.
+
+Passos da TI do cliente:
+
+1. **SharePoint.** No Entra, registre um app com a permissão de aplicação
+   `Sites.Selected` do Microsoft Graph e dê o consentimento de administrador. Conceda ao
+   app leitura só no site da biblioteca (`POST /sites/{site-id}/permissions`, papel
+   `read`). Crie um segredo ou envie um certificado. O drive id sai de
+   `GET /sites/{site-id}/drives`.
+2. **Teams.** Crie um Azure Bot single tenant e, nele, o canal Microsoft Teams. O
+   endpoint de mensagens é `https://<PXOS_DOMAIN>/api/messages`. Crie o segredo ou envie
+   o certificado no app do bot no Entra. Publique o pacote do app do Teams na
+   organização. Instale-o na equipe do projeto e no escopo pessoal de quem revisa (o PM),
+   que recebe os cards em chat 1:1. O id do canal do projeto (`19:...@thread.tacv2`) vai
+   em `PXOS_TEAMS_CONVERSATION`. O id de objeto do Entra de cada pessoa vai em
+   `identities.yaml` como `teams:<id>`.
+3. **Granola.** Um administrador do workspace gera uma chave de API. A chave lê só as
+   notas compartilhadas nos espaços do workspace. Compartilhe as reuniões do projeto num
+   espaço aberto à API.
+
+## 5. Subir
 
 ```sh
 gcloud compute ssh pxos --zone="$ZONA" --tunnel-through-iap
@@ -87,9 +129,10 @@ gcloud compute ssh pxos --zone="$ZONA" --tunnel-through-iap -- -L 8080:127.0.0.1
 # abra http://localhost:8080
 ```
 
-## 5. Publicar a versão do agente
+## 6. Publicar a versão do assistente
 
-Uma pessoa propõe o arquivo de definição do agente como próxima versão. Um administrador
+Uma pessoa propõe o arquivo de definição do assistente do projeto
+(`brq-at-work/src/brq_at_work/project_assistant.yaml`) como próxima versão. Um administrador
 da plataforma aprova a versão no ciclo de revisão. Só a versão aprovada roda, e ela agenda
 os ciclos.
 
@@ -102,9 +145,11 @@ O comando imprime o id da proposta.
 
 ## Limites atuais
 
-- Os adaptadores de SharePoint, Granola e Teams entram em `adapters()`, em
-  `brq-at-work/src/brq_at_work/serve.py`. Até lá a instalação não sincroniza fontes, o
-  Caddy só alcança o health check, e o canal recusa cards e posts. Os eventos ficam na
-  outbox até haver um canal.
+- O canal liga a thread do arquivo do assistente (`thread` em `project_assistant.yaml`)
+  à conversa do `.env`, na subida. Se uma versão aprovada trouxer outra thread, o passo
+  que posta as perguntas falha e o ciclo para; publique a versão a partir do arquivo do
+  deploy.
+- Não há mapeamento de fontes por projeto: o assistente lê a base corporativa inteira e
+  busca nela o que é do seu projeto.
 - O Hindsight valida a Vertex ao iniciar. Sem a conta de serviço com acesso, ele reinicia
   em laço e o app não sobe.

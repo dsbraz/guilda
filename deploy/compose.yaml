@@ -140,6 +140,8 @@ services:
       postgres: { condition: service_healthy }
       temporal-namespace: { condition: service_completed_successfully }
       hindsight: { condition: service_healthy }
+    # As variáveis dos adaptadores (SharePoint, Granola, Teams) chegam pelo env_file; sem
+    # alguma delas o app não sobe e o log nomeia a que falta.
     env_file: .env
     environment:
       PXOS_OWNER_DATABASE_URL: postgresql://pxos:${PXOS_DB_OWNER_PASSWORD}@postgres:5432/pxos
@@ -150,6 +152,10 @@ services:
       PXOS_HINDSIGHT_BANK: ${PXOS_HINDSIGHT_BANK:?defina PXOS_HINDSIGHT_BANK}
       PXOS_HINDSIGHT_URL: http://hindsight:8888
       PXOS_HTTP_PORT: "8000"
+      PXOS_TEAMS_CARDS_PATH: /var/lib/pxos/teams-cards
+    volumes:
+      # Mensagem de cada card de revisão no Teams, para substituí-la depois de um restart.
+      - app-state:/var/lib/pxos
     stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/healthz')"]
@@ -176,5 +182,6 @@ services:
 
 volumes:
   postgres-data:
+  app-state:
   caddy-data:
   caddy-config:

@@ -9,6 +9,7 @@ import runpy
 import socket
 import sys
 from collections.abc import Coroutine
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -20,12 +21,12 @@ from temporalio.api.taskqueue.v1 import TaskQueue
 from temporalio.api.workflowservice.v1 import DescribeTaskQueueRequest
 from temporalio.client import Client
 
-from brq_at_work.serve import ChannelNotWired, adapters
 from db_testing import Database
 from model_testing import ROUTE
 from pxos_kernel import service
-from pxos_kernel.channel import Card
 from pxos_kernel.model_access import Route
+
+from .test_adapters import REQUIRED, SECRETS
 
 ROUTE_ENVIRONMENT = {
     "PXOS_MODEL_PROVIDER": ROUTE.provider,
@@ -85,6 +86,7 @@ def test_the_command_bootstraps_and_serves_the_installation(
     database: Database,
     temporal_address: str,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     queue, port = f"brq-{uuid4()}", free_port()
     environment = {
@@ -97,6 +99,9 @@ def test_the_command_bootstraps_and_serves_the_installation(
         "PXOS_HTTP_PORT": str(port),
         "PXOS_VERTEX_PROJECT": "project-a",
         "PXOS_HINDSIGHT_URL": "http://127.0.0.1:9",
+        **REQUIRED,
+        **SECRETS,
+        "PXOS_TEAMS_CARDS_PATH": str(tmp_path / "cards"),
     }
     for name, value in environment.items():
         monkeypatch.setenv(name, value)
@@ -125,13 +130,3 @@ async def installed_route(database: Database) -> Route:
         await owner.close()
     assert row is not None
     return Route(**dict(row))
-
-
-async def test_until_the_adapters_are_wired_the_channel_refuses_and_nothing_syncs() -> None:
-    wired = adapters()
-    assert (wired.connectors, wired.app) == ((), None)
-    card = Card(uuid4(), "ana", "pkg", "action", "title", {}, "quote", "source", "digest")
-    with pytest.raises(ChannelNotWired):
-        await wired.channel.deliver_card(card)
-    with pytest.raises(ChannelNotWired):
-        await wired.channel.post("thread", "text")

@@ -228,11 +228,19 @@ name = "brq-at-work"
 version = "0.1.0"
 source = { editable = "brq-at-work" }
 dependencies = [
+    { name = "pxos-granola" },
     { name = "pxos-kernel" },
+    { name = "pxos-sharepoint" },
+    { name = "pxos-teams" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pxos-kernel", editable = "pxos-kernel" }]
+requires-dist = [
+    { name = "pxos-granola", editable = "connectors/pxos-granola" },
+    { name = "pxos-kernel", editable = "pxos-kernel" },
+    { name = "pxos-sharepoint", editable = "connectors/pxos-sharepoint" },
+    { name = "pxos-teams", editable = "connectors/pxos-teams" },
+]
 
 [[package]]
 name = "certifi"
