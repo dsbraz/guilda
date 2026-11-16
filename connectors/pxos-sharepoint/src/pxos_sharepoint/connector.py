@@ -1,7 +1,8 @@
 """A SharePoint document library as the kernel's document base (ADR 0006 §1).
 
 The app authenticates with client credentials, granted ``Sites.Selected`` on the library's
-site, and reads the drive's delta: the first pass starts without a token, each
+site; for development, a user's delegated token reads only what they can see. It reads the
+drive's delta: the first pass starts without a token, each
 ``@odata.nextLink`` is a page and the ``@odata.deltaLink`` is the cursor. An item may
 appear more than once; its last occurrence wins. Items with the ``deleted`` facet are
 deleted sources. A 410 restarts the enumeration once, from the ``Location`` the service
@@ -25,7 +26,7 @@ from typing import Any
 import httpx
 
 from pxos_kernel.ingestion import Changes, ConnectorUnavailable, SourceDocument
-from pxos_sharepoint.credentials import ClientCertificate, ClientSecret
+from pxos_sharepoint.credentials import LOGIN, Credential, DelegatedToken
 from pxos_sharepoint.extraction import UnreadableDocument, extract_text, supported
 
 GRAPH = "https://graph.microsoft.com/v1.0"
@@ -41,7 +42,7 @@ class SharePointConnector:
         *,
         tenant: str,
         client_id: str,
-        credential: ClientSecret | ClientCertificate,
+        credential: Credential,
         drive_id: str,
         access: Sequence[str],
         folder_id: str | None = None,
@@ -121,16 +122,29 @@ class SharePointConnector:
 
     async def _access_token(self) -> str:
         if self._token is None or self._token[1] <= time.monotonic():
-            form = {
-                "grant_type": "client_credentials",
-                "client_id": self._client_id,
-                "scope": _SCOPE,
-                **self._credential.form(self._client_id, self._token_url),
-            }
-            body = self._ok(await self._send("POST", self._token_url, data=form)).json()
+            body = await self._grant()
             expires = time.monotonic() + body["expires_in"] - _RENEW_BEFORE
             self._token = (body["access_token"], expires)
         return self._token[0]
+
+    async def _grant(self) -> dict[str, Any]:
+        """The token endpoint's answer; a delegated token keeps the rotated refresh token."""
+        try:
+            fields = self._credential.form(self._client_id, self._token_url)
+        except OSError as error:
+            raise ConnectorUnavailable(f"{self.name}: {type(error).__name__}; {LOGIN}") from None
+        form = {"grant_type": "client_credentials", "client_id": self._client_id, "scope": _SCOPE}
+        response = await self._send("POST", self._token_url, data={**form, **fields})
+        if not isinstance(self._credential, DelegatedToken):
+            return dict(self._ok(response).json())
+        body = dict(self._ok(response, f"; {LOGIN}").json())
+        try:
+            self._credential.keep(body)
+        except OSError as error:
+            raise ConnectorUnavailable(
+                f"{self.name}: {type(error).__name__} keeping the rotated token"
+            ) from None
+        return body
 
     async def _send(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
         attempt = 0
@@ -144,12 +158,12 @@ class SharePointConnector:
             await self._sleep(_retry_after(response, attempt))
             attempt += 1
 
-    def _ok(self, response: httpx.Response) -> httpx.Response:
+    def _ok(self, response: httpx.Response, hint: str = "") -> httpx.Response:
         if response.is_success:
             return response
         code = _error_code(response)
         raise ConnectorUnavailable(
-            f"{self.name}: Graph answered {response.status_code}{f' {code}' if code else ''}"
+            f"{self.name}: Graph answered {response.status_code}{f' {code}' if code else ''}{hint}"
         )
 
 

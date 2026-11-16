@@ -29,7 +29,7 @@ from pxos_kernel.channel import Card
 from pxos_kernel.identity import read_identities
 from pxos_kernel.meetings import MeetingConnector
 from pxos_kernel.ontology import Registry
-from pxos_sharepoint import ClientCertificate, ClientSecret, SharePointConnector
+from pxos_sharepoint import ClientCertificate, ClientSecret, DelegatedToken, SharePointConnector
 from pxos_teams import Certificate
 
 CONVERSATION = "19:project@thread.tacv2"
@@ -213,6 +213,21 @@ def test_sharepoint_authenticates_with_a_certificate_when_one_is_given(tmp_path:
     assert library._credential == ClientCertificate(key.encode(), certificate.encode())
     assert library._start.endswith("/drives/drive-1/items/folder-9/delta")
     assert sharepoint(environment(tmp_path))._credential == ClientSecret("sp-secret")
+
+
+def test_sharepoint_reads_as_a_signed_in_user_when_a_token_path_is_given(tmp_path: Path) -> None:
+    token = str(tmp_path / "sharepoint-token")
+    env = environment(tmp_path, PXOS_SHAREPOINT_CLIENT_SECRET="")
+
+    library = sharepoint({**env, "PXOS_SHAREPOINT_TOKEN_PATH": token})
+
+    assert library._credential == DelegatedToken(Path(token))
+    for other in (
+        {"PXOS_SHAREPOINT_CLIENT_SECRET": "sp-secret"},
+        {"PXOS_SHAREPOINT_CERTIFICATE_KEY": "-----BEGIN PRIVATE KEY-----"},
+    ):
+        with pytest.raises(MissingSetting, match="PXOS_SHAREPOINT_TOKEN_PATH"):
+            sharepoint({**env, "PXOS_SHAREPOINT_TOKEN_PATH": token, **other})
 
 
 def test_teams_authenticates_with_a_certificate_when_one_is_given(tmp_path: Path) -> None:

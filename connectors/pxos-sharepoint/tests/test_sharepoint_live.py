@@ -2,15 +2,18 @@
 
 Run with PXOS_SHAREPOINT_TENANT, PXOS_SHAREPOINT_CLIENT_ID, PXOS_SHAREPOINT_CLIENT_SECRET
 and PXOS_SHAREPOINT_DRIVE_ID, and optionally PXOS_SHAREPOINT_FOLDER_ID: an Entra app
-granted Sites.Selected (read) on the library's site, as a deploy would configure it. Use a
-library holding a few test files; the pass reads every one.
+granted Sites.Selected (read) on the library's site, as a deploy would configure it. Or,
+in place of the secret, PXOS_SHAREPOINT_TOKEN_PATH, a token file written by
+``python -m pxos_sharepoint.login``, to read as that user. Use a library holding a few
+test files; the pass reads every one.
 """
 
 import os
+from pathlib import Path
 
 import pytest
 
-from pxos_sharepoint import ClientSecret, SharePointConnector
+from pxos_sharepoint import ClientSecret, DelegatedToken, SharePointConnector
 
 TENANT = os.environ.get("PXOS_SHAREPOINT_TENANT", "")
 pytestmark = pytest.mark.skipif(not TENANT, reason="PXOS_SHAREPOINT_TENANT not set")
@@ -18,11 +21,14 @@ pytestmark = pytest.mark.skipif(not TENANT, reason="PXOS_SHAREPOINT_TENANT not s
 
 async def test_a_full_pass_then_a_pass_from_its_cursor() -> None:
     drive = os.environ["PXOS_SHAREPOINT_DRIVE_ID"]
+    token = os.environ.get("PXOS_SHAREPOINT_TOKEN_PATH")
     sharepoint = SharePointConnector(
         "sharepoint-live",
         tenant=TENANT,
         client_id=os.environ["PXOS_SHAREPOINT_CLIENT_ID"],
-        credential=ClientSecret(os.environ["PXOS_SHAREPOINT_CLIENT_SECRET"]),
+        credential=DelegatedToken(Path(token))
+        if token
+        else ClientSecret(os.environ["PXOS_SHAREPOINT_CLIENT_SECRET"]),
         drive_id=drive,
         folder_id=os.environ.get("PXOS_SHAREPOINT_FOLDER_ID") or None,
         access=("corporate",),
