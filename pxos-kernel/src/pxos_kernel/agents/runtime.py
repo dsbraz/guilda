@@ -13,7 +13,6 @@ from typing import Any
 
 from google.adk.agents import LlmAgent
 from google.adk.agents.readonly_context import ReadonlyContext
-from google.adk.models.base_llm import BaseLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools.function_tool import FunctionTool
@@ -23,7 +22,7 @@ from pydantic import BaseModel, ValidationError, create_model
 from pxos_kernel.agents.versions import AgentVersion
 from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import Connection
-from pxos_kernel.model_access import ModelNotAllowed, issued_by_gateway
+from pxos_kernel.model_access import GatewayModel, ModelNotAllowed, Usage, issued_by_gateway
 from pxos_kernel.ontology import Registry
 
 APP = "pxos"
@@ -71,10 +70,17 @@ def recall_tool(search: Recall) -> FunctionTool:
 
 
 class Agent:
-    def __init__(self, version: AgentVersion, agent: LlmAgent, answer: type[BaseModel]) -> None:
+    def __init__(
+        self, version: AgentVersion, agent: LlmAgent, answer: type[BaseModel], model: GatewayModel
+    ) -> None:
         self.version = version
         self._agent = agent
         self._answer = answer
+        self._model = model
+
+    def usage(self) -> Usage:
+        """The model, tokens and cost of the agent's rounds so far, as the gateway counted."""
+        return self._model.usage()
 
     async def answer(self, round_input: RoundInput) -> RoundOutput:
         """One round on ``round_input``; raises InvalidOutput on any other answer."""
@@ -110,7 +116,7 @@ class Agent:
 
 async def build_agent(
     connection: Connection,
-    model: BaseLlm,
+    model: GatewayModel,
     registry: Registry,
     version: AgentVersion,
     *,
@@ -142,4 +148,4 @@ async def build_agent(
         tools=tools,
         output_schema=answer,
     )
-    return Agent(version, agent, answer)
+    return Agent(version, agent, answer, model)

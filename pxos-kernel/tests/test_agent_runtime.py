@@ -161,65 +161,113 @@ async def test_the_agent_gets_only_the_tools_of_its_version(
             await build_agent(connection, model, registry, await version_in_force(pool))
 
 
-async def runs(pool: asyncpg.Pool, ref: str) -> int:
+async def runs(pool: asyncpg.Pool, cycle: str) -> list[asyncpg.Record]:
     async with session(pool, AGENT) as connection:
-        return int(
-            await connection.fetchval(
-                "SELECT count(*) FROM pxos.agent_runs WHERE context_ref = $1", ref
-            )
-        )
+        return await connection.fetch("SELECT * FROM pxos.agent_runs WHERE cycle = $1", cycle)
 
 
-async def test_a_round_is_recorded_once_per_reference(
+async def test_a_round_runs_once_and_a_retry_gets_what_it_answered(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
-    ref = f"cycle:{uuid4()}/round:1"
-    agent = await built(pool, registry, FakeModels(reply=ASKS))
+    cycle = f"cycle:{uuid4()}"
+    replies = iter([ASKS, DELIVERS])
+    models = FakeModels(reply=lambda request: next(replies))
+    agent = await built(pool, registry, models)
     for _ in range(2):
-        assert await run_round(pool, agent, RoundInput(), context_ref=ref) == RoundOutput(
+        assert await run_round(pool, agent, RoundInput(), cycle=cycle, round=1) == RoundOutput(
             questions=("Which aisle?",)
         )
-    assert await runs(pool, ref) == 1
+    assert len(models.requests) == 1
+    (run,) = await runs(pool, cycle)
+    assert (run["round"], run["context_ref"]) == (1, f"{cycle}/round:1")
+
+
+async def test_a_round_records_the_model_its_tokens_and_their_cost(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    cycle = f"cycle:{uuid4()}"
+    agent = await built(pool, registry, FakeModels(reply=ASKS, tokens=(1_000, 50)))
+    await run_round(pool, agent, RoundInput(), cycle=cycle, round=1)
+
+    (run,) = await runs(pool, cycle)
+    assert (run["model"], run["input_tokens"], run["output_tokens"]) == (ROUTE.model, 1_000, 50)
+    assert run["cost"] == (1_000 * ROUTE.input_price + 50 * ROUTE.output_price) / 1_000_000
 
 
 async def test_a_refused_answer_records_no_run(pool: asyncpg.Pool, registry: Registry) -> None:
-    ref = f"cycle:{uuid4()}/round:1"
+    cycle = f"cycle:{uuid4()}"
     agent = await built(pool, registry, FakeModels(reply="not json"))
     with pytest.raises(InvalidOutput):
-        await run_round(pool, agent, RoundInput(), context_ref=ref)
-    assert await runs(pool, ref) == 0
+        await run_round(pool, agent, RoundInput(), cycle=cycle, round=1)
+    assert await runs(pool, cycle) == []
 
 
-async def test_the_agent_proposes_the_deliverable_for_review(
+async def test_the_database_runs_a_round_of_a_cycle_once(pool: asyncpg.Pool) -> None:
+    version = await version_in_force(pool)
+    insert = (
+        "INSERT INTO pxos.agent_runs (definition, revision, context_ref, cycle, round)"
+        " VALUES ($1, $2, 'raw', $3, 1)"
+    )
+    cycle = f"cycle:{uuid4()}"
+    async with session(pool, AGENT) as connection:
+        await connection.execute(insert, version.entity_id, version.revision, cycle)
+    async with session(pool, AGENT) as connection:
+        with pytest.raises(asyncpg.UniqueViolationError):
+            await connection.execute(insert, version.entity_id, version.revision, cycle)
+
+
+async def test_the_agent_proposes_the_rounds_deliverable_once_for_review(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
-    ref = f"cycle:{uuid4()}/round:2"
+    cycle = f"cycle:{uuid4()}"
     agent = await built(pool, registry, FakeModels(reply=DELIVERS))
-    output = await run_round(pool, agent, INPUT, context_ref=ref)
-    assert output.deliverable is not None
+    await run_round(pool, agent, INPUT, cycle=cycle, round=2)
 
-    proposal = await propose_deliverable(
-        pool, registry, agent.version, output.deliverable, context_ref=ref
-    )
-    async with session(pool, AGENT) as connection:
-        run = await connection.fetchval(
-            "SELECT id FROM pxos.agent_runs WHERE context_ref = $1", ref
-        )
+    proposal = await propose_deliverable(pool, registry, agent.version, cycle=cycle, round=2)
+    again = await propose_deliverable(pool, registry, agent.version, cycle=cycle, round=2)
+
+    (run,) = await runs(pool, cycle)
+    assert again == proposal
     assert (proposal.author, proposal.action, proposal.payload) == (
         AGENT,
         "create_restock_order",
         ORDER,
     )
-    assert proposal.evidence["source"] == f"agent-run:{run}"
-    assert proposal.evidence["context_ref"] == ref
+    assert proposal.evidence["source"] == f"agent-run:{run['id']}"
+    assert proposal.evidence["context_ref"] == f"{cycle}/round:2"
     async with session(pool, "carla") as connection:
         await review(connection, registry, proposal.id, "approved", digest=proposal.digest)
 
 
-async def test_no_deliverable_without_the_rounds_run(
+async def test_the_database_takes_one_deliverable_per_run(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
+    cycle = f"cycle:{uuid4()}"
+    agent = await built(pool, registry, FakeModels(reply=DELIVERS))
+    await run_round(pool, agent, INPUT, cycle=cycle, round=1)
+    proposal = await propose_deliverable(pool, registry, agent.version, cycle=cycle, round=1)
+    copy = """
+        INSERT INTO pxos.proposals (package, package_version, package_digest, action,
+            type_name, entity_id, base_revision, valid_from, payload, evidence, digest,
+            author, author_principal)
+        SELECT package, package_version, package_digest, action, type_name,
+            gen_random_uuid(), 0, valid_from, payload, evidence, digest, '', ''
+        FROM pxos.proposals WHERE id = $1
+    """
+    async with session(pool, AGENT) as connection:
+        with pytest.raises(asyncpg.UniqueViolationError):
+            await connection.execute(copy, proposal.id)
+
+
+async def test_no_deliverable_without_a_round_that_delivered(
+    pool: asyncpg.Pool, registry: Registry
+) -> None:
+    cycle = f"cycle:{uuid4()}"
+    version = await version_in_force(pool)
     with pytest.raises(NoRecordedRun):
-        await propose_deliverable(
-            pool, registry, await version_in_force(pool), ORDER, context_ref=f"cycle:{uuid4()}"
-        )
+        await propose_deliverable(pool, registry, version, cycle=cycle, round=1)
+    await run_round(
+        pool, await built(pool, registry, FakeModels(reply=ASKS)), INPUT, cycle=cycle, round=1
+    )
+    with pytest.raises(NoRecordedRun):
+        await propose_deliverable(pool, registry, version, cycle=cycle, round=1)

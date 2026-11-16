@@ -19,6 +19,7 @@ import asyncpg
 import pytest
 
 from db_testing import Database
+from pxos_kernel.agents import approved_version
 from pxos_kernel.channel import FakeChannel
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.conversation import (
@@ -79,6 +80,43 @@ async def test_every_post_is_a_new_message_even_from_another_channel_instance(
 
     assert first.id != second.id
     assert second.cycle == cycle
+
+
+async def a_run(pool: asyncpg.Pool) -> UUID:
+    """Raw SQL: a run of the agent, whose questions a post may carry."""
+    async with session(pool, AGENT) as connection:
+        version = await approved_version(connection, AGENT)
+        run: UUID = await connection.fetchval(
+            "INSERT INTO pxos.agent_runs (definition, revision, context_ref)"
+            " VALUES ($1, $2, 'raw') RETURNING id",
+            version.entity_id,
+            version.revision,
+        )
+        return run
+
+
+async def test_the_post_of_a_run_is_posted_once(pool: asyncpg.Pool) -> None:
+    channel = FakeChannel()
+    thread, cycle, run = fresh("thread"), fresh("cycle"), await a_run(pool)
+
+    first = await post(pool, channel, AGENT, thread=thread, cycle=cycle, text="Quantas?", run=run)
+    again = await post(pool, channel, AGENT, thread=thread, cycle=cycle, text="Quantas?", run=run)
+
+    assert again == first
+    assert channel.threads[thread] == ["Quantas?"]
+
+
+async def test_the_database_takes_one_post_per_run(pool: asyncpg.Pool) -> None:
+    run = await a_run(pool)
+    insert = (
+        "INSERT INTO pxos.messages (thread, channel_message, cycle, text, run)"
+        " VALUES ('thread', $1, 'cycle', 'Quantas?', $2)"
+    )
+    async with session(pool, AGENT) as connection:
+        await connection.execute(insert, fresh("m"), run)
+    async with session(pool, AGENT) as connection:
+        with pytest.raises(asyncpg.UniqueViolationError):
+            await connection.execute(insert, fresh("m"), run)
 
 
 async def test_an_answer_joins_the_cycle_of_the_agents_last_post_in_the_thread(

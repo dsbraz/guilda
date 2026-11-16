@@ -5,8 +5,9 @@ follow in the thread belong to the cycle of the agent's last post there. A messa
 the channel counts only from the internal person bound to its sender identity, written
 in that person's session: the database sets the author and refuses anyone else, so a
 stranger, a guest, an external actor or the agent's own echo adds nothing. A redelivered
-channel message is kept once. Each accepted message leaves a ``message.received`` event
-in the outbox, with the message id and its cycle only.
+channel message is kept once, and the post that carries a run's questions is posted
+once. Each accepted message leaves a ``message.received`` event in the outbox, with the
+message id and its cycle only.
 
 A message, and the reason a reviewer rejected a proposal, are retained as context for the
 next cycle with their author, read in the agent's session and keyed by the message or the
@@ -46,6 +47,8 @@ class Message:
     author: str
     text: str
     received_at: datetime
+    run: UUID | None = None
+    """The run whose questions an agent's post carries."""
 
 
 class NoCycle(PxosError):
@@ -53,12 +56,27 @@ class NoCycle(PxosError):
 
 
 async def post(
-    pool: asyncpg.Pool, channel: Channel, agent: str, *, thread: str, cycle: str, text: str
+    pool: asyncpg.Pool,
+    channel: Channel,
+    agent: str,
+    *,
+    thread: str,
+    cycle: str,
+    text: str,
+    run: UUID | None = None,
 ) -> Message:
-    """Post ``text`` in ``thread`` as ``agent`` and keep it in the conversation of ``cycle``."""
+    """Post ``text`` in ``thread`` as ``agent`` and keep it in the conversation of ``cycle``.
+
+    The post of ``run`` is posted once: posting it again returns the kept message. A
+    failure after the channel took the post and before the commit posts it again.
+    """
     async with session(pool, agent) as connection:
+        if run is not None:
+            row = await connection.fetchrow("SELECT * FROM pxos.messages WHERE run = $1", run)
+            if row is not None:
+                return Message(**dict(row))
         channel_message = await channel.post(thread, text)
-        return await _insert(connection, thread, channel_message, cycle, None, text)
+        return await _insert(connection, thread, channel_message, cycle, None, text, run)
 
 
 async def receive(pool: asyncpg.Pool, inbound: Inbound) -> Message:
@@ -128,12 +146,13 @@ async def _insert(
     cycle: str,
     sender: str | None,
     text: str,
+    run: UUID | None = None,
 ) -> Message:
     try:
         row = await connection.fetchrow(
             """
-            INSERT INTO pxos.messages (thread, channel_message, cycle, sender, text)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO pxos.messages (thread, channel_message, cycle, sender, text, run)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (thread, channel_message) DO NOTHING RETURNING *
             """,
             thread,
@@ -141,6 +160,7 @@ async def _insert(
             cycle,
             sender,
             text,
+            run,
         )
     except asyncpg.PostgresError as error:
         if error.sqlstate == "PX019":

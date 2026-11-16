@@ -80,13 +80,11 @@ async def test_a_round_of_the_agent_proposes_the_report_to_the_pm(
         model = await ModelGateway(pool, models).adk_model()
         agent = await build_agent(connection, model, registry, version, recall=no_context)
 
-    ref = f"cycle:{uuid4()}/round:1"
+    cycle = f"cycle:{uuid4()}"
     unavailable = RoundInput(unavailable_sources=("sharepoint:cronograma",))
-    output = await run_round(pool, agent, unavailable, context_ref=ref)
+    output = await run_round(pool, agent, unavailable, cycle=cycle, round=1)
     assert output.deliverable == REPORT
-    proposal = await propose_deliverable(
-        pool, registry, version, output.deliverable, context_ref=ref
-    )
+    proposal = await propose_deliverable(pool, registry, version, cycle=cycle, round=1)
 
     async with session(pool, "bruno") as connection:
         with pytest.raises(InvalidProposal):  # a team member does not even see the report

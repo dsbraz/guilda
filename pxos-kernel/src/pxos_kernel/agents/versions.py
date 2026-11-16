@@ -8,6 +8,7 @@ in force runs.
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -122,6 +123,14 @@ class AgentRun:
     revision: int
     context_ref: str
     started_at: datetime
+    cycle: str | None = None
+    round: int | None = None
+    output: dict[str, Any] | None = None
+    """What the round answered: its questions or its deliverable."""
+    model: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cost: Decimal | None = None
 
 
 async def record_run(connection: Connection, version: AgentVersion, context_ref: str) -> AgentRun:
