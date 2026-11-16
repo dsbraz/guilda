@@ -139,6 +139,29 @@ async def test_a_reviewer_without_telegram_gets_no_card_and_it_is_logged(
     assert "gina" in caplog.text
 
 
+async def test_a_reviewer_who_never_started_the_bot_gets_no_card_and_it_is_logged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Telegram refuses (403) a private chat the person never opened; raising would hold
+    the whole outbox back until they did."""
+    telegram = Telegram()
+    telegram.fail = 403
+
+    with caplog.at_level(logging.WARNING):
+        await channel(telegram).deliver_card(card())
+
+    assert "carla" in caplog.text and "/start" in caplog.text
+
+
+@pytest.mark.parametrize("status", [400, 429, 500])
+async def test_any_other_refusal_of_a_card_raises_for_the_outbox_to_retry(status: int) -> None:
+    telegram = Telegram()
+    telegram.fail = status
+
+    with pytest.raises(TelegramError):
+        await channel(telegram).deliver_card(card())
+
+
 @pytest.mark.parametrize("status", [400, 403, 500])
 async def test_a_refused_call_raises_without_the_token(status: int) -> None:
     telegram = Telegram()

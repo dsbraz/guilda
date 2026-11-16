@@ -25,6 +25,8 @@ class Telegram:
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.updates: list[list[dict[str, Any]]] = []
         self.fail: int | None = None
+        self.refused: set[str] = set()
+        """Methods Telegram answers with 400."""
         self._next_id = 100
 
     def client(self) -> httpx.AsyncClient:
@@ -48,6 +50,8 @@ class Telegram:
         method = request.url.path.removeprefix(prefix)
         params = json.loads(request.content)
         self.calls.append((method, params))
+        if method in self.refused:
+            return httpx.Response(400, json={"ok": False, "description": "Bad Request"})
         if self.fail is not None:
             return httpx.Response(self.fail, json={"ok": False, "description": "Forbidden"})
         return httpx.Response(200, json={"ok": True, "result": self.result(method)})

@@ -391,6 +391,32 @@ async def test_the_inbox_polls_from_its_offset_and_keeps_going_after_a_failure(b
     assert {r.get("offset") for r in requests[1:]} >= {41, 42}
 
 
+async def test_an_update_whose_reply_telegram_refuses_does_not_hold_the_rest_back(
+    bot: Bot,
+) -> None:
+    """A press replayed after a restart is stale, and Telegram refuses to answer it."""
+    await bot.ask()
+    _, card = await carded(bot)
+    telegram = bot.telegram
+    telegram.refused = {"answerCallbackQuery"}
+    telegram.updates = [
+        [
+            {"update_id": 50, "callback_query": click(card, "Rejeitar")},
+            {"update_id": 51, "message": message()},
+        ]
+    ]
+
+    async def received() -> bool:
+        return len(await bot.said()) == 1 and len(telegram.sent("getUpdates")) >= 2
+
+    polling = asyncio.create_task(bot.inbox.poll_forever(timeout=0, retry=0))
+    await eventually(received)
+    polling.cancel()
+
+    assert telegram.sent("getUpdates")[1]["offset"] == 52
+    assert len([m for m in telegram.sent("sendMessage") if "force_reply" in str(m)]) == 1
+
+
 async def test_the_app_polls_for_as_long_as_the_service_runs(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:

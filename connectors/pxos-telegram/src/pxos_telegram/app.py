@@ -8,9 +8,9 @@ card it is, on the digest that card showed: Approve is that person's decision; R
 for the reason with a forced reply in the same private chat and decides when that person
 answers it. The prompt is kept in memory, so after a restart Reject is pressed again. The
 card is then edited to show the outcome. Anything else, from any other chat, is ignored.
-Each update counts once it is handled; a failure, logged by its type alone, leaves it to
-the next poll, and the kernel keeps a redelivered message once. Replies never say why the
-kernel refused.
+Each update counts once it is handled, even when Telegram refuses a reply to it; any other
+failure leaves it to the next poll, and the kernel keeps a redelivered message once.
+Replies never say why the kernel refused.
 """
 
 import asyncio
@@ -101,14 +101,22 @@ class Inbox:
                     await self.handle(update)
                     offset = update["update_id"] + 1
             except Exception as error:
-                log.warning("Telegram poll failed: %s", type(error).__name__)
+                # A TelegramError's message is the method and status alone; any other
+                # error is logged by its type, since its message may quote a source.
+                reason = error if isinstance(error, TelegramError) else type(error).__name__
+                log.warning("Telegram poll failed: %s", reason)
                 await asyncio.sleep(retry)
 
     async def handle(self, update: dict[str, Any]) -> None:
-        if "callback_query" in update:
-            await self._button(update["callback_query"])
-        elif "message" in update:
-            await self._message(update["message"])
+        """Handle ``update``. A reply Telegram refuses (a press replayed after a restart is
+        stale) still counts as handled, so it does not hold the next updates back."""
+        try:
+            if "callback_query" in update:
+                await self._button(update["callback_query"])
+            elif "message" in update:
+                await self._message(update["message"])
+        except TelegramError as error:
+            log.warning("update %s: %s", update.get("update_id"), error)
 
     async def _message(self, message: dict[str, Any]) -> None:
         sender = message.get("from") or {}

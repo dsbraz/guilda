@@ -17,7 +17,11 @@ TOKEN_IN_URL = re.compile(r"/bot[^/\s]+/")
 
 
 class TelegramError(Exception):
-    """A Bot API call failed."""
+    """A Bot API call failed; ``status`` is Telegram's HTTP status, if it answered."""
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class _MaskToken(logging.Filter):
@@ -51,5 +55,6 @@ class BotApi:
         except ValueError:
             reply = None
         if not response.is_success or not isinstance(reply, dict) or not reply.get("ok"):
-            raise TelegramError(f"{method} failed: HTTP {response.status_code}")
+            status = response.status_code
+            raise TelegramError(f"{method} failed: HTTP {status}", status)
         return reply["result"]
