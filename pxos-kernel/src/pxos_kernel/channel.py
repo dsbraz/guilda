@@ -12,7 +12,7 @@ that clicked; the database decides whether that actor may review.
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import asyncpg
 
@@ -62,7 +62,7 @@ class FakeChannel:
 
     async def post(self, thread: str, text: str) -> str:
         self.threads[thread].append(text)
-        return f"{thread}/{len(self.threads[thread])}"
+        return str(uuid4())
 
 
 def route_cards(pool: asyncpg.Pool, registry: Registry, channel: Channel) -> Handler:

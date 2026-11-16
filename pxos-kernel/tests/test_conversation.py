@@ -70,6 +70,17 @@ async def test_a_question_is_posted_in_the_thread_and_kept_with_its_cycle(
     assert (question.author, question.cycle, question.sender) == (AGENT, cycle, None)
 
 
+async def test_every_post_is_a_new_message_even_from_another_channel_instance(
+    pool: asyncpg.Pool,
+) -> None:
+    thread, earlier, cycle = fresh("thread"), fresh("cycle"), fresh("cycle")
+    first = await post(pool, FakeChannel(), AGENT, thread=thread, cycle=earlier, text="Quantas?")
+    second = await post(pool, FakeChannel(), AGENT, thread=thread, cycle=cycle, text="Quantas?")
+
+    assert first.id != second.id
+    assert second.cycle == cycle
+
+
 async def test_an_answer_joins_the_cycle_of_the_agents_last_post_in_the_thread(
     pool: asyncpg.Pool,
 ) -> None:
