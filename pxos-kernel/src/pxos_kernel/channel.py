@@ -4,8 +4,9 @@ A created proposal becomes a card for each actor who holds the action's approver
 except its author and whoever the author acts for. The card is read in the recipient's
 session, so the database decides whether they see it at all: RLS hides it, and an
 external actor gets no session, since a card shows internal context (PXOS-61). Delivery
-is keyed by proposal: a redelivered event replaces the same card. Approving a card is a
-review by the recipient on exactly the digest the card showed.
+is keyed by proposal: a redelivered event replaces the same card. Deciding on a card is a
+review, on exactly the digest the card showed, by the actor bound to the channel identity
+that clicked; the database decides whether that actor may review.
 """
 
 from collections import defaultdict
@@ -15,7 +16,7 @@ from uuid import UUID
 
 import asyncpg
 
-from pxos_kernel.identity import NotAuthorized, session
+from pxos_kernel.identity import NotAuthorized, bound_actor, session
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import (
     Decision,
@@ -101,13 +102,16 @@ def route_cards(pool: asyncpg.Pool, registry: Registry, channel: Channel) -> Han
 async def decide(
     pool: asyncpg.Pool,
     registry: Registry,
-    actor: str,
+    clicker: str,
     card: Card,
     decision: Decision,
     *,
     reason: str | None = None,
 ) -> Review:
-    """Record ``actor``'s decision on the proposal exactly as ``card`` showed it."""
+    """Record the decision of the actor bound to the channel identity ``clicker`` on the
+    proposal exactly as ``card`` showed it."""
+    async with pool.acquire() as connection:
+        actor = await bound_actor(connection, clicker)
     async with session(pool, actor) as connection:
         return await review(
             connection, registry, card.proposal_id, decision, digest=card.digest, reason=reason

@@ -3,7 +3,8 @@
 A created proposal becomes a card for whoever holds the action's approver role and can
 read the type, never for its author or whoever the author acts for, and never for an
 external actor (Vera holds store-manager in the fixture). The card is built in
-the recipient's session; approving it is a review by the recipient on the card's digest.
+the recipient's session; approving it is a review on the card's digest by the actor bound
+to the channel identity that clicked, and the database still decides whether it counts.
 """
 
 from dataclasses import replace
@@ -14,13 +15,14 @@ import pytest
 
 from db_testing import Database, history
 from pxos_kernel.channel import FakeChannel, decide, route_cards
-from pxos_kernel.identity import session
+from pxos_kernel.identity import NotAuthorized, session
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import (
     DecisionFinal,
     DigestMismatch,
     Event,
     Evidence,
+    NotApprover,
     Proposal,
     propose,
 )
@@ -119,7 +121,9 @@ async def test_approving_a_card_records_the_fact(pool: asyncpg.Pool, registry: R
     channel = FakeChannel()
     await route_cards(pool, registry, channel)(created(proposal))
 
-    review = await decide(pool, registry, "carla", channel.cards["carla"][proposal.id], "approved")
+    review = await decide(
+        pool, registry, "chat:carla", channel.cards["carla"][proposal.id], "approved"
+    )
 
     assert review.reviewer == "carla"
     async with session(pool, "erin") as connection:
@@ -136,15 +140,37 @@ async def test_stale_card_and_late_contrary_decision_are_refused(
     carla_card = channel.cards["carla"][proposal.id]
 
     with pytest.raises(DigestMismatch):
-        await decide(pool, registry, "carla", replace(carla_card, digest="0" * 64), "approved")
+        await decide(pool, registry, "chat:carla", replace(carla_card, digest="0" * 64), "approved")
 
-    await decide(pool, registry, "carla", carla_card, "approved")
+    await decide(pool, registry, "chat:carla", carla_card, "approved")
     with pytest.raises(DecisionFinal):
         await decide(
             pool,
             registry,
-            "diego",
+            "chat:diego",
             channel.cards["diego"][proposal.id],
             "rejected",
             reason="quantidade errada",
         )
+
+
+@pytest.mark.parametrize(
+    ("clicker", "refusal"),
+    [("chat:guest", NotAuthorized), ("chat:erin", NotApprover), ("chat:vera", NotAuthorized)],
+    ids=["unbound", "not-an-approver", "external"],
+)
+async def test_only_the_actor_bound_to_the_click_decides(
+    pool: asyncpg.Pool, registry: Registry, clicker: str, refusal: type[Exception]
+) -> None:
+    """Whoever clicks decides as themselves: a card in hand authorizes nothing."""
+    proposal = await proposed(pool, registry, "gina")
+    channel = FakeChannel()
+    await route_cards(pool, registry, channel)(created(proposal))
+
+    with pytest.raises(refusal):
+        await decide(pool, registry, clicker, channel.cards["carla"][proposal.id], "approved")
+
+    review = await decide(
+        pool, registry, "chat:diego", channel.cards["carla"][proposal.id], "approved"
+    )
+    assert review.reviewer == "diego"
