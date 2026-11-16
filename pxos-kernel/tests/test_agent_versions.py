@@ -24,7 +24,7 @@ from pxos_kernel.agents import (
     approved_version,
 )
 from pxos_kernel.identity import session
-from pxos_kernel.ontology import Registry
+from pxos_kernel.ontology import InvalidPayload, Registry
 from pxos_kernel.state import (
     Evidence,
     InvalidProposal,
@@ -44,6 +44,12 @@ def definition(instructions: str = "Read each restock promise.") -> dict[str, An
         "agent": AGENT,
         "instructions": instructions,
         "memory_instructions": "Extract every restock promise, one per fact.",
+        "tools": ["recall"],
+        "schedule": "0 9 * * 1",
+        "answer_deadline_hours": 24,
+        "max_rounds": 3,
+        "thread": "thread:aisle-3",
+        "deliverable": "retail.create_restock_order",
     }
 
 
@@ -132,6 +138,16 @@ async def test_the_agent_runs_only_the_approved_version_in_force(
     await decided(agents_pool, registry, first)
     version = await in_force(agents_pool)
     assert (version.revision, version.instructions) == (1, "v1")
+    assert (version.tools, version.schedule, version.answer_deadline_hours) == (
+        ("recall",),
+        "0 9 * * 1",
+        24,
+    )
+    assert (version.max_rounds, version.thread, version.deliverable) == (
+        3,
+        "thread:aisle-3",
+        ("retail", "create_restock_order"),
+    )
 
     rejected = await proposed(agents_pool, registry, definition("v2"), change=first, revision=1)
     await decided(agents_pool, registry, rejected, "rejected")
@@ -147,6 +163,23 @@ async def test_the_agent_runs_only_the_approved_version_in_force(
             "v1",
             "v3",
         ]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"tools": ["shell"]},
+        {"schedule": "every monday"},
+        {"answer_deadline_hours": 0},
+        {"max_rounds": 0},
+        {"deliverable": "create_restock_order"},
+    ],
+)
+def test_a_definition_names_only_known_tools_and_a_valid_cycle(
+    registry: Registry, change: dict[str, Any]
+) -> None:
+    with pytest.raises(InvalidPayload):
+        registry.get(AGENTS).validate("AgentVersion", {**definition(), **change})
 
 
 async def test_only_platform_admins_and_agents_read_definitions(

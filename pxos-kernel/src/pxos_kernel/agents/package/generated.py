@@ -74,6 +74,10 @@ class ActorKind(str, Enum):
     agente = "agent"
 
 
+class AgentTool(str, Enum):
+    consulta_à_memória_de_contexto = "recall"
+
+
 
 class Actor(ConfiguredBaseModel):
     """
@@ -85,11 +89,43 @@ class Actor(ConfiguredBaseModel):
 
 class AgentVersion(ConfiguredBaseModel):
     """
-    Definição publicada de um agente. O modelo não faz parte dela: vem da rota da residência da instalação.
+    Definição publicada de um agente e do seu ciclo. O modelo não faz parte dela: vem da rota da residência da instalação.
     """
     agent: str = Field(default=..., title="agente")
     instructions: str = Field(default=..., title="instruções", description="""O que o agente faz.""")
     memory_instructions: str = Field(default=..., title="instruções para a memória de contexto", description="""O que a memória de contexto extrai de cada fonte.""")
+    tools: Optional[list[AgentTool]] = Field(default=None, title="ferramentas", description="""Ferramentas que o kernel monta para o agente.""")
+    schedule: str = Field(default=..., title="agenda", description="""Quando o ciclo começa, em cron de cinco campos.""")
+    answer_deadline_hours: int = Field(default=..., title="prazo das respostas em horas", ge=1)
+    max_rounds: int = Field(default=..., title="máximo de rodadas", ge=1)
+    thread: str = Field(default=..., title="thread", description="""Onde o agente pergunta e entrega.""")
+    deliverable: str = Field(default=..., title="entrega", description="""Ação que propõe a entrega do ciclo, como pacote.ação.""")
+
+    @field_validator('schedule')
+    def pattern_schedule(cls, v):
+        pattern=re.compile(r"^\S+( \S+){4}$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.search(element):
+                    err_msg = f"Invalid schedule format: {element}"
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.search(v):
+            err_msg = f"Invalid schedule format: {v}"
+            raise ValueError(err_msg)
+        return v
+
+    @field_validator('deliverable')
+    def pattern_deliverable(cls, v):
+        pattern=re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.search(element):
+                    err_msg = f"Invalid deliverable format: {element}"
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.search(v):
+            err_msg = f"Invalid deliverable format: {v}"
+            raise ValueError(err_msg)
+        return v
 
 
 # Model rebuild

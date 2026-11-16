@@ -28,26 +28,71 @@
             "title": "ActorKind",
             "type": "string"
         },
+        "AgentTool": {
+            "description": "",
+            "enum": [
+                "recall"
+            ],
+            "title": "AgentTool",
+            "type": "string"
+        },
         "AgentVersion": {
             "additionalProperties": false,
-            "description": "Defini\u00e7\u00e3o publicada de um agente. O modelo n\u00e3o faz parte dela: vem da rota da resid\u00eancia da instala\u00e7\u00e3o.",
+            "description": "Defini\u00e7\u00e3o publicada de um agente e do seu ciclo. O modelo n\u00e3o faz parte dela: vem da rota da resid\u00eancia da instala\u00e7\u00e3o.",
             "properties": {
                 "agent": {
+                    "type": "string"
+                },
+                "answer_deadline_hours": {
+                    "minimum": 1,
+                    "type": "integer"
+                },
+                "deliverable": {
+                    "description": "A\u00e7\u00e3o que prop\u00f5e a entrega do ciclo, como pacote.a\u00e7\u00e3o.",
+                    "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$",
                     "type": "string"
                 },
                 "instructions": {
                     "description": "O que o agente faz.",
                     "type": "string"
                 },
+                "max_rounds": {
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "memory_instructions": {
                     "description": "O que a mem\u00f3ria de contexto extrai de cada fonte.",
                     "type": "string"
+                },
+                "schedule": {
+                    "description": "Quando o ciclo come\u00e7a, em cron de cinco campos.",
+                    "pattern": "^\\S+( \\S+){4}$",
+                    "type": "string"
+                },
+                "thread": {
+                    "description": "Onde o agente pergunta e entrega.",
+                    "type": "string"
+                },
+                "tools": {
+                    "description": "Ferramentas que o kernel monta para o agente.",
+                    "items": {
+                        "$ref": "#/$defs/AgentTool"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
                 }
             },
             "required": [
                 "agent",
                 "instructions",
-                "memory_instructions"
+                "memory_instructions",
+                "schedule",
+                "answer_deadline_hours",
+                "max_rounds",
+                "thread",
+                "deliverable"
             ],
             "title": "AgentVersion",
             "type": "object"

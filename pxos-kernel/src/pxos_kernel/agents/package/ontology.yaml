@@ -19,8 +19,8 @@ classes:
   AgentVersion:
     title: Versão de agente
     description: >-
-      Definição publicada de um agente. O modelo não faz parte dela: vem da rota da
-      residência da instalação.
+      Definição publicada de um agente e do seu ciclo. O modelo não faz parte dela: vem
+      da rota da residência da instalação.
     annotations:
       pxos.kind: canonical
     attributes:
@@ -37,3 +37,39 @@ classes:
         title: instruções para a memória de contexto
         description: O que a memória de contexto extrai de cada fonte.
         required: true
+      tools:
+        title: ferramentas
+        description: Ferramentas que o kernel monta para o agente.
+        range: AgentTool
+        multivalued: true
+      schedule:
+        title: agenda
+        description: Quando o ciclo começa, em cron de cinco campos.
+        required: true
+        pattern: "^\\S+( \\S+){4}$"
+      answer_deadline_hours:
+        title: prazo das respostas em horas
+        range: integer
+        required: true
+        minimum_value: 1
+      max_rounds:
+        title: máximo de rodadas
+        range: integer
+        required: true
+        minimum_value: 1
+      thread:
+        title: thread
+        description: Onde o agente pergunta e entrega.
+        required: true
+      deliverable:
+        title: entrega
+        description: Ação que propõe a entrega do ciclo, como pacote.ação.
+        required: true
+        pattern: "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+
+enums:
+  AgentTool:
+    title: Ferramenta de agente
+    permissible_values:
+      recall:
+        title: consulta à memória de contexto

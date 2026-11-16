@@ -50,6 +50,12 @@ RESTOCK_AGENT = {
     # Braces are text, not a template: the kernel hands instructions to ADK literally.
     "instructions": "Read the restock promise: its {sku}, quantity and verbatim quote.",
     "memory_instructions": MEMORY_INSTRUCTIONS,
+    "tools": ["recall"],
+    "schedule": "0 9 * * 1",
+    "answer_deadline_hours": 24,
+    "max_rounds": 2,
+    "thread": "thread:aisle-3",
+    "deliverable": "retail.create_restock_order",
 }
 
 

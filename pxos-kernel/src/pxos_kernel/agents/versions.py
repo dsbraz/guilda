@@ -38,6 +38,14 @@ class AgentVersion:
     """The digest of the proposal the approver reviewed."""
     instructions: str
     memory_instructions: str
+    tools: tuple[str, ...]
+    schedule: str
+    """When a cycle starts, as a five-field cron expression."""
+    answer_deadline_hours: int
+    max_rounds: int
+    thread: str
+    deliverable: tuple[str, str]
+    """The package and action that propose the cycle's deliverable."""
 
 
 def register_agents(registry: Registry) -> RegisteredPackage:
@@ -58,6 +66,7 @@ async def approved_version(connection: Connection, agent: str) -> AgentVersion:
     if len(facts) > 1:
         raise AmbiguousDefinition(f"{agent} is defined by {len(facts)} entities")
     fact = facts[0]
+    package, action = fact.payload["deliverable"].split(".")
     return AgentVersion(
         agent=agent,
         entity_id=fact.entity_id,
@@ -65,6 +74,12 @@ async def approved_version(connection: Connection, agent: str) -> AgentVersion:
         digest=(await get_proposal(connection, fact.proposal_id)).digest,
         instructions=fact.payload["instructions"],
         memory_instructions=fact.payload["memory_instructions"],
+        tools=tuple(fact.payload.get("tools", ())),
+        schedule=fact.payload["schedule"],
+        answer_deadline_hours=fact.payload["answer_deadline_hours"],
+        max_rounds=fact.payload["max_rounds"],
+        thread=fact.payload["thread"],
+        deliverable=(package, action),
     )
 
 
