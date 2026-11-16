@@ -8,8 +8,13 @@ posted in the project's thread, the team's answer is kept with its author and cy
 wakes the cycle through the outbox, and a correction, in the thread or as the reason of a
 rejection, becomes context for the next cycle with who made it. Writing the answer into
 the report and redoing it belong to the agent's cycle (slice 13).
+
+Slice 10 proves the context: sources are ingested once per version, deleted or revoked
+ones are forgotten, an unreachable connector is flagged, and recall in the project's
+scope never returns a restricted source.
 """
 
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
@@ -18,8 +23,9 @@ from uuid import UUID, uuid4
 import asyncpg
 import pytest
 
-from brq_at_work.composition import WEEKLY_REPORT
-from db_testing import Database, drain
+from brq_at_work.composition import WEEKLY_REPORT, bootstrap
+from brq_at_work.publish_agent import AGENT_FILE, publish
+from db_testing import Database, create_test_database, drain
 from pxos_kernel.channel import FakeChannel
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.conversation import (
@@ -31,21 +37,81 @@ from pxos_kernel.conversation import (
     retain_rejection,
 )
 from pxos_kernel.identity import NotAuthorized, session
+from pxos_kernel.ingestion import FakeConnector, SourceDocument, sync
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import Event, Evidence, create_pool, propose, review
 
 AGENT = "weekly-report-agent"
+PROJECT = "project:aurora"
+BOARD = "board:restricted"
 THREAD = "teams:projeto-alfa"
 INSTRUCTIONS = "Guarde cada correção do time com quem a fez."
+
+
+@pytest.fixture(scope="module")
+def installation(registry: Registry) -> Database:
+    """A BRQ@work installation whose weekly agent is published from the distro's file."""
+    database = create_test_database("pxos_test_brq_context")
+    bootstrap(database.owner_dsn, registry)
+
+    async def published() -> None:
+        draft = await publish(database.app_dsn, AGENT_FILE, author="bruno")
+        pool = await create_pool(database.app_dsn)
+        try:
+            async with session(pool, "eva") as connection:
+                await review(connection, registry, draft.id, "approved", digest=draft.digest)
+        finally:
+            await pool.close()
+
+    asyncio.run(published())
+    return database
+
+
+@pytest.fixture
+async def context_pool(installation: Database) -> AsyncIterator[asyncpg.Pool]:
+    pool = await create_pool(installation.app_dsn)
+    yield pool
+    await pool.close()
+
+
+def source(name: str, access: str, version: str = "1") -> SourceDocument:
+    return SourceDocument(
+        source=f"sharepoint:aurora/{name}",
+        version=version,
+        text=f"{name}, versão {version}: o diagnóstico atrasou uma semana.",
+        access=(access,),
+    )
+
+
+async def states(pool: asyncpg.Pool, connector: str) -> dict[str, str]:
+    async with pool.acquire() as connection:
+        rows = await connection.fetch(
+            "SELECT source, state FROM pxos.source_states WHERE connector = $1", connector
+        )
+    return {row["source"]: row["state"] for row in rows}
 
 
 def pending(slice_: str, scope: str) -> pytest.MarkDecorator:
     return pytest.mark.xfail(raises=NotImplementedError, strict=True, reason=f"{slice_}: {scope}")
 
 
-@pending("fatia 10", "fontes novas ou alteradas atualizam o contexto, sem duplicar")
-def test_update_without_duplication() -> None:
-    raise NotImplementedError
+async def test_update_without_duplication(context_pool: asyncpg.Pool) -> None:
+    """New or changed sources update the context, without duplicating it."""
+    sharepoint, store = FakeConnector("sharepoint-update"), FakeContextStore()
+    status = source("status.docx", PROJECT)
+    sharepoint.put(status)
+    await sync(context_pool, store, sharepoint, agent=AGENT)
+
+    sharepoint.put(source("status.docx", PROJECT, version="2"))
+    await sync(context_pool, store, sharepoint, agent=AGENT)
+    sharepoint.put(source("status.docx", PROJECT, version="2"))
+    await sync(context_pool, store, sharepoint, agent=AGENT)
+
+    recalled = await store.recall("atrasos do diagnóstico", tags=[PROJECT])
+    assert [(r.source, r.text) for r in recalled] == [
+        (status.source, "status.docx, versão 2: o diagnóstico atrasou uma semana.")
+    ]
+    assert [key for key, _ in store.retained] == [status.source, status.source]
 
 
 class TextStore(FakeContextStore):
@@ -158,9 +224,35 @@ async def test_continuity(pool: asyncpg.Pool, publisher: asyncpg.Pool, registry:
         assert correction in await conversation(connection, this_week)
 
 
-@pending("fatia 10", "indisponibilidade sinalizada; exclusão e perda de acesso respeitadas")
-def test_sources_and_access() -> None:
-    raise NotImplementedError
+async def test_sources_and_access(context_pool: asyncpg.Pool) -> None:
+    """Unavailability is flagged; deletion, lost access and restricted access hold."""
+    sharepoint, store = FakeConnector("sharepoint-access"), FakeContextStore()
+    status, board = source("andamento.docx", PROJECT), source("diretoria.docx", BOARD)
+    deleted, revoked = source("rascunho.docx", PROJECT), source("contrato.docx", PROJECT)
+    for document in (status, board, deleted, revoked):
+        sharepoint.put(document)
+    await sync(context_pool, store, sharepoint, agent=AGENT)
+
+    sharepoint.delete(deleted.source)
+    sharepoint.revoke(revoked.source)
+    await sync(context_pool, store, sharepoint, agent=AGENT)
+
+    # Restricted information does not reach an answer: recall in the project's scope
+    # returns neither the board's source nor the deleted or revoked ones.
+    recalled = await store.recall("atrasos do diagnóstico", tags=[PROJECT])
+    assert {r.source for r in recalled} == {status.source}
+    assert await states(context_pool, sharepoint.name) == {
+        status.source: "available",
+        board.source: "available",
+        deleted.source: "deleted",
+        revoked.source: "no_access",
+    }
+
+    # An unreachable SharePoint is flagged for the report, and nothing is removed.
+    sharepoint.available = False
+    assert await sync(context_pool, store, sharepoint, agent=AGENT) is False
+    assert (await states(context_pool, sharepoint.name))[status.source] == "unavailable"
+    assert await store.recall("atrasos do diagnóstico", tags=[PROJECT]) == recalled
 
 
 @pending("fatia 13", "reinício durante a espera preserva respostas e não duplica entregas")
