@@ -108,7 +108,7 @@ gcloud compute ssh pxos --zone="$ZONA" --tunnel-through-iap
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER" && newgrp docker
 git clone <repositório> pxos && cd pxos
-cp .env.example deploy/.env   # preencha todas as variáveis; o arquivo nunca é commitado
+cp .env.example deploy/.env   # preencha as variáveis (veja a seção 4); o arquivo nunca é commitado
 chmod 600 deploy/.env
 docker compose -f deploy/compose.yaml up -d --build
 docker compose -f deploy/compose.yaml ps
