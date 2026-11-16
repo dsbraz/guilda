@@ -2,8 +2,9 @@
 
 - pxos_publisher reads the outbox and marks events published; it sees nothing else;
 - event payloads carry identifiers only, so the rejection reason leaves the outbox;
-- pxos.sources keeps each ingested source version once; the application may only
-  insert, so replaying a source is a no-op and nobody reads raw content through it.
+- pxos.sources records each ingested source version once, without its content (the
+  text lives in the context memory alone); the application may only insert, so
+  replaying a source is a no-op.
 """
 
 from alembic import op
@@ -57,13 +58,12 @@ STATEMENTS = [
     CREATE TABLE pxos.sources (
         source text NOT NULL CHECK (source <> ''),
         version text NOT NULL CHECK (version <> ''),
-        content text NOT NULL,
         ingested_by text NOT NULL DEFAULT pxos.current_actor(),
         ingested_at timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (source, version)
     )
     """,
-    "GRANT INSERT (source, version, content) ON pxos.sources TO pxos_app",
+    "GRANT INSERT (source, version) ON pxos.sources TO pxos_app",
 ]
 
 

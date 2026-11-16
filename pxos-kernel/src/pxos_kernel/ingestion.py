@@ -1,9 +1,9 @@
 """Ingestion into the context memory (PXOS-52, PXOS-79).
 
 A connector delivers source documents. Each source version is ingested once, by an agent
-from its approved version: the source is kept in the canonical store and retained in the
-context memory with the version's memory instructions. Ingesting context needs no review
-of each excerpt and proposes nothing.
+from its approved version: the version is recorded, without its content, and the text is
+retained in the context memory with the version's memory instructions. Ingesting context
+needs no review of each excerpt and proposes nothing.
 """
 
 from collections.abc import Iterable, Iterator
@@ -70,12 +70,11 @@ async def ingest(
         version = await approved_version(connection, agent)
         status = await connection.execute(
             """
-            INSERT INTO pxos.sources (source, version, content) VALUES ($1, $2, $3)
+            INSERT INTO pxos.sources (source, version) VALUES ($1, $2)
             ON CONFLICT DO NOTHING
             """,
             document.source,
             document.version,
-            document.text,
         )
         if status == "INSERT 0 0":
             return False

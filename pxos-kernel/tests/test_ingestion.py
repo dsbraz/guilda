@@ -136,7 +136,26 @@ async def test_a_failure_to_retain_leaves_no_trace_and_can_be_retried(pool: asyn
     assert await ingest(pool, FakeContextStore(), doc, agent=AGENT) is True
 
 
-async def test_application_cannot_read_ingested_sources(pool: asyncpg.Pool) -> None:
+async def test_the_source_ledger_keeps_no_content(database: Database) -> None:
+    """Only which version was ingested, by whom and when: the text lives in the context
+    memory alone, so forgetting a source has one place to purge."""
+    owner = await asyncpg.connect(database.owner_dsn)
+    try:
+        columns = await owner.fetch(
+            "SELECT column_name FROM information_schema.columns"
+            " WHERE table_schema = 'pxos' AND table_name = 'sources'"
+        )
+    finally:
+        await owner.close()
+    assert {c["column_name"] for c in columns} == {
+        "source",
+        "version",
+        "ingested_by",
+        "ingested_at",
+    }
+
+
+async def test_application_cannot_read_the_source_ledger(pool: asyncpg.Pool) -> None:
     async with pool.acquire() as connection:
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
-            await connection.fetch("SELECT content FROM pxos.sources")
+            await connection.fetch("SELECT source FROM pxos.sources")
