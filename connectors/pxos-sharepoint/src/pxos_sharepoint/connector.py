@@ -9,11 +9,12 @@ gives or from the start. Each new or changed file is downloaded and its text del
 its name and web URL as provenance, under the library's access tags: access follows the
 library, not each document's permissions.
 
-A file the connector cannot read (unsupported, too large, corrupt, empty or gone) is
-skipped, so it never holds back the cursor. Throttling (429, 503) waits as ``Retry-After``
-says, or backs off exponentially, a bounded number of times. Any other failure, including
-losing access to the drive, raises ConnectorUnavailable with the status and the Graph error
-code only: never a URL, which may be pre-authenticated, nor content.
+A file the connector cannot read (unsupported, too large, corrupt, empty, or refused by
+the service with a 4xx other than 401) is skipped, so it never holds back the cursor.
+Throttling (429, 503) waits as ``Retry-After`` says, or backs off exponentially, a bounded
+number of times. Any other failure, including losing access to the drive, raises
+ConnectorUnavailable with the status and the Graph error code only: never a URL, which may
+be pre-authenticated, nor content.
 """
 
 import asyncio
@@ -99,7 +100,7 @@ class SharePointConnector:
         if item.get("size", 0) > self._max_bytes or not supported(name):
             return None
         response = await self._graph(f"{self._drive}/items/{item['id']}/content")
-        if response.status_code == httpx.codes.NOT_FOUND:
+        if response.is_client_error and response.status_code != httpx.codes.UNAUTHORIZED:
             return None
         try:
             body = extract_text(name, self._ok(response).content)

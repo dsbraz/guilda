@@ -338,7 +338,6 @@ async def test_files_that_cannot_be_read_are_skipped() -> None:
                     item("01B", "enorme.txt", size=2_000),
                     item("01C", "corrompido.docx"),
                     item("01D", "vazio.txt"),
-                    item("01E", "sumiu.txt"),
                     item("01F", "certo.txt"),
                     delta=f"{DELTA}2",
                 )
@@ -346,7 +345,6 @@ async def test_files_that_cannot_be_read_are_skipped() -> None:
             **content("01C", "não é zip"),
             **content("01D", "  \n"),
             **content("01F", "ok"),
-            f"{GRAPH}/drives/{DRIVE}/items/01E/content": [httpx.Response(404)],
         }
     )
 
@@ -358,15 +356,31 @@ async def test_files_that_cannot_be_read_are_skipped() -> None:
     assert not any("/01A/" in url or "/01B/" in url for url in fetched)
 
 
-async def test_a_failed_download_makes_the_library_unavailable() -> None:
+@pytest.mark.parametrize("status", [403, 404, 423])
+async def test_a_file_the_service_refuses_is_skipped(status: int) -> None:
     graph = FakeGraph(
         {
-            DELTA: [page(item("01A", "a.txt"), delta=f"{DELTA}2")],
-            f"{GRAPH}/drives/{DRIVE}/items/01A/content": [httpx.Response(500)],
+            DELTA: [page(item("01A", "a.txt"), item("01B", "b.txt"), delta=f"{DELTA}2")],
+            f"{GRAPH}/drives/{DRIVE}/items/01A/content": [httpx.Response(status)],
+            **content("01B", "ok"),
         }
     )
 
-    with pytest.raises(ConnectorUnavailable, match="500"):
+    changes = await connector(graph).changes(DELTA)
+
+    assert [d.source for d in changes.documents] == [f"sharepoint-rh:{DRIVE}:01B"]
+
+
+@pytest.mark.parametrize("status", [401, 500])
+async def test_a_failed_download_makes_the_library_unavailable(status: int) -> None:
+    graph = FakeGraph(
+        {
+            DELTA: [page(item("01A", "a.txt"), delta=f"{DELTA}2")],
+            f"{GRAPH}/drives/{DRIVE}/items/01A/content": [httpx.Response(status)],
+        }
+    )
+
+    with pytest.raises(ConnectorUnavailable, match=str(status)):
         await connector(graph).changes(DELTA)
 
 
