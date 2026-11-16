@@ -25,8 +25,9 @@ async def test_the_application_cannot_forge_or_change_a_run(pool: asyncpg.Pool) 
         source=f"fixture:shelf-log/{uuid4()}",
         version="1",
         text="Erin: restock A-1.",
+        access=(),
     )
-    await ingest(pool, FakeContextStore(), doc, agent=AGENT)
+    await ingest(pool, FakeContextStore(), doc, agent=AGENT, connector="fixture")
     async with session(pool, AGENT) as connection:
         version = await approved_version(connection, AGENT)
     for statement in (

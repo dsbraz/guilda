@@ -1,9 +1,9 @@
-"""Ingestion runs as a workflow that carries references only (PXOS-70, ADR 0004 §2).
+"""A sync pass runs as a workflow that carries references only (PXOS-70, ADR 0004 §2).
 
-The workflow receives a source reference and an id derived from it. The Activity fetches
-the document from the connector and ingests it as the agent; what it hands back to the
-workflow is a flag. A retry after the commit ingests nothing twice, and nothing the
-source says reaches the Temporal history.
+The workflow receives a connector's name and an id derived from it. The Activity runs one
+sync pass of that connector as the agent; what it hands back to the workflow is a flag. A
+retry after the commit retains nothing twice, and nothing the source says reaches the
+Temporal history, even when the connector or the context memory fails quoting it.
 """
 
 import asyncio
@@ -19,12 +19,12 @@ from temporalio.client import Client, WorkflowFailureError, WorkflowHandle
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.worker import Worker
 
-from pxos_kernel.context import FakeContextStore
-from pxos_kernel.ingestion import FakeConnector, SourceDocument
+from pxos_kernel.context import ContextUnavailable, FakeContextStore
+from pxos_kernel.ingestion import Changes, Connector, FakeConnector, SourceDocument
 from pxos_kernel.workflows import (
-    IngestionActivities,
-    IngestSource,
-    ingest_workflow_id,
+    SyncActivities,
+    SyncConnector,
+    sync_workflow_id,
     workflow_runner,
 )
 from temporal_testing import history_bytes
@@ -33,12 +33,14 @@ SECRET = "restock aisle 3 with 12 boxes"
 LOG = f"Erin: I will {SECRET} of A-1 tomorrow.\nGina: I will restock aisle 9 with 4 of B-2.\n"
 
 
-def source() -> SourceDocument:
-    return SourceDocument(
-        source=f"fixture:shelf-log/{uuid4()}",
-        version="1",
-        text=LOG,
+def connector() -> FakeConnector:
+    fake = FakeConnector(f"fixture-{uuid4()}")
+    fake.put(
+        SourceDocument(
+            source=f"fixture:shelf-log/{uuid4()}", version="1", text=LOG, access=("access:x",)
+        )
     )
+    return fake
 
 
 class Store(FakeContextStore):
@@ -58,6 +60,13 @@ class Store(FakeContextStore):
         await super().retain(key, text, instructions, tags=tags)
 
 
+class Garbled(FakeConnector):
+    """A connector that fails quoting the source it could not read."""
+
+    async def changes(self, cursor: str | None) -> Changes:
+        raise ValueError(f"cannot parse {LOG}")
+
+
 @pytest.fixture
 async def temporal(temporal_address: str) -> Client:
     return await Client.connect(temporal_address)
@@ -67,89 +76,109 @@ async def temporal(temporal_address: str) -> Client:
 async def worker(
     temporal: Client,
     pool: asyncpg.Pool,
-    document: SourceDocument,
+    fake: Connector,
     store: FakeContextStore,
-    activities: type[IngestionActivities] = IngestionActivities,
+    activities: type[SyncActivities] = SyncActivities,
 ) -> AsyncIterator[str]:
-    queue = f"ingest-{uuid4()}"
-    ingestion = activities(pool, store, FakeConnector([document]), agent=AGENT)
+    queue = f"sync-{uuid4()}"
+    syncing = activities(pool, store, [fake], agent=AGENT)
     async with Worker(
         temporal,
         task_queue=queue,
-        workflows=[IngestSource],
-        activities=ingestion.registered(),
+        workflows=[SyncConnector],
+        activities=syncing.registered(),
         workflow_runner=workflow_runner(),
     ):
         yield queue
 
 
-async def start(temporal: Client, queue: str, ref: str) -> WorkflowHandle[IngestSource, bool]:
+async def start(temporal: Client, queue: str, name: str) -> WorkflowHandle[SyncConnector, bool]:
     return await temporal.start_workflow(
-        IngestSource.run, ref, id=ingest_workflow_id(ref), task_queue=queue
+        SyncConnector.run, name, id=sync_workflow_id(name), task_queue=queue
     )
 
 
-async def test_the_workflow_ingests_by_reference(temporal: Client, pool: asyncpg.Pool) -> None:
-    document = source()
-    store = Store()
-    async with worker(temporal, pool, document, store) as queue:
-        handle = await start(temporal, queue, document.key)
+async def test_the_workflow_syncs_a_connector_by_reference(
+    temporal: Client, pool: asyncpg.Pool
+) -> None:
+    fake, store = connector(), Store()
+    async with worker(temporal, pool, fake, store) as queue:
+        handle = await start(temporal, queue, fake.name)
         with pytest.raises(WorkflowAlreadyStartedError):
-            await start(temporal, queue, document.key)
+            await start(temporal, queue, fake.name)
         assert await asyncio.wait_for(handle.result(), timeout=30) is True
 
-    assert [key for key, _ in store.retained] == [document.key]
+    assert len(store.retained) == 1
     raw = await history_bytes(temporal, handle.id)
-    assert document.key.encode() in raw  # the search sees what history holds
+    assert fake.name.encode() in raw  # the search sees what history holds
     assert SECRET.encode() not in raw
 
 
-class CrashesAfterCommit(IngestionActivities):
+class CrashesAfterCommit(SyncActivities):
     """The first attempt commits, then dies before the workflow hears of it."""
 
-    async def ingest_document(self, document: SourceDocument) -> bool:
-        ingested = await super().ingest_document(document)
+    async def sync(self, connector: Connector) -> bool:
+        synced = await super().sync(connector)
         if activity.info().attempt == 1:
             raise ConnectionResetError("worker lost after commit")
-        return ingested
+        return synced
 
 
-async def test_a_retry_after_the_commit_ingests_nothing_twice(
+async def test_a_retry_after_the_commit_retains_nothing_twice(
     temporal: Client, pool: asyncpg.Pool
 ) -> None:
-    document = source()
-    store = Store()
-    async with worker(temporal, pool, document, store, CrashesAfterCommit) as queue:
-        handle = await start(temporal, queue, document.key)
-        assert await asyncio.wait_for(handle.result(), timeout=30) is False
-
-    assert [key for key, _ in store.retained] == [document.key]
-
-
-async def test_a_transient_failure_is_retried(temporal: Client, pool: asyncpg.Pool) -> None:
-    document = source()
-    store = Store(failures=1)
-    async with worker(temporal, pool, document, store) as queue:
-        handle = await start(temporal, queue, document.key)
+    fake, store = connector(), Store()
+    async with worker(temporal, pool, fake, store, CrashesAfterCommit) as queue:
+        handle = await start(temporal, queue, fake.name)
         assert await asyncio.wait_for(handle.result(), timeout=30) is True
 
-    assert [key for key, _ in store.retained] == [document.key]
+    assert len(store.retained) == 1
 
 
-async def test_a_failure_does_not_carry_the_source_into_history(
-    temporal: Client, pool: asyncpg.Pool
+@pytest.mark.parametrize("error", [ConnectionResetError, ContextUnavailable])
+async def test_a_transient_failure_is_retried(
+    temporal: Client, pool: asyncpg.Pool, error: type[Exception]
 ) -> None:
-    document = source()
-    async with worker(temporal, pool, document, Store(failures=1, error=ValueError)) as queue:
-        handle = await start(temporal, queue, document.key)
+    fake, store = connector(), Store(failures=1, error=error)
+    async with worker(temporal, pool, fake, store) as queue:
+        handle = await start(temporal, queue, fake.name)
+        assert await asyncio.wait_for(handle.result(), timeout=30) is True
+
+    assert len(store.retained) == 1
+
+
+@pytest.mark.parametrize(
+    ("fake", "store"),
+    [
+        pytest.param(connector(), Store(failures=1, error=ValueError), id="context memory"),
+        pytest.param(Garbled("fixture-garbled"), Store(), id="connector"),
+    ],
+)
+async def test_a_failure_does_not_carry_the_source_into_history(
+    temporal: Client, pool: asyncpg.Pool, fake: Connector, store: Store
+) -> None:
+    async with worker(temporal, pool, fake, store) as queue:
+        handle = await start(temporal, queue, fake.name)
         with pytest.raises(WorkflowFailureError):
             await asyncio.wait_for(handle.result(), timeout=30)
 
     assert SECRET.encode() not in await history_bytes(temporal, handle.id)
 
 
-async def test_an_unknown_source_fails_the_workflow(temporal: Client, pool: asyncpg.Pool) -> None:
-    async with worker(temporal, pool, source(), Store()) as queue:
-        handle = await start(temporal, queue, "fixture:shelf-log/missing@1")
+async def test_an_unreachable_connector_ends_the_pass_unsynced(
+    temporal: Client, pool: asyncpg.Pool
+) -> None:
+    fake = connector()
+    fake.available = False
+    async with worker(temporal, pool, fake, Store()) as queue:
+        handle = await start(temporal, queue, fake.name)
+        assert await asyncio.wait_for(handle.result(), timeout=30) is False
+
+
+async def test_an_unknown_connector_fails_the_workflow(
+    temporal: Client, pool: asyncpg.Pool
+) -> None:
+    async with worker(temporal, pool, connector(), Store()) as queue:
+        handle = await start(temporal, queue, "fixture-missing")
         with pytest.raises(WorkflowFailureError):
             await asyncio.wait_for(handle.result(), timeout=30)

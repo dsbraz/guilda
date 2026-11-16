@@ -1,51 +1,53 @@
 """Activities: where workflows touch the kernel, always in an actor's database session."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 import asyncpg
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from pxos_kernel.context import ContextStore
-from pxos_kernel.ingestion import Connector, SourceDocument, UnknownSource, ingest
+from pxos_kernel.context import ContextStore, ContextUnavailable
+from pxos_kernel.ingestion import Connector, sync
 
-TRANSIENT = (OSError, TimeoutError, asyncpg.PostgresConnectionError)
+TRANSIENT = (OSError, TimeoutError, asyncpg.PostgresConnectionError, ContextUnavailable)
 """Failures worth retrying. Anything else fails the workflow, which can be started again
 with the same id: a defect or bad data does not fix itself on retry."""
 
 
-class IngestionActivities:
-    """Fetch a source by reference and ingest it as ``agent``, from its approved version.
+class SyncActivities:
+    """Run one sync pass of a connector, by name, as ``agent``.
 
-    Only references cross into the workflow: the source reference in, a flag out. A
-    failure is reported by its type alone, because its message may quote the source.
+    Only references cross into the workflow: the connector's name in, a flag out. A
+    failure is reported by its type alone, because its message may quote a source,
+    whether it came from the connector or from the context memory.
     """
 
     def __init__(
-        self, pool: asyncpg.Pool, store: ContextStore, connector: Connector, *, agent: str
+        self,
+        pool: asyncpg.Pool,
+        store: ContextStore,
+        connectors: Iterable[Connector],
+        *,
+        agent: str,
     ) -> None:
         self._pool = pool
         self._store = store
-        self._connector = connector
+        self._connectors = {connector.name: connector for connector in connectors}
         self._agent = agent
 
-    @activity.defn(name="ingest_source")
-    async def ingest_source(self, ref: str) -> bool:
+    @activity.defn(name="sync_connector")
+    async def sync_connector(self, name: str) -> bool:
         try:
-            document = self._connector.fetch(ref)
-        except UnknownSource:
-            raise ApplicationError(f"source {ref} not found", non_retryable=True) from None
-        try:
-            return await self.ingest_document(document)
+            return await self.sync(self._connectors[name])
         except Exception as error:
             raise ApplicationError(
-                f"ingestion of {ref} failed: {type(error).__name__}",
+                f"sync of {name} failed: {type(error).__name__}",
                 non_retryable=not isinstance(error, TRANSIENT),
             ) from None
 
-    async def ingest_document(self, document: SourceDocument) -> bool:
-        return await ingest(self._pool, self._store, document, agent=self._agent)
+    async def sync(self, connector: Connector) -> bool:
+        return await sync(self._pool, self._store, connector, agent=self._agent)
 
     def registered(self) -> list[Callable[..., Any]]:
-        return [self.ingest_source]
+        return [self.sync_connector]

@@ -1,9 +1,11 @@
 """Ingestion into the context memory (PXOS-52, PXOS-79).
 
 A source version is ingested once, as the agent and from its approved version: the
-context memory retains it with the version's memory instructions, the run records the
-version, and nothing is proposed. A failure leaves no trace, so the version can be
-ingested again.
+context memory retains it under the source, with the version's memory instructions and
+the access the connector declared, the run records the version, and nothing is proposed.
+The context memory retains only what was committed: a failure before the commit leaves no
+trace, and a failure to retain after it leaves the source pending, retained when it comes
+again.
 """
 
 from collections.abc import AsyncIterator, Sequence
@@ -19,19 +21,27 @@ from model_testing import ROUTE
 from pxos_kernel.agents import NoApprovedVersion, approved_version, recorded_run
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
-from pxos_kernel.ingestion import FakeConnector, SourceDocument, ingest
+from pxos_kernel.ingestion import SourceDocument, ingest
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 
 LOG = "Erin: I will restock aisle 3 with 12 boxes of A-1 tomorrow morning.\nCarla: thanks.\n"
 
 
-def document() -> SourceDocument:
+CONNECTOR = "fixture"
+
+
+def document(source: str | None = None, version: str = "1", text: str = LOG) -> SourceDocument:
     return SourceDocument(
-        source=f"fixture:shelf-log/{uuid4()}",
-        version="1",
-        text=LOG,
+        source=source or f"fixture:shelf-log/{uuid4()}",
+        version=version,
+        text=text,
+        access=("access:store-3",),
     )
+
+
+async def ingest_as_agent(store: FakeContextStore, pool: asyncpg.Pool, doc: SourceDocument) -> bool:
+    return await ingest(pool, store, doc, agent=AGENT, connector=CONNECTOR)
 
 
 class BrokenStore(FakeContextStore):
@@ -61,16 +71,17 @@ async def proposals(database: Database) -> int:
         await owner.close()
 
 
-async def test_a_source_is_retained_with_the_versions_instructions_and_proposes_nothing(
+async def test_a_source_is_retained_with_the_versions_instructions_and_access(
     database: Database, pool: asyncpg.Pool
 ) -> None:
     doc = document()
     store = FakeContextStore()
     before = await proposals(database)
 
-    assert await ingest(pool, store, doc, agent=AGENT) is True
+    assert await ingest_as_agent(store, pool, doc) is True
 
-    assert store.retained == [(doc.key, MEMORY_INSTRUCTIONS)]
+    assert store.retained == [(doc.source, MEMORY_INSTRUCTIONS)]
+    assert store.memories[doc.source] == (LOG, frozenset({"access:store-3"}))
     assert await proposals(database) == before
 
 
@@ -80,12 +91,10 @@ async def test_replay_of_a_source_version_retains_nothing(
     doc = document()
     store = FakeContextStore()
 
-    ingested = [
-        await ingest(pool, store, d, agent=AGENT) for d in FakeConnector([doc, doc]).documents()
-    ]
+    ingested = [await ingest_as_agent(store, pool, doc) for _ in range(2)]
 
     assert ingested == [True, False]
-    assert store.retained == [(doc.key, MEMORY_INSTRUCTIONS)]
+    assert store.retained == [(doc.source, MEMORY_INSTRUCTIONS)]
     owner = await asyncpg.connect(database.owner_dsn)
     try:
         rows = await owner.fetch(
@@ -101,7 +110,7 @@ async def test_without_an_approved_version_nothing_is_ingested(
 ) -> None:
     store = FakeContextStore()
     with pytest.raises(NoApprovedVersion):
-        await ingest(unpublished_pool, store, document(), agent=AGENT)
+        await ingest_as_agent(store, unpublished_pool, document())
     assert store.retained == []
     owner = await asyncpg.connect(unpublished.owner_dsn)
     try:
@@ -114,12 +123,12 @@ async def test_each_run_records_the_version_it_ran(pool: asyncpg.Pool, registry:
     async with session(pool, AGENT) as connection:
         before = await approved_version(connection, AGENT)
     first = document()
-    await ingest(pool, FakeContextStore(), first, agent=AGENT)
+    await ingest_as_agent(FakeContextStore(), pool, first)
 
     changed = {**RESTOCK_AGENT, "instructions": f"{RESTOCK_AGENT['instructions']} Be brief."}
     await publish(pool, registry, changed, author="gina", approver="paula", change=before)
     second = document()
-    await ingest(pool, FakeContextStore(), second, agent=AGENT)
+    await ingest_as_agent(FakeContextStore(), pool, second)
 
     async with session(pool, AGENT) as connection:
         ran = [await recorded_run(connection, doc.key) for doc in (first, second)]
@@ -129,13 +138,98 @@ async def test_each_run_records_the_version_it_ran(pool: asyncpg.Pool, registry:
     ]
 
 
-async def test_a_failure_to_retain_leaves_no_trace_and_can_be_retried(pool: asyncpg.Pool) -> None:
+class CommittedOnly(FakeContextStore):
+    """Retains only after checking, from another connection, that the version committed."""
+
+    def __init__(self, database: Database) -> None:
+        super().__init__()
+        self.database = database
+
+    async def retain(
+        self, key: str, text: str, instructions: str, *, tags: Sequence[str] = ()
+    ) -> None:
+        owner = await asyncpg.connect(self.database.owner_dsn)
+        try:
+            assert await owner.fetchval("SELECT count(*) FROM pxos.sources WHERE source = $1", key)
+        finally:
+            await owner.close()
+        await super().retain(key, text, instructions, tags=tags)
+
+
+async def test_the_context_memory_retains_only_what_was_committed(
+    database: Database, pool: asyncpg.Pool
+) -> None:
+    store = CommittedOnly(database)
+    assert await ingest_as_agent(store, pool, document()) is True
+    assert len(store.retained) == 1
+
+
+async def runs(database: Database, context_ref: str) -> int:
+    owner = await asyncpg.connect(database.owner_dsn)
+    try:
+        return int(
+            await owner.fetchval(
+                "SELECT count(*) FROM pxos.agent_runs WHERE context_ref = $1", context_ref
+            )
+        )
+    finally:
+        await owner.close()
+
+
+async def test_a_failure_to_retain_leaves_the_source_pending_until_it_comes_again(
+    database: Database, pool: asyncpg.Pool
+) -> None:
     doc = document()
     with pytest.raises(ConnectionResetError):
-        await ingest(pool, BrokenStore(), doc, agent=AGENT)
-    async with session(pool, AGENT) as connection:
-        assert await recorded_run(connection, doc.key) is None
-    assert await ingest(pool, FakeContextStore(), doc, agent=AGENT) is True
+        await ingest_as_agent(BrokenStore(), pool, doc)
+    async with pool.acquire() as connection:
+        pending = await connection.fetchrow(
+            "SELECT connector, version, state, retained FROM pxos.source_states WHERE source = $1",
+            doc.source,
+        )
+    assert dict(pending or {}) == {
+        "connector": CONNECTOR,
+        "version": "1",
+        "state": "available",
+        "retained": False,
+    }
+
+    store = FakeContextStore()
+    assert [await ingest_as_agent(store, pool, doc) for _ in range(2)] == [True, False]
+    assert store.retained == [(doc.source, MEMORY_INSTRUCTIONS)]
+    assert await runs(database, doc.key) == 1
+
+
+async def test_a_pending_version_superseded_by_a_newer_one_is_not_retained(
+    pool: asyncpg.Pool,
+) -> None:
+    first = document()
+    second = document(first.source, version="2", text="Erin: aisle 3 is done.\n")
+    with pytest.raises(ConnectionResetError):
+        await ingest_as_agent(BrokenStore(), pool, first)
+    store = FakeContextStore()
+
+    assert await ingest_as_agent(store, pool, second) is True
+    assert await ingest_as_agent(store, pool, first) is False
+    assert store.memories[first.source][0] == second.text
+
+
+async def test_the_database_refuses_an_unknown_source_state(pool: asyncpg.Pool) -> None:
+    async with pool.acquire() as connection:
+        with pytest.raises(asyncpg.CheckViolationError):
+            await connection.execute(
+                "INSERT INTO pxos.source_states (source, connector, state)"
+                " VALUES ('fixture:x', 'fixture', 'forgotten')"
+            )
+
+
+@pytest.mark.parametrize("table", ["source_states", "connector_cursors"])
+async def test_application_cannot_delete_source_states_or_cursors(
+    pool: asyncpg.Pool, table: str
+) -> None:
+    async with pool.acquire() as connection:
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            await connection.execute(f"DELETE FROM pxos.{table}")
 
 
 async def test_the_source_ledger_keeps_no_content(database: Database) -> None:
