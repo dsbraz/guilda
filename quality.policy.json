@@ -35,6 +35,7 @@
     "tests/quality",
     "agents_testing.py",
     "db_testing.py",
+    "fakes_testing.py",
     "temporal_testing.py"
   ],
   "exclude": [

@@ -14,8 +14,8 @@ import pytest
 from conftest import AGENT
 
 import pxos_kernel
+from fakes_testing import FakeContextStore
 from pxos_kernel.agents import approved_version
-from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import SourceDocument, ingest
 

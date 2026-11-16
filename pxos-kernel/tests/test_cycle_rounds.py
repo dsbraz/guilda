@@ -19,6 +19,7 @@ import pytest
 from conftest import AGENT, RESTOCK_AGENT, installation
 
 from agents_testing import publish
+from fakes_testing import FakeChannel, FakeConnector, FakeContextStore, FakeModels
 from model_testing import ROUTE
 from pxos_kernel.agents import (
     AgentVersion,
@@ -33,12 +34,10 @@ from pxos_kernel.agents import (
     run_round,
     scoped_recall,
 )
-from pxos_kernel.channel import FakeChannel
-from pxos_kernel.context import FakeContextStore
 from pxos_kernel.conversation import Inbound, conversation, receive
 from pxos_kernel.identity import session
-from pxos_kernel.ingestion import FakeConnector, SourceDocument, sync
-from pxos_kernel.model_access import FakeModels, ModelGateway
+from pxos_kernel.ingestion import SourceDocument, sync
+from pxos_kernel.model_access import ModelGateway
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool, review
 from pxos_kernel.workflows import CycleActivities

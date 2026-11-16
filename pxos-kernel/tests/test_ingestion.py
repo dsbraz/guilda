@@ -17,9 +17,9 @@ from conftest import AGENT, MEMORY_INSTRUCTIONS, RESTOCK_AGENT, installation
 
 from agents_testing import publish
 from db_testing import Database
+from fakes_testing import FakeContextStore
 from model_testing import ROUTE
 from pxos_kernel.agents import NoApprovedVersion, approved_version
-from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import SourceDocument, ingest
 from pxos_kernel.ontology import Registry

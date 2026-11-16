@@ -14,7 +14,8 @@ import asyncpg
 import pytest
 
 from db_testing import Database, history
-from pxos_kernel.channel import FakeChannel, decide, route_cards
+from fakes_testing import FakeChannel
+from pxos_kernel.channel import decide, route_cards
 from pxos_kernel.identity import NotAuthorized, session
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import (

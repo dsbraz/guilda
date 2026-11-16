@@ -26,10 +26,11 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from brq_at_work.composition import build_registry
-from pxos_kernel.channel import Channel, FakeChannel
-from pxos_kernel.context import ContextStore, FakeContextStore
-from pxos_kernel.ingestion import FakeConnector, SourceDocument
-from pxos_kernel.model_access import FakeModels, ModelGateway
+from fakes_testing import FakeChannel, FakeConnector, FakeContextStore, FakeModels
+from pxos_kernel.channel import Channel
+from pxos_kernel.context import ContextStore
+from pxos_kernel.ingestion import SourceDocument
+from pxos_kernel.model_access import ModelGateway
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 from pxos_kernel.workflows import AgentCycle, CycleActivities, workflow_runner

@@ -23,7 +23,6 @@ from google.adk.models.base_llm import BaseLlm
 from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
-from google.genai import types
 from pydantic import PrivateAttr
 
 from pxos_kernel.errors import PxosError
@@ -157,51 +156,6 @@ class GatewayModel(BaseLlm):
                 self._tokens[0] += response.usage_metadata.prompt_token_count or 0
                 self._tokens[1] += response.usage_metadata.candidates_token_count or 0
             yield response
-
-
-class FakeModels:
-    """Providers for tests: every model answers ``reply`` (a text, or a function of the
-    request giving a text or a part, such as a tool call), reports ``tokens`` (input,
-    output) when given, and records the requests it got and the route it served."""
-
-    def __init__(
-        self,
-        reply: str | Callable[[LlmRequest], str | types.Part],
-        tokens: tuple[int, int] | None = None,
-    ) -> None:
-        self.reply = reply
-        self.tokens = tokens
-        self.routes: list[Route] = []
-        self.requests: list[LlmRequest] = []
-
-    def __call__(self, route: Route) -> BaseLlm:
-        return _FakeModel(route, self)
-
-
-class _FakeModel(BaseLlm):
-    _route: Route = PrivateAttr()
-    _models: FakeModels = PrivateAttr()
-
-    def __init__(self, route: Route, models: FakeModels) -> None:
-        super().__init__(model=route.model)
-        self._route = route
-        self._models = models
-
-    async def generate_content_async(
-        self, llm_request: LlmRequest, stream: bool = False
-    ) -> AsyncGenerator[LlmResponse, None]:
-        self._models.routes.append(self._route)
-        self._models.requests.append(llm_request)
-        reply = self._models.reply
-        answer = reply if isinstance(reply, str) else reply(llm_request)
-        part = types.Part(text=answer) if isinstance(answer, str) else answer
-        tokens = self._models.tokens
-        usage = None
-        if tokens is not None:
-            usage = types.GenerateContentResponseUsageMetadata(
-                prompt_token_count=tokens[0], candidates_token_count=tokens[1]
-            )
-        yield LlmResponse(content=types.Content(role="model", parts=[part]), usage_metadata=usage)
 
 
 def vertex_models(project: str) -> Providers:

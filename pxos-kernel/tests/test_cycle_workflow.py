@@ -23,12 +23,11 @@ from temporalio.client import Client, WorkflowFailureError, WorkflowHandle
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.worker import Worker
 
-from pxos_kernel.channel import FakeChannel
-from pxos_kernel.context import FakeContextStore
+from fakes_testing import FakeChannel, FakeConnector, FakeContextStore, FakeModels
 from pxos_kernel.conversation import Inbound, conversation, receive
 from pxos_kernel.identity import session
-from pxos_kernel.ingestion import FakeConnector, SourceDocument
-from pxos_kernel.model_access import FakeModels, ModelGateway
+from pxos_kernel.ingestion import SourceDocument
+from pxos_kernel.model_access import ModelGateway
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import Proposal, review
 from pxos_kernel.workflows import (

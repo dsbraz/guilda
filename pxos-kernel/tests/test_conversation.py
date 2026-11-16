@@ -18,9 +18,9 @@ import asyncpg
 import pytest
 
 from db_testing import Database
+from fakes_testing import FakeChannel, FakeContextStore
 from pxos_kernel.agents import approved_version
-from pxos_kernel.channel import FakeChannel
-from pxos_kernel.context import FakeContextStore, Recalled
+from pxos_kernel.context import Recalled
 from pxos_kernel.conversation import (
     Inbound,
     NoCycle,

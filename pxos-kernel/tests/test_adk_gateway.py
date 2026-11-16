@@ -17,8 +17,9 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from db_testing import Database
+from fakes_testing import FakeModels
 from model_testing import OTHER_ROUTE, ROUTE
-from pxos_kernel.model_access import FakeModels, ModelGateway, ModelNotAllowed
+from pxos_kernel.model_access import ModelGateway, ModelNotAllowed
 from pxos_kernel.state import create_pool
 
 

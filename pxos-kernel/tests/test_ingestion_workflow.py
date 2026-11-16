@@ -19,8 +19,9 @@ from temporalio.client import Client, WorkflowFailureError, WorkflowHandle
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.worker import Worker
 
-from pxos_kernel.context import ContextUnavailable, FakeContextStore
-from pxos_kernel.ingestion import Changes, Connector, FakeConnector, SourceDocument
+from fakes_testing import FakeConnector, FakeContextStore
+from pxos_kernel.context import ContextUnavailable
+from pxos_kernel.ingestion import Changes, Connector, SourceDocument
 from pxos_kernel.workflows import (
     SyncActivities,
     SyncConnector,

@@ -15,6 +15,7 @@ import pytest
 from brq_at_work.composition import WEEKLY_REPORT
 from brq_at_work.publish_agent import AGENT_FILE, publish
 from db_testing import Database
+from fakes_testing import FakeModels
 from pxos_kernel.agents import (
     RoundInput,
     approved_version,
@@ -23,7 +24,7 @@ from pxos_kernel.agents import (
     run_round,
 )
 from pxos_kernel.identity import session
-from pxos_kernel.model_access import FakeModels, ModelGateway
+from pxos_kernel.model_access import ModelGateway
 from pxos_kernel.ontology import InvalidPayload, Registry
 from pxos_kernel.state import InvalidProposal, review
 

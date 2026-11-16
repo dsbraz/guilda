@@ -34,13 +34,13 @@ from temporalio.client import Client, WorkflowHandle
 from brq_at_work.composition import bootstrap
 from brq_at_work.publish_agent import AGENT_FILE, publish
 from db_testing import Database, create_test_database, drain
+from fakes_testing import FakeChannel, FakeConnector, FakeContextStore
 from model_testing import ROUTE
 from pxos_kernel.agents import cycle_effort, round_input
-from pxos_kernel.channel import Card, FakeChannel, decide
-from pxos_kernel.context import FakeContextStore
+from pxos_kernel.channel import Card, decide
 from pxos_kernel.conversation import Inbound, Message, conversation, receive
 from pxos_kernel.identity import NotAuthorized, session
-from pxos_kernel.ingestion import FakeConnector, SourceDocument, sync
+from pxos_kernel.ingestion import SourceDocument, sync
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import Decision, Proposal, create_pool, review
 from pxos_kernel.workflows import cycle_handlers, start_cycle
@@ -348,9 +348,13 @@ async def test_pm_total_effort_is_measurable(
 
 @asynccontextmanager
 async def worker_process(dsn: str, address: str, queue: str) -> AsyncIterator[None]:
-    """A worker of the cycle in its own process, killed with SIGKILL on the way out."""
+    """A worker of the cycle in its own process, killed with SIGKILL on the way out. The
+    repository root is on its path, for the test helpers the pilot imports."""
     process = subprocess.Popen(
-        [sys.executable, str(PILOT), dsn, address, queue], stdout=subprocess.PIPE, text=True
+        [sys.executable, str(PILOT), dsn, address, queue],
+        stdout=subprocess.PIPE,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(PILOT.parents[2])},
     )
     try:
         assert process.stdout is not None

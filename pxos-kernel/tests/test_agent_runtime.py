@@ -17,6 +17,7 @@ import pytest
 from conftest import AGENT, RESTOCK_AGENT
 from google.adk.models.llm_request import LlmRequest
 
+from fakes_testing import FakeContextStore, FakeModels
 from model_testing import ROUTE
 from pxos_kernel.agents import (
     Agent,
@@ -34,9 +35,8 @@ from pxos_kernel.agents import (
     run_round,
     scoped_recall,
 )
-from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
-from pxos_kernel.model_access import FakeModels, GatewayModel, ModelGateway, ModelNotAllowed
+from pxos_kernel.model_access import GatewayModel, ModelGateway, ModelNotAllowed
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import review
 

@@ -36,28 +36,4 @@ class ContextStore(Protocol):
         """Purge what was retained under ``source``; forgetting it again is harmless."""
 
 
-class FakeContextStore:
-    """Records what was retained, in order, and recalls everything the tags reach."""
-
-    def __init__(self) -> None:
-        self.retained: list[tuple[str, str]] = []
-        self.memories: dict[str, tuple[str, frozenset[str]]] = {}
-
-    async def retain(
-        self, key: str, text: str, instructions: str, *, tags: Sequence[str] = ()
-    ) -> None:
-        self.retained.append((key, instructions))
-        self.memories[key] = (text, frozenset(tags))
-
-    async def recall(self, query: str, *, tags: Sequence[str]) -> list[Recalled]:
-        return [
-            Recalled(text=text, source=key)
-            for key, (text, kept) in self.memories.items()
-            if kept & set(tags)
-        ]
-
-    async def forget(self, source: str) -> None:
-        self.memories.pop(source, None)
-
-
-__all__ = ["ContextStore", "ContextUnavailable", "FakeContextStore", "Recalled"]
+__all__ = ["ContextStore", "ContextUnavailable", "Recalled"]

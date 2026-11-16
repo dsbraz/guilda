@@ -8,7 +8,6 @@ tags the connector declared. Deleted sources, and those the connector lost acces
 forgotten. Ingesting context needs no review of each excerpt and proposes nothing.
 """
 
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -55,38 +54,6 @@ class Connector(Protocol):
         """The delta since ``cursor`` (from the start when None); raises ConnectorUnavailable
         when the source system cannot be reached."""
         ...
-
-
-class FakeConnector:
-    """A source system in memory: documents are put, deleted or revoked, and the delta
-    since a cursor holds the last change to each source."""
-
-    def __init__(self, name: str, documents: Iterable[SourceDocument] = ()) -> None:
-        self.name = name
-        self.available = True
-        self._log: list[tuple[str, str, SourceDocument | None]] = []
-        for document in documents:
-            self.put(document)
-
-    def put(self, document: SourceDocument) -> None:
-        self._log.append((document.source, "put", document))
-
-    def delete(self, source: str) -> None:
-        self._log.append((source, "deleted", None))
-
-    def revoke(self, source: str) -> None:
-        self._log.append((source, "revoked", None))
-
-    async def changes(self, cursor: str | None) -> Changes:
-        if not self.available:
-            raise ConnectorUnavailable(f"{self.name} cannot be reached")
-        last = {source: (kind, doc) for source, kind, doc in self._log[int(cursor or 0) :]}
-        return Changes(
-            cursor=str(len(self._log)),
-            documents=tuple(doc for _, doc in last.values() if doc is not None),
-            deleted=tuple(source for source, (kind, _) in last.items() if kind == "deleted"),
-            revoked=tuple(source for source, (kind, _) in last.items() if kind == "revoked"),
-        )
 
 
 async def ingest(

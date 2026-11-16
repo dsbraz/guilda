@@ -20,10 +20,9 @@ from test_cycle_workflow import ASKS, REASON, asked, order, proposal, worker
 
 from agents_testing import publish
 from db_testing import Database, drain
+from fakes_testing import FakeChannel, FakeContextStore
 from model_testing import ROUTE
 from pxos_kernel.agents import approved_version
-from pxos_kernel.channel import FakeChannel
-from pxos_kernel.context import FakeContextStore
 from pxos_kernel.conversation import Inbound, receive
 from pxos_kernel.identity import session
 from pxos_kernel.ontology import Registry

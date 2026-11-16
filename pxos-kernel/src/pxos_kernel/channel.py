@@ -9,10 +9,9 @@ review, on exactly the digest the card showed, by the actor bound to the channel
 that clicked; the database decides whether that actor may review.
 """
 
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Protocol
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import asyncpg
 
@@ -48,21 +47,6 @@ class Channel(Protocol):
 
     async def post(self, thread: str, text: str) -> str:
         """Post ``text`` in ``thread``; return the channel's id of the new message."""
-
-
-class FakeChannel:
-    """Reference channel: keeps each recipient's cards by proposal and each thread's posts."""
-
-    def __init__(self) -> None:
-        self.cards: dict[str, dict[UUID, Card]] = defaultdict(dict)
-        self.threads: dict[str, list[str]] = defaultdict(list)
-
-    async def deliver_card(self, card: Card) -> None:
-        self.cards[card.recipient][card.proposal_id] = card
-
-    async def post(self, thread: str, text: str) -> str:
-        self.threads[thread].append(text)
-        return str(uuid4())
 
 
 def route_cards(pool: asyncpg.Pool, registry: Registry, channel: Channel) -> Handler:

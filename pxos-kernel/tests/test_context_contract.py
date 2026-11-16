@@ -12,7 +12,8 @@ from uuid import uuid4
 import pytest
 
 import pxos_kernel
-from pxos_kernel.context import ContextStore, FakeContextStore
+from fakes_testing import FakeContextStore
+from pxos_kernel.context import ContextStore
 
 TEXT = "Erin: I will restock aisle 3 with 12 boxes of A-1 tomorrow morning.\nCarla: thanks.\n"
 INSTRUCTIONS = "Extract every restock promise, with who promised it and the verbatim sentence."

@@ -24,9 +24,9 @@ from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 
 from db_testing import Database, create_test_database
+from fakes_testing import FakeModels
 from model_testing import OTHER_ROUTE, ROUTE
 from pxos_kernel.model_access import (
-    FakeModels,
     GatewayModel,
     ModelGateway,
     ModelNotAllowed,

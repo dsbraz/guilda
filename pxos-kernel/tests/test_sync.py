@@ -13,8 +13,8 @@ import asyncpg
 import pytest
 from conftest import AGENT
 
-from pxos_kernel.context import FakeContextStore
-from pxos_kernel.ingestion import FakeConnector, SourceDocument, sync
+from fakes_testing import FakeConnector, FakeContextStore
+from pxos_kernel.ingestion import SourceDocument, sync
 
 ACCESS = "access:store-3"
 
