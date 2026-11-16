@@ -6,6 +6,7 @@ finishes, ``slow_down`` (RFC 8628) when polled too often, and the tokens, or
 ``expired_token`` and ``authorization_declined``.
 """
 
+import base64
 import stat
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -39,29 +40,51 @@ TOKENS = {
 }
 
 
+GRAPH = "https://graph.microsoft.com/v1.0"
+LINK = "https://contoso.sharepoint.com/:f:/s/rh/EjE5aBcD-pasta?e=x1Y2z3"
+SHARE_ID = "u!" + base64.b64encode(LINK.encode()).decode().rstrip("=").replace("/", "_").replace(
+    "+", "-"
+)
+FOLDER = {
+    "id": "01FOLDER",
+    "name": "Políticas",
+    "folder": {"childCount": 3},
+    "webUrl": "https://contoso.sharepoint.com/sites/rh/Documentos/Politicas",
+    "parentReference": {"driveId": "b!drive-a", "driveType": "documentLibrary", "id": "01ROOT"},
+}
+
+
 def pending(error: str) -> httpx.Response:
     return httpx.Response(400, json={"error": error, "error_description": "AADSTS70016"})
 
 
 class Entra:
-    def __init__(self, *polls: httpx.Response, device: httpx.Response | None = None) -> None:
+    def __init__(
+        self,
+        *polls: httpx.Response,
+        device: httpx.Response | None = None,
+        share: httpx.Response | None = None,
+    ) -> None:
         self.device = device or httpx.Response(200, json=DEVICE)
         self.polls = list(polls)
+        self.share = share
         self.requests: list[httpx.Request] = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         if str(request.url) == f"{BASE}/devicecode":
             return self.device
+        if self.share and str(request.url) == f"{GRAPH}/shares/{SHARE_ID}/driveItem":
+            return self.share
         assert str(request.url) == f"{BASE}/token"
         return self.polls.pop(0)
 
 
-def run(entra: Entra, path: Path, waits: list[float]) -> int:
+def run(entra: Entra, path: Path, waits: list[float], *more: str) -> int:
     async def sleep(seconds: float) -> None:
         waits.append(seconds)
 
-    argv = ["--tenant", "tenant-a", "--client-id", "app-a", "--token-path", str(path)]
+    argv = ["--tenant", "tenant-a", "--client-id", "app-a", "--token-path", str(path), *more]
     return main(argv, transport=httpx.MockTransport(entra), sleep=sleep)
 
 
@@ -117,3 +140,34 @@ def test_a_refused_device_authorization_fails_at_once(
 
     assert len(entra.requests) == 1
     assert "login failed: 400 invalid_request" in capsys.readouterr().err
+
+
+def test_a_folder_link_gives_the_drive_and_folder_to_configure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    entra = Entra(httpx.Response(200, json=TOKENS), share=httpx.Response(200, json=FOLDER))
+
+    assert run(entra, tmp_path / "token", [], "--link", LINK) == 0
+
+    share = entra.requests[-1]
+    assert (share.method, str(share.url)) == ("GET", f"{GRAPH}/shares/{SHARE_ID}/driveItem")
+    assert share.headers["Authorization"] == "Bearer access-1"
+    out = capsys.readouterr().out
+    assert "PXOS_SHAREPOINT_DRIVE_ID=b!drive-a\nPXOS_SHAREPOINT_FOLDER_ID=01FOLDER\n" in out
+    assert "access-1" not in out
+
+
+def test_a_link_it_cannot_resolve_fails_but_keeps_the_login(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    denied = {"error": {"code": "accessDenied", "message": "Access denied to EjE5aBcD"}}
+    path = tmp_path / "token"
+    entra = Entra(httpx.Response(200, json=TOKENS), share=httpx.Response(403, json=denied))
+
+    assert run(entra, path, [], "--link", LINK) == 1
+
+    assert path.read_text() == "refresh-1"
+    captured = capsys.readouterr()
+    assert str(path) in captured.out
+    assert "could not resolve the link: 403 accessDenied" in captured.err
+    assert "EjE5aBcD" not in captured.err
