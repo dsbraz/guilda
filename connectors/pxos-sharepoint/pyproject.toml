@@ -3,7 +3,12 @@ name = "pxos-sharepoint"
 version = "0.1.0"
 description = "Base de documentos do SharePoint para o pxOS"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pxos-kernel"]
+dependencies = [
+    "cryptography>=50.0.2",
+    "httpx>=0.28.1",
+    "pxos-kernel",
+    "pypdf>=6.21.4",
+]
 
 [tool.uv.sources]
 pxos-kernel = { workspace = true }
