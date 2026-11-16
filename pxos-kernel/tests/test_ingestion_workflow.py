@@ -9,7 +9,6 @@ source says reaches the Temporal history.
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 from uuid import uuid4
 
 import asyncpg
@@ -39,7 +38,6 @@ def source() -> SourceDocument:
         source=f"fixture:shelf-log/{uuid4()}",
         version="1",
         text=LOG,
-        occurred_at=datetime(2026, 11, 14, 9, tzinfo=UTC),
     )
 
 

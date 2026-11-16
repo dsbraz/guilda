@@ -8,7 +8,6 @@ of each excerpt and proposes nothing.
 
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Protocol
 
 import asyncpg
@@ -24,7 +23,6 @@ class SourceDocument:
     source: str
     version: str
     text: str
-    occurred_at: datetime
 
     @property
     def key(self) -> str:

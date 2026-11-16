@@ -6,7 +6,6 @@ gets its model from the gateway (ADR 0004 §2, rule 1).
 """
 
 import re
-from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -26,7 +25,6 @@ async def test_the_application_cannot_forge_or_change_a_run(pool: asyncpg.Pool) 
         source=f"fixture:shelf-log/{uuid4()}",
         version="1",
         text="Erin: restock A-1.",
-        occurred_at=datetime(2026, 11, 14, 9, tzinfo=UTC),
     )
     await ingest(pool, FakeContextStore(), doc, agent=AGENT)
     async with session(pool, AGENT) as connection:

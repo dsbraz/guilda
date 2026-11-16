@@ -7,7 +7,6 @@ ingested again.
 """
 
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
 from uuid import uuid4
 
 import asyncpg
@@ -32,7 +31,6 @@ def document() -> SourceDocument:
         source=f"fixture:shelf-log/{uuid4()}",
         version="1",
         text=LOG,
-        occurred_at=datetime(2026, 11, 1, 9, tzinfo=UTC),
     )
 
 
