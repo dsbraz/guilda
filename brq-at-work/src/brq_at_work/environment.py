@@ -2,8 +2,9 @@
 
 SharePoint, Granola and Teams are all required in production: a variable missing, or
 set empty as ``.env.example`` leaves it, stops the installation with ``MissingSetting``
-naming it. Each Entra app authenticates with a secret or a certificate, never both; for
-development only, SharePoint can instead read as a user signed in with
+naming it. ``PXOS_CHANNEL=telegram`` takes Telegram in place of Teams, for local
+development only. Each Entra app authenticates with a secret or a certificate, never both;
+for development only, SharePoint can instead read as a user signed in with
 ``python -m pxos_sharepoint.login``, one credential of the three.
 Every connector delivers its sources under the distro's access tags (``ACCESS``).
 """
@@ -16,6 +17,7 @@ from pxos_granola import GranolaTranscripts
 from pxos_kernel.errors import PxosError
 from pxos_sharepoint import ClientCertificate, ClientSecret, DelegatedToken, SharePointConnector
 from pxos_teams import Certificate, Settings
+from pxos_telegram import Settings as TelegramSettings
 
 Environment = Mapping[str, str]
 
@@ -97,4 +99,23 @@ def teams(env: Environment, thread: str) -> Settings:
         threads={thread: required(env, "PXOS_TEAMS_CONVERSATION")},
         secret=secret,
         certificate=certificate,
+    )
+
+
+def channel(env: Environment) -> str:
+    """``PXOS_CHANNEL``: ``teams`` (the default) or ``telegram``, for local development."""
+    name = optional(env, "PXOS_CHANNEL") or "teams"
+    if name not in {"teams", "telegram"}:
+        raise MissingSetting(f"PXOS_CHANNEL is {name!r}; set teams or telegram")
+    return name
+
+
+def telegram(env: Environment, thread: str) -> TelegramSettings:
+    """The bot, with the kernel's ``thread`` in the project's group (and topic)."""
+    topic = optional(env, "PXOS_TELEGRAM_TOPIC_ID")
+    return TelegramSettings(
+        bot_token=required(env, "PXOS_TELEGRAM_BOT_TOKEN"),
+        chat_id=int(required(env, "PXOS_TELEGRAM_CHAT_ID")),
+        thread=thread,
+        topic_id=None if topic is None else int(topic),
     )

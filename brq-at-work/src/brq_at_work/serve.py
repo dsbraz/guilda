@@ -9,9 +9,10 @@ SharePoint, Granola and Teams adapters.
 
 import os
 import shelve
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import Any
 
 import asyncpg
 import httpx
@@ -30,6 +31,8 @@ from pxos_kernel.model_access import ModelGateway, Route, vertex_models
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
 from pxos_teams import TeamsChannel, create_app
+from pxos_telegram import TelegramChannel
+from pxos_telegram import create_app as create_telegram_app
 
 AGENT = "project-assistant"
 
@@ -52,25 +55,52 @@ async def adapters(
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> AsyncIterator[Adapters]:
     """COMPOSITION POINT of the adapters, from the deploy's environment: the SharePoint
-    library and the Granola transcripts as connectors, Teams as the channel and the bot's
-    endpoint. The assistant's thread (its definition file's ``thread``) is the project's
-    Teams conversation. The message of each card is kept in a shelf at
-    ``PXOS_TEAMS_CARDS_PATH``, which survives restarts; only the event loop touches it, so
-    it needs no lock. The shelf and the bot's HTTP client close on the way out."""
+    library and the Granola transcripts as connectors, and the channel ``PXOS_CHANNEL``
+    picks with its app: Teams and the bot's endpoint, or, for local development, Telegram
+    and its long poll. The assistant's thread (its definition file's ``thread``) is the
+    project's Teams conversation or Telegram group. The message of each card is kept in a
+    shelf at ``PXOS_TEAMS_CARDS_PATH`` or ``PXOS_TELEGRAM_CARDS_PATH``, which survives
+    restarts; only the event loop touches it, so it needs no lock. The shelf and the bot's
+    HTTP client close on the way out."""
     connectors = (
         environment.sharepoint(env),
         MeetingConnector(pool, environment.granola(env), agent=AGENT),
     )
     thread = yaml.safe_load(AGENT_FILE.read_text(encoding="utf-8"))["thread"]
-    settings = environment.teams(env, thread)
-    path = environment.required(env, "PXOS_TEAMS_CARDS_PATH")
+    path, wire = _channel(env, thread, pool, registry, identities)
     async with httpx.AsyncClient(timeout=30, transport=transport) as http:
         with shelve.open(path) as cards:
-            yield Adapters(
-                connectors=connectors,
-                channel=TeamsChannel(settings, http, identities, cards=cards),
-                app=create_app(settings, pool, registry, http),
-            )
+            channel, app = wire(http, cards)
+            yield Adapters(connectors=connectors, channel=channel, app=app)
+
+
+Shelf = shelve.Shelf[Any]
+Wired = tuple[Channel, service.App]
+
+
+def _channel(
+    env: Mapping[str, str],
+    thread: str,
+    pool: asyncpg.Pool,
+    registry: Registry,
+    identities: Identities,
+) -> tuple[str, Callable[[httpx.AsyncClient, Shelf], Wired]]:
+    """The chosen channel's cards path, and how to build it and its app."""
+    if environment.channel(env) == "telegram":
+        bot = environment.telegram(env, thread)
+
+        def telegram(http: httpx.AsyncClient, cards: Shelf) -> Wired:
+            channel = TelegramChannel(bot, http, identities, cards=cards)
+            return channel, create_telegram_app(bot, pool, registry, http, cards)
+
+        return environment.required(env, "PXOS_TELEGRAM_CARDS_PATH"), telegram
+    settings = environment.teams(env, thread)
+
+    def teams(http: httpx.AsyncClient, cards: Shelf) -> Wired:
+        channel = TeamsChannel(settings, http, identities, cards=cards)
+        return channel, create_app(settings, pool, registry, http)
+
+    return environment.required(env, "PXOS_TEAMS_CARDS_PATH"), teams
 
 
 async def serve(registry: Registry) -> None:
