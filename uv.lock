@@ -1450,6 +1450,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "temporalio" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -1464,6 +1465,7 @@ requires-dist = [
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.8" },
     { name = "temporalio", specifier = "==1.36.1" },
+    { name = "uvicorn", specifier = "==0.54.0" },
 ]
 
 [[package]]
