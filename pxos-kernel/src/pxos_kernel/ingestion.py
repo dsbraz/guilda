@@ -160,8 +160,9 @@ async def sync(
 ) -> bool:
     """One pass over ``connector``'s delta as ``agent``; false when it could not be reached.
 
-    New and changed sources are ingested; deleted and revoked ones are forgotten, purged
-    from the context memory before their state records it. The cursor moves last, so a
+    Deleted and revoked sources are forgotten first, purged from the context memory before
+    their state records it, so a source that fails to be retained holds back no purge; new
+    and changed sources are ingested next. The cursor moves last, so a
     failure anywhere leaves it where it was and the next pass delivers the same changes
     again. An unreachable connector marks its sources unavailable and removes nothing.
     """
@@ -174,12 +175,12 @@ async def sync(
     except ConnectorUnavailable:
         await _mark(pool, agent, connector.name, "available", "unavailable")
         return False
-    for document in changes.documents:
-        await ingest(pool, store, document, agent=agent, connector=connector.name)
     for state, sources in (("deleted", changes.deleted), ("no_access", changes.revoked)):
         for source in sources:
             await store.forget(source)
             await _forget(pool, agent, connector.name, source, state)
+    for document in changes.documents:
+        await ingest(pool, store, document, agent=agent, connector=connector.name)
     await _mark(pool, agent, connector.name, "unavailable", "available")
     async with session(pool, agent) as connection:
         await connection.execute(

@@ -164,6 +164,26 @@ async def test_a_failure_to_retain_is_retried_in_the_next_pass(pool: asyncpg.Poo
     assert [key for key, _ in store.retained] == [doc.source]
 
 
+class CannotRetain(FakeContextStore):
+    async def retain(
+        self, key: str, text: str, instructions: str, *, tags: Sequence[str] = ()
+    ) -> None:
+        raise ValueError("refused")
+
+
+async def test_a_failing_retain_does_not_hold_back_a_purge(pool: asyncpg.Pool) -> None:
+    fake, store = connector(), CannotRetain()
+    gone = document()
+    store.memories[gone.source] = ("Erin: restock aisle 3.\n", frozenset({ACCESS}))
+    fake.put(document())
+    fake.delete(gone.source)
+
+    with pytest.raises(ValueError):
+        await sync_as_agent(pool, store, fake)
+
+    assert await store.recall("aisle 3", tags=[ACCESS]) == []
+
+
 async def test_a_failure_to_forget_is_retried_in_the_next_pass(pool: asyncpg.Pool) -> None:
     fake, store = connector(), FakeContextStore()
     doc = document()
