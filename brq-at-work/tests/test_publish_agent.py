@@ -6,6 +6,8 @@ platform admin approves it, and the agent then runs that version.
 
 import asyncio
 import hashlib
+import runpy
+import sys
 from uuid import UUID
 
 import pytest
@@ -59,3 +61,16 @@ def test_a_person_proposes_the_file_and_a_platform_admin_approves_it(
         config["max_rounds"],
     )
     assert version.thread == config["thread"]
+
+
+def test_the_module_runs_as_a_command(
+    database: Database, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``python -m brq_at_work.publish_agent`` is how an operator publishes the file."""
+    argv = ["publish_agent", "--dsn", database.app_dsn, "--author", "bruno"]
+    monkeypatch.setattr(sys, "argv", argv)
+    monkeypatch.delitem(sys.modules, "brq_at_work.publish_agent", raising=False)
+    with pytest.raises(SystemExit) as exit_:
+        runpy.run_module("brq_at_work.publish_agent", run_name="__main__")
+    assert exit_.value.code == 0
+    UUID(capsys.readouterr().out.strip())
