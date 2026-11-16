@@ -26,7 +26,6 @@ def settings(policy: dict[str, Any]) -> dict[str, Any]:
             "brq-at-work",
             "agents_testing.py",
             "db_testing.py",
-            "mcp_testing.py",
             "temporal_testing.py",
         ],
         "pytest_add_cli_args_test_selection": policy["tests"][:2],

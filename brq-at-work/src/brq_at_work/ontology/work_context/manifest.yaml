@@ -10,5 +10,3 @@ actions:
   - name: create_commitment
     creates: Commitment
     approver: project-manager
-    reversible: true
-    rule_parameters: [due_date]

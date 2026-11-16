@@ -1,7 +1,7 @@
 """Exit criterion of slice 7 (PXOS-80): the scribe runs from its published version.
 
 On a fresh installation the scribe does not run: nothing seeds a definition around the
-review. Bruno proposes the scribe's definition over MCP, the card reaches Eva, who holds
+review. Bruno proposes the scribe's definition, the card reaches Eva, who holds
 platform-admin, and she approves it. From then on the transcript, by reference, becomes a
 commitment through the ADK step, and the run points to the version Eva approved. A new
 approved version is what the next run uses.
@@ -15,7 +15,6 @@ from uuid import UUID, uuid4
 
 import asyncpg
 import pytest
-from starlette.applications import Starlette
 from temporalio.client import Client, WorkflowFailureError
 from temporalio.exceptions import ActivityError
 from temporalio.worker import Worker
@@ -23,18 +22,15 @@ from temporalio.worker import Worker
 from brq_at_work.composition import bootstrap
 from brq_at_work.scribe import DRAFT, SCRIBE, scribe_activities
 from db_testing import Database, create_test_database
-from mcp_testing import BASE, call, running
 from model_testing import ROUTE
-from pxos_kernel.agents import approved_version, recorded_run
-from pxos_kernel.api.auth import JwtVerifier, LocalIssuer
-from pxos_kernel.api.server import build_server, http_app
+from pxos_kernel.agents import AGENTS, approved_version, recorded_run
 from pxos_kernel.channel import FakeChannel, decide, route_cards
 from pxos_kernel.context import FakeContextStore
 from pxos_kernel.identity import session
 from pxos_kernel.ingestion import FakeConnector, SourceDocument
 from pxos_kernel.model_access import FakeModels, ModelGateway
 from pxos_kernel.ontology import Registry
-from pxos_kernel.state import create_pool, publish
+from pxos_kernel.state import Evidence, Proposal, create_pool, propose, publish
 from pxos_kernel.workflows import (
     AwaitReview,
     IngestSource,
@@ -72,25 +68,26 @@ async def publisher(fresh: Database) -> AsyncIterator[asyncpg.Pool]:
     await pool.close()
 
 
-@pytest.fixture(scope="module")
-def idp() -> LocalIssuer:
-    return LocalIssuer.generate(issuer="http://idp.brq.test", audience="brq-at-work")
-
-
-@pytest.fixture
-async def app(
-    fresh_pool: asyncpg.Pool, registry: Registry, idp: LocalIssuer
-) -> AsyncIterator[Starlette]:
-    verifier = JwtVerifier(issuer=idp.issuer, audience=idp.audience, jwks=idp.jwks())
-    app = http_app(
-        build_server(fresh_pool, registry, name="brq-at-work"),
-        verifier,
-        pool=fresh_pool,
-        issuer_url=idp.issuer,
-        resource_url=f"{BASE}/mcp",
-    )
-    async with running(app):
-        yield app
+async def bruno_proposes(
+    pool: asyncpg.Pool,
+    registry: Registry,
+    payload: dict[str, Any],
+    quote: str,
+    *,
+    entity_id: UUID | None = None,
+    base_revision: int = 0,
+) -> Proposal:
+    async with session(pool, "bruno") as connection:
+        return await propose(
+            connection,
+            registry.get(AGENTS),
+            "publish_agent_version",
+            payload=payload,
+            evidence=Evidence(source="test:bruno", quote=quote, context_ref=f"test:{uuid4()}"),
+            valid_from=datetime.now(UTC),
+            entity_id=entity_id,
+            base_revision=base_revision,
+        )
 
 
 def transcript() -> SourceDocument:
@@ -145,8 +142,6 @@ async def test_the_scribe_runs_only_from_the_version_eva_approved(
     fresh_pool: asyncpg.Pool,
     publisher: asyncpg.Pool,
     registry: Registry,
-    app: Starlette,
-    idp: LocalIssuer,
     scribe_models: FakeModels,
 ) -> None:
     temporal = await Client.connect(temporal_address)
@@ -163,11 +158,8 @@ async def test_the_scribe_runs_only_from_the_version_eva_approved(
     assert "NoApprovedVersion" in str(failed.value.cause.cause)
     assert scribe_models.requests == []
 
-    # 2: Bruno proposes the definition over MCP; the card goes to Eva, not to Ana.
-    proposed = await call(
-        app, idp.token("bruno"), "publish_agent_version", {"payload": DRAFT, "quote": "v1"}
-    )
-    assert proposed["approver_role"] == "platform-admin"
+    # 2: Bruno proposes the definition; the card goes to Eva, not to Ana.
+    proposed = await bruno_proposes(fresh_pool, registry, DRAFT, "v1")
     await publish(publisher, outbox)
     assert set(channel.cards) == {"eva"}
     [card] = channel.cards["eva"].values()
@@ -193,30 +185,22 @@ async def test_the_scribe_runs_only_from_the_version_eva_approved(
     async with session(fresh_pool, SCRIBE) as connection:
         version = await approved_version(connection, SCRIBE)
         run = await recorded_run(connection, first.key)
-    assert run is not None and (run.definition, run.revision) == (
-        UUID(str(proposed["entity_id"])),
-        1,
-    )
+    assert run is not None and (run.definition, run.revision) == (proposed.entity_id, 1)
     assert any(
         DRAFT["instructions"] in str(r.config.system_instruction) for r in scribe_models.requests
     )
 
     # 4: a new approved version is what the next run uses.
-    changed = await call(
-        app,
-        idp.token("bruno"),
-        "publish_agent_version",
-        {
-            "payload": {**DRAFT, "instructions": f"{DRAFT['instructions']} Seja breve."},
-            "quote": "v2",
-            "entity_id": str(version.entity_id),
-            "base_revision": version.revision,
-        },
+    changed = await bruno_proposes(
+        fresh_pool,
+        registry,
+        {**DRAFT, "instructions": f"{DRAFT['instructions']} Seja breve."},
+        "v2",
+        entity_id=version.entity_id,
+        base_revision=version.revision,
     )
     await publish(publisher, outbox)
-    [card] = [
-        c for c in channel.cards["eva"].values() if str(c.proposal_id) == changed["proposal_id"]
-    ]
+    [card] = [c for c in channel.cards["eva"].values() if c.proposal_id == changed.id]
     await decide(fresh_pool, registry, "eva", card, "approved")
     second = transcript()
     await ingest_by_reference(

@@ -29,8 +29,6 @@ class Actor(_Strict):
     kind: Literal["internal_person", "external_person", "agent"]
     name: str
     roles: tuple[str, ...] = ()
-    autonomy: Literal[1, 2, 3] | None = None
-    """Autonomy phase of an agent (PXOS-83): 1 assisted (default), 2 supervised, 3 autonomous."""
 
 
 class Delegation(_Strict):
@@ -51,9 +49,6 @@ def read_identities(path: Path) -> Identities:
     kinds = {actor.id: actor.kind for actor in identities.actors}
     if len(kinds) != len(identities.actors):
         raise InvalidIdentities(f"{path}: duplicated actor ids")
-    for actor in identities.actors:
-        if actor.autonomy is not None and actor.kind != "agent":
-            raise InvalidIdentities(f"{path}: only agents have an autonomy phase: {actor.id}")
     for delegation in identities.delegations:
         if kinds.get(delegation.agent) != "agent":
             raise InvalidIdentities(f"{path}: {delegation.agent} is not an agent")
@@ -67,14 +62,10 @@ async def install_identities(owner: asyncpg.Connection, identities: Identities) 
     async with owner.transaction():
         await owner.executemany(
             """
-            INSERT INTO pxos.actors (id, kind, name, autonomy) VALUES ($1, $2, $3, $4)
-            ON CONFLICT (id) DO UPDATE
-            SET kind = EXCLUDED.kind, name = EXCLUDED.name, autonomy = EXCLUDED.autonomy
+            INSERT INTO pxos.actors (id, kind, name) VALUES ($1, $2, $3)
+            ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, name = EXCLUDED.name
             """,
-            [
-                (actor.id, actor.kind, actor.name, actor.autonomy or 1)
-                for actor in identities.actors
-            ],
+            [(actor.id, actor.kind, actor.name) for actor in identities.actors],
         )
         await owner.execute("DELETE FROM pxos.actor_roles")
         await owner.executemany(

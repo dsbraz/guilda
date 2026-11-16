@@ -1,8 +1,0 @@
-# Regras de EXEMPLO da distro BRQ@work (PXOS-87). A distro real é feita pelo FDE com o
-# cliente; o deploy pode substituir as regras de cada ação (ver composition.bootstrap).
-actions:
-  work_context.create_commitment:
-    # Só quem trabalha no projeto pede compromissos; para os demais, o agente é negado.
-    - {roles: [project-manager, team-member], otherwise: deny}
-    # Prazo de até 14 dias vale sem aprovação para agente em fase 2 ou 3.
-    - {parameter: due_date, within_days: 14, otherwise: approval}

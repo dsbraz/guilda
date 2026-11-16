@@ -59,8 +59,6 @@ async def test_application_login_has_no_owner_powers(database: Database) -> None
             "reviews",
             "facts",
             "agent_runs",
-            "executions",
-            "action_audit",
         }
     finally:
         await connection.close()

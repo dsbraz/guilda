@@ -13,12 +13,12 @@
   },
   "sources": ["pxos-kernel/src/pxos_kernel", "brq-at-work/src/brq_at_work", "quality"],
   "tests": ["pxos-kernel/tests", "brq-at-work/tests", "tests/quality"],
-  "lint": ["pxos-kernel", "brq-at-work", "quality", "tests/quality", "agents_testing.py", "db_testing.py", "mcp_testing.py", "temporal_testing.py"],
+  "lint": ["pxos-kernel", "brq-at-work", "quality", "tests/quality", "agents_testing.py", "db_testing.py", "temporal_testing.py"],
   "exclude": ["**/generated.py", "**/migrations/**", "spikes/**"],
   "mutation_areas": {
     "state": ["pxos-kernel/src/pxos_kernel/state"],
     "ontology": ["pxos-kernel/src/pxos_kernel/ontology"],
-    "authentication": ["pxos-kernel/src/pxos_kernel/api/auth.py", "pxos-kernel/src/pxos_kernel/identity"],
+    "identity": ["pxos-kernel/src/pxos_kernel/identity"],
     "ingestion": ["pxos-kernel/src/pxos_kernel/ingestion.py"],
     "model_access": ["pxos-kernel/src/pxos_kernel/model_access.py"]
   },

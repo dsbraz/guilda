@@ -10,7 +10,7 @@ import retail_fixture.generated as retail_models
 import yaml
 
 from agents_testing import publish, scripted
-from brq_at_work.composition import IDENTITIES, POLICY, bootstrap, build_registry
+from brq_at_work.composition import IDENTITIES, bootstrap, build_registry
 from brq_at_work.scribe import DRAFT
 from db_testing import Database, create_test_database
 from model_testing import ROUTE
@@ -40,7 +40,7 @@ def identities(tmp_path_factory: pytest.TempPathFactory) -> Path:
         yaml.safe_dump(
             {
                 "actors": brq["actors"] + retail["actors"],
-                "delegations": brq["delegations"] + retail["delegations"],
+                "delegations": brq.get("delegations", []) + retail["delegations"],
             },
             allow_unicode=True,
         ),
@@ -52,8 +52,7 @@ def identities(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest.fixture(scope="session")
 def database(registry: Registry, identities: Path) -> Database:
     database = create_test_database("pxos_test_brq")
-    policies = (POLICY, RETAIL / "policy.yaml")
-    bootstrap(database.owner_dsn, registry, identities, route=ROUTE, policies=policies)
+    bootstrap(database.owner_dsn, registry, identities, route=ROUTE)
 
     async def published() -> None:
         pool = await create_pool(database.app_dsn)

@@ -11,8 +11,6 @@ dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "sqlalchemy[asyncio]>=2.1.8",
-    "mcp==2.3.0",
-    "pyjwt[crypto]==2.15.1",
     "temporalio==1.36.1",
     "google-adk==2.14.1",
     "anthropic[vertex]==2.8.0",

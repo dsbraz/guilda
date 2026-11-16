@@ -13,7 +13,6 @@ from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
 from pxos_kernel.model_access import Route, install_route
 from pxos_kernel.ontology import Registry
-from pxos_kernel.policy import install_policy, read_policy
 from pxos_kernel.state import create_pool, install_packages
 from temporal_testing import dev_server
 
@@ -36,7 +35,6 @@ def installation(name: str, registry: Registry, route: Route) -> Database:
         try:
             await install_identities(owner, read_identities(RETAIL / "identities.yaml"))
             await install_packages(owner, registry)
-            await install_policy(owner, read_policy([RETAIL / "policy.yaml"], registry))
             await install_route(owner, route)
         finally:
             await owner.close()

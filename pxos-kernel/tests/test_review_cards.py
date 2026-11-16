@@ -91,7 +91,8 @@ async def test_an_agent_holding_the_approver_role_gets_no_card(
     owner = await asyncpg.connect(database.owner_dsn)
     try:
         await owner.execute(
-            "INSERT INTO pxos.actor_roles (actor_id, role) VALUES ('night-agent', 'store-manager')"
+            "INSERT INTO pxos.actor_roles (actor_id, role)"
+            " VALUES ('restock-agent', 'store-manager')"
         )
         proposal = await proposed(pool, registry, "erin")
         channel = FakeChannel()
@@ -99,7 +100,8 @@ async def test_an_agent_holding_the_approver_role_gets_no_card(
         assert set(channel.cards) == {"carla", "diego"}
     finally:
         await owner.execute(
-            "DELETE FROM pxos.actor_roles WHERE actor_id = 'night-agent' AND role = 'store-manager'"
+            "DELETE FROM pxos.actor_roles"
+            " WHERE actor_id = 'restock-agent' AND role = 'store-manager'"
         )
         await owner.close()
 

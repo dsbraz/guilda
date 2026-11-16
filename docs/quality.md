@@ -57,7 +57,7 @@ uv run python -m quality.history_fetch` usa a autenticação do `gh` para obter 
 | Aprovação antes de fatos; estado e outbox atômicos | `test_canonical_state.py`, `test_outbox.py` |
 | Reexecução sem duplicação | `test_ingestion.py`, `test_ingestion_workflow.py`, `test_review_workflow.py` |
 | Histórico de workflows sem conteúdo sensível | `test_ingestion_workflow.py`, `test_review_workflow.py`, `test_slice5_exit.py` |
-| Ação de agente sob política; irreversível sempre por uma pessoa; auditoria | `test_policy.py`, `test_action_policy.py`, `test_mcp.py`, `test_slice8_exit.py` |
+| Aprovação só por uma pessoa agindo por si (PX018) | `test_database_guard.py`, `test_canonical_state.py` |
 | Rota de modelos autorizada pela instalação | `test_model_access.py`, `test_adk_gateway.py`, `test_hindsight_settings.py`, `test_slice6_exit.py` |
 | Ontologia e schemas sincronizados | `test_generation.py` e comando `ontology.generate --check` |
 

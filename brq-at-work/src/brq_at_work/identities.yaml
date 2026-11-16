@@ -21,15 +21,7 @@ actors:
   - id: dora
     kind: external_person
     name: Dora (cliente)
-  - id: meeting-agent
-    kind: agent
-    name: Agente de reuniões
-    roles: [agent]
-    autonomy: 2
   - id: scribe-agent
     kind: agent
     name: Escriba pós-reunião
     roles: [agent]
-delegations:
-  - agent: meeting-agent
-    person: bruno

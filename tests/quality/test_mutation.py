@@ -14,7 +14,7 @@ def test_mutation_configuration_includes_every_selected_responsibility() -> None
     assert config["max_stack_depth"] == -1
     assert config["mutate_only_covered_lines"] is False
     assert "pxos_kernel/state/*" in config["only_mutate"]
-    assert "pxos_kernel/api/auth.py" in config["only_mutate"]
+    assert "pxos_kernel/identity/*" in config["only_mutate"]
 
 
 def test_a_surviving_mutant_has_time_for_the_database_setup() -> None:

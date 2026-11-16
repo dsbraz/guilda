@@ -42,8 +42,6 @@ class ActionType:
     name: str
     creates: str
     approver: str
-    reversible: bool
-    rule_parameters: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -99,7 +97,7 @@ def load_package(package_dir: Path) -> Package:
 
     kinds = {class_name: class_kind(view, class_name, name) for class_name in sorted(own_classes)}
     readers = _readers(manifest, kinds, name)
-    actions = _actions(manifest, view, kinds, readers, name)
+    actions = _actions(manifest, kinds, readers, name)
     return Package(
         name=name,
         version=str(schema.version),
@@ -153,7 +151,6 @@ def _readers(
 
 def _actions(
     manifest: dict[str, Any],
-    view: SchemaView,
     kinds: dict[str, Kind],
     readers: dict[str, tuple[str, ...]],
     package: str,
@@ -164,8 +161,6 @@ def _actions(
             name=item["name"],
             creates=item["creates"],
             approver=item["approver"],
-            reversible=item["reversible"],
-            rule_parameters=tuple(item.get("rule_parameters", [])),
         )
         if kinds.get(action.creates) is not Kind.CANONICAL:
             raise InvalidPackage(
@@ -173,9 +168,6 @@ def _actions(
             )
         if action.approver not in readers[action.creates]:
             raise InvalidPackage(f"{package}: approver of {action.name} must read {action.creates}")
-        unknown = sorted(set(action.rule_parameters) - set(view.class_slots(action.creates)))
-        if unknown:
-            raise InvalidPackage(f"{package}: {action.name} rule parameters {unknown} unknown")
         actions.append(action)
 
     names = [action.name for action in actions]

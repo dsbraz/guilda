@@ -28,14 +28,6 @@ classes:
         description: Papel que aprova a ação.
         required: true
         pattern: "^[a-z][a-z0-9-]*$"
-      reversible:
-        title: reversível
-        range: boolean
-        required: true
-      rule_parameters:
-        title: parâmetros sujeitos a regra
-        description: Atributos do tipo criado que regras de módulo podem limitar.
-        multivalued: true
 
   TypeDeclaration:
     title: Declaração de tipo

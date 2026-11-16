@@ -1,4 +1,4 @@
-"""Registered packages in the database (PXOS-49): approvers, reversibility and readers."""
+"""Registered packages in the database (PXOS-49): approvers and readers."""
 
 import asyncpg
 
@@ -22,13 +22,12 @@ async def install_packages(owner: asyncpg.Connection, registry: Registry) -> Non
             )
             await owner.executemany(
                 """
-                INSERT INTO pxos.package_actions
-                    (package, digest, action, creates, approver_role, reversible)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (package, digest, action) DO UPDATE SET reversible = EXCLUDED.reversible
+                INSERT INTO pxos.package_actions (package, digest, action, creates, approver_role)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT DO NOTHING
                 """,
                 [
-                    (package.name, package.digest, a.name, a.creates, a.approver, a.reversible)
+                    (package.name, package.digest, a.name, a.creates, a.approver)
                     for a in package.actions
                 ],
             )

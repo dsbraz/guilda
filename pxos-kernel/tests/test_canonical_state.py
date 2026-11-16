@@ -288,7 +288,7 @@ async def test_package_change_invalidates_open_proposals(
     changed_dir = tmp_path / "retail"
     shutil.copytree(RETAIL, changed_dir)
     manifest = yaml.safe_load((changed_dir / "manifest.yaml").read_text(encoding="utf-8"))
-    manifest["actions"][0]["reversible"] = False
+    manifest["actions"][0]["approver"] = "store-staff"
     (changed_dir / "manifest.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
     changed = Registry()
     changed.register(changed_dir, retail_models)

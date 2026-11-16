@@ -7,4 +7,3 @@ actions:
   - name: publish_agent_version
     creates: AgentVersion
     approver: platform-admin
-    reversible: true

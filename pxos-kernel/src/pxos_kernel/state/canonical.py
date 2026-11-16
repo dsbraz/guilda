@@ -49,10 +49,6 @@ class DecisionFinal(PxosError):
     """The proposal already has a different final decision."""
 
 
-class NotExecutable(NotAuthorized):
-    """The policy does not let this actor execute the proposal without review."""
-
-
 class PersonRequired(NotAuthorized):
     """Only a person acting for themselves reviews; never an agent (PXOS-88)."""
 
@@ -330,8 +326,6 @@ REFUSALS: dict[str, type[PxosError]] = {
     "PX012": StalePackage,
     "PX013": NotApprover,
     "PX014": InvalidProposal,
-    "PX016": NotExecutable,
-    "PX017": DecisionFinal,
     "PX018": PersonRequired,
 }
 

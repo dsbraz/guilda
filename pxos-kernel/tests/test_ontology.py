@@ -57,15 +57,6 @@ def test_fixture_package_extends_base() -> None:
             name="create_restock_order",
             creates="RestockOrder",
             approver="store-manager",
-            reversible=True,
-            rule_parameters=("quantity", "occurred_at"),
-        ),
-        ActionType(
-            name="confirm_restock_order",
-            creates="RestockOrder",
-            approver="store-manager",
-            reversible=False,
-            rule_parameters=("quantity", "occurred_at"),
         ),
     )
     assert package.action("create_restock_order").approver == "store-manager"
@@ -78,7 +69,7 @@ def test_digest_covers_manifest_and_ontology(tmp_path: Path) -> None:
     original = load_package(write_package(tmp_path, schema, manifest)).digest
     assert load_package(RETAIL).digest == original
 
-    manifest["actions"][0]["reversible"] = False
+    manifest["actions"][0]["approver"] = "store-staff"
     assert load_package(write_package(tmp_path, schema, manifest)).digest != original
 
     schema, manifest = retail()
@@ -170,15 +161,10 @@ def test_canonical_types_need_readers_and_context_types_have_none(tmp_path: Path
     ("change", "message"),
     [
         ({"approver": None}, "invalid manifest"),
-        ({"reversible": "maybe"}, "invalid manifest"),
         ({"autonomy": "full"}, "invalid manifest"),
         ({"creates": "ShelfObservation"}, "retail: create_restock_order must create a canonical"),
         ({"creates": "Role"}, "must create a canonical type"),
         ({"approver": "cashier"}, "retail: approver of create_restock_order must read"),
-        (
-            {"rule_parameters": ["price"]},
-            r"retail: create_restock_order rule parameters \['price'\]",
-        ),
     ],
 )
 def test_action_type_must_follow_metamodel(
