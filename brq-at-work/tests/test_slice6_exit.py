@@ -3,8 +3,7 @@ configured, and models obey.
 
 Which provider, model and regions a client's installation uses is decided at deploy, from
 the environment (.env.example); BRQ@work fixes none of them. Two installations side by side
-get their own routes, and an ADK agent and Hindsight's configuration stay on them. The
-scribe's cycle of slice 2 (test_slice2_exit) runs on the first installation.
+get their own routes, and an ADK agent and Hindsight's configuration stay on them.
 """
 
 import re

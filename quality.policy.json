@@ -24,9 +24,8 @@
   },
   "external_skips": {
     "pxos-kernel/tests/test_context_contract.py": "PXOS_HINDSIGHT_URL not set",
-    "brq-at-work/tests/test_slice2_exit.py": "PXOS_HINDSIGHT_URL not set",
     "pxos-kernel/tests/test_vertex_routes.py": "PXOS_VERTEX_PROJECT not set"
   },
   "pending_requirements": "pxos-kernel/tests/acceptance/test_requirements.py",
-  "generation": ["pxos-kernel/tests/retail_fixture", "pxos-kernel/src/pxos_kernel/agents/package", "brq-at-work/src/brq_at_work/ontology/work_context"]
+  "generation": ["pxos-kernel/tests/retail_fixture", "pxos-kernel/src/pxos_kernel/agents/package"]
 }

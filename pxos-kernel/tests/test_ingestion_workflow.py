@@ -2,59 +2,36 @@
 
 The workflow receives a source reference and an id derived from it. The Activity fetches
 the document from the connector and ingests it as the agent; what it hands back to the
-workflow is proposal ids. A retry after the commit returns the same proposals, and
-nothing the source says, not even the evidence quote, reaches the Temporal history.
+workflow is a flag. A retry after the commit ingests nothing twice, and nothing the
+source says reaches the Temporal history.
 """
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import asyncpg
 import pytest
 from conftest import AGENT
-from google.adk.models.llm_request import LlmRequest
 from temporalio import activity
 from temporalio.client import Client, WorkflowFailureError, WorkflowHandle
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.worker import Worker
 
-from agents_testing import fact_of, scripted
-from db_testing import Database
 from pxos_kernel.context import FakeContextStore
-from pxos_kernel.identity import session
 from pxos_kernel.ingestion import FakeConnector, SourceDocument
-from pxos_kernel.model_access import FakeModels, ModelGateway
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import create_pool, proposals_from, publish, review
 from pxos_kernel.workflows import (
-    AwaitReview,
     IngestionActivities,
     IngestSource,
-    ReviewActivities,
     ingest_workflow_id,
-    review_signals,
     workflow_runner,
 )
 from temporal_testing import history_bytes
 
 SECRET = "restock aisle 3 with 12 boxes"
 LOG = f"Erin: I will {SECRET} of A-1 tomorrow.\nGina: I will restock aisle 9 with 4 of B-2.\n"
-QUOTES = {"A-1": f"Erin: I will {SECRET} of A-1", "B-2": "Gina: I will restock aisle 9"}
-
-
-def read(fact: str) -> dict[str, Any] | None:
-    sku = fact.removeprefix("RESTOCK ")
-    return {
-        "payload": {"sku": sku, "quantity": 1, "occurred_at": "2026-11-14T09:00:00Z"},
-        "quote": QUOTES[sku],
-    }
-
-
-READ = scripted(read)
 
 
 def source() -> SourceDocument:
@@ -66,8 +43,19 @@ def source() -> SourceDocument:
     )
 
 
-def store_for(document: SourceDocument) -> FakeContextStore:
-    return FakeContextStore({document.key: ["RESTOCK A-1", "RESTOCK B-2"]})
+class Store(FakeContextStore):
+    """Fails the first ``failures`` retains, quoting the text as a careless client would."""
+
+    def __init__(self, failures: int = 0, error: type[Exception] = ConnectionResetError) -> None:
+        super().__init__()
+        self.failures = failures
+        self.error = error
+
+    async def retain(self, key: str, text: str, instructions: str) -> None:
+        if self.failures:
+            self.failures -= 1
+            raise self.error(f"cannot retain {text}")
+        await super().retain(key, text, instructions)
 
 
 @pytest.fixture
@@ -75,167 +63,84 @@ async def temporal(temporal_address: str) -> Client:
     return await Client.connect(temporal_address)
 
 
-@pytest.fixture
-async def publisher(database: Database) -> AsyncIterator[asyncpg.Pool]:
-    pool = await create_pool(database.publisher_dsn)
-    yield pool
-    await pool.close()
-
-
 @asynccontextmanager
 async def worker(
     temporal: Client,
     pool: asyncpg.Pool,
-    registry: Registry,
     document: SourceDocument,
-    *,
-    reply: Callable[[LlmRequest], str] = READ,
+    store: FakeContextStore,
     activities: type[IngestionActivities] = IngestionActivities,
 ) -> AsyncIterator[str]:
     queue = f"ingest-{uuid4()}"
-    ingestion = activities(
-        pool,
-        registry,
-        store_for(document),
-        FakeConnector([document]),
-        ModelGateway(pool, FakeModels(reply=reply)),
-        agent=AGENT,
-    )
+    ingestion = activities(pool, store, FakeConnector([document]), agent=AGENT)
     async with Worker(
         temporal,
         task_queue=queue,
-        workflows=[IngestSource, AwaitReview],
-        activities=ingestion.registered() + ReviewActivities(pool, actor=AGENT).registered(),
+        workflows=[IngestSource],
+        activities=ingestion.registered(),
         workflow_runner=workflow_runner(),
     ):
         yield queue
 
 
-async def start(
-    temporal: Client, queue: str, ref: str
-) -> WorkflowHandle[IngestSource, dict[str, str]]:
+async def start(temporal: Client, queue: str, ref: str) -> WorkflowHandle[IngestSource, bool]:
     return await temporal.start_workflow(
         IngestSource.run, ref, id=ingest_workflow_id(ref), task_queue=queue
     )
 
 
-async def proposed(pool: asyncpg.Pool, document: SourceDocument, count: int) -> list[UUID]:
-    """The ids of the proposals ingested from ``document``, once there are ``count``."""
-    for _ in range(300):
-        async with session(pool, AGENT) as connection:
-            found = await proposals_from(connection, document.key)
-        if len(found) >= count:
-            return [p.id for p in found]
-        await asyncio.sleep(0.1)
-    raise AssertionError(f"expected {count} proposals from {document.key}")
-
-
-async def decide(
-    pool: asyncpg.Pool,
-    publisher: asyncpg.Pool,
-    temporal: Client,
-    registry: Registry,
-    decisions: dict[UUID, str],
-) -> None:
-    async with session(pool, "carla") as connection:
-        for proposal_id, decision in decisions.items():
-            async with connection.transaction():
-                digest = await connection.fetchval(
-                    "SELECT digest FROM pxos.proposals WHERE id = $1", proposal_id
-                )
-                await review(
-                    connection,
-                    registry,
-                    proposal_id,
-                    decision,  # type: ignore[arg-type]
-                    digest=digest,
-                    reason="não precisa" if decision == "rejected" else None,
-                )
-    await publish(publisher, review_signals(temporal))
-
-
-async def test_the_workflow_ingests_by_reference_and_waits_for_each_decision(
-    temporal: Client,
-    pool: asyncpg.Pool,
-    publisher: asyncpg.Pool,
-    registry: Registry,
-) -> None:
+async def test_the_workflow_ingests_by_reference(temporal: Client, pool: asyncpg.Pool) -> None:
     document = source()
-    async with worker(temporal, pool, registry, document) as queue:
+    store = Store()
+    async with worker(temporal, pool, document, store) as queue:
         handle = await start(temporal, queue, document.key)
         with pytest.raises(WorkflowAlreadyStartedError):
             await start(temporal, queue, document.key)
-        first, second = await proposed(pool, document, 2)
-        await decide(pool, publisher, temporal, registry, {first: "approved", second: "rejected"})
-        result = await asyncio.wait_for(handle.result(), timeout=30)
+        assert await asyncio.wait_for(handle.result(), timeout=30) is True
 
-    assert result == {str(first): "approved", str(second): "rejected"}
+    assert [key for key, _ in store.retained] == [document.key]
     raw = await history_bytes(temporal, handle.id)
-    assert str(first).encode() in raw  # the search sees what history holds
+    assert document.key.encode() in raw  # the search sees what history holds
     assert SECRET.encode() not in raw
-    assert document.text.encode() not in raw
 
 
 class CrashesAfterCommit(IngestionActivities):
     """The first attempt commits, then dies before the workflow hears of it."""
 
-    async def ingest_document(self, document: SourceDocument) -> list[UUID]:
-        ids = await super().ingest_document(document)
+    async def ingest_document(self, document: SourceDocument) -> bool:
+        ingested = await super().ingest_document(document)
         if activity.info().attempt == 1:
             raise ConnectionResetError("worker lost after commit")
-        return ids
+        return ingested
 
 
-async def test_a_retry_after_the_commit_returns_the_same_proposals(
-    temporal: Client,
-    pool: asyncpg.Pool,
-    publisher: asyncpg.Pool,
-    registry: Registry,
+async def test_a_retry_after_the_commit_ingests_nothing_twice(
+    temporal: Client, pool: asyncpg.Pool
 ) -> None:
     document = source()
-    async with worker(temporal, pool, registry, document, activities=CrashesAfterCommit) as queue:
+    store = Store()
+    async with worker(temporal, pool, document, store, CrashesAfterCommit) as queue:
         handle = await start(temporal, queue, document.key)
-        ids = await proposed(pool, document, 2)
-        await decide(pool, publisher, temporal, registry, dict.fromkeys(ids, "approved"))
-        result = await asyncio.wait_for(handle.result(), timeout=30)
+        assert await asyncio.wait_for(handle.result(), timeout=30) is False
 
-    assert sorted(result) == sorted(str(i) for i in ids)
-    assert await proposed(pool, document, 2) == ids  # no duplicates
+    assert [key for key, _ in store.retained] == [document.key]
 
 
-async def test_a_transient_model_failure_is_retried(
-    temporal: Client,
-    pool: asyncpg.Pool,
-    publisher: asyncpg.Pool,
-    registry: Registry,
-) -> None:
+async def test_a_transient_failure_is_retried(temporal: Client, pool: asyncpg.Pool) -> None:
     document = source()
-    calls: list[str] = []
-
-    def flaky(request: LlmRequest) -> str:
-        calls.append(fact_of(request))
-        if len(calls) == 1:
-            raise ConnectionResetError("model connection reset")
-        return READ(request)
-
-    async with worker(temporal, pool, registry, document, reply=flaky) as queue:
+    store = Store(failures=1)
+    async with worker(temporal, pool, document, store) as queue:
         handle = await start(temporal, queue, document.key)
-        ids = await proposed(pool, document, 2)
-        await decide(pool, publisher, temporal, registry, dict.fromkeys(ids, "approved"))
-        result = await asyncio.wait_for(handle.result(), timeout=30)
+        assert await asyncio.wait_for(handle.result(), timeout=30) is True
 
-    assert sorted(result) == sorted(str(i) for i in ids)
+    assert [key for key, _ in store.retained] == [document.key]
 
 
 async def test_a_failure_does_not_carry_the_source_into_history(
-    temporal: Client, pool: asyncpg.Pool, registry: Registry
+    temporal: Client, pool: asyncpg.Pool
 ) -> None:
     document = source()
-
-    def broken(request: LlmRequest) -> str:
-        raise ValueError(f"cannot read {read(fact_of(request))}")  # it quotes the source
-
-    async with worker(temporal, pool, registry, document, reply=broken) as queue:
+    async with worker(temporal, pool, document, Store(failures=1, error=ValueError)) as queue:
         handle = await start(temporal, queue, document.key)
         with pytest.raises(WorkflowFailureError):
             await asyncio.wait_for(handle.result(), timeout=30)
@@ -243,10 +148,8 @@ async def test_a_failure_does_not_carry_the_source_into_history(
     assert SECRET.encode() not in await history_bytes(temporal, handle.id)
 
 
-async def test_an_unknown_source_fails_the_workflow(
-    temporal: Client, pool: asyncpg.Pool, registry: Registry
-) -> None:
-    async with worker(temporal, pool, registry, source()) as queue:
+async def test_an_unknown_source_fails_the_workflow(temporal: Client, pool: asyncpg.Pool) -> None:
+    async with worker(temporal, pool, source(), Store()) as queue:
         handle = await start(temporal, queue, "fixture:shelf-log/missing@1")
         with pytest.raises(WorkflowFailureError):
             await asyncio.wait_for(handle.result(), timeout=30)

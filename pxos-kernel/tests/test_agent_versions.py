@@ -45,7 +45,6 @@ def definition(instructions: str = "Read each restock promise.") -> dict[str, An
         "agent": AGENT,
         "instructions": instructions,
         "memory_instructions": "Extract every restock promise, one per fact.",
-        "proposes": "retail.create_restock_order",
     }
 
 
@@ -134,7 +133,6 @@ async def test_the_agent_runs_only_the_approved_version_in_force(
     await decided(agents_pool, registry, first)
     version = await in_force(agents_pool)
     assert (version.revision, version.instructions) == (1, "v1")
-    assert version.proposes == ("retail", "create_restock_order")
 
     rejected = await proposed(agents_pool, registry, definition("v2"), change=first, revision=1)
     await decided(agents_pool, registry, rejected, "rejected")

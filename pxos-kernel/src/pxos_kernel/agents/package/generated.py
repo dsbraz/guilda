@@ -109,22 +109,8 @@ class AgentVersion(ConfiguredBaseModel):
     Definição publicada de um agente. O modelo não faz parte dela: vem da rota da residência da instalação.
     """
     agent: str = Field(default=..., title="agente")
-    instructions: str = Field(default=..., title="instruções", description="""O que o agente faz com cada fato extraído.""")
+    instructions: str = Field(default=..., title="instruções", description="""O que o agente faz.""")
     memory_instructions: str = Field(default=..., title="instruções para a memória de contexto", description="""O que a memória de contexto extrai de cada fonte.""")
-    proposes: str = Field(default=..., title="ação proposta", description="""Ação que o agente propõe, como pacote.ação; dela vem o schema de saída.""")
-
-    @field_validator('proposes')
-    def pattern_proposes(cls, v):
-        pattern=re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
-        if isinstance(v, list):
-            for element in v:
-                if isinstance(element, str) and not pattern.search(element):
-                    err_msg = f"Invalid proposes format: {element}"
-                    raise ValueError(err_msg)
-        elif isinstance(v, str) and not pattern.search(v):
-            err_msg = f"Invalid proposes format: {v}"
-            raise ValueError(err_msg)
-        return v
 
 
 # Model rebuild

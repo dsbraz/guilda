@@ -10,7 +10,6 @@ Hindsight is configured with.
 
 import os
 from collections.abc import AsyncIterator
-from uuid import uuid4
 
 import asyncpg
 import pytest
@@ -22,7 +21,6 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from db_testing import Database
-from pxos_kernel.agents import AgentVersion, FactReader
 from pxos_kernel.model_access import ModelGateway, Route, vertex_models
 from pxos_kernel.ontology import Registry
 from pxos_kernel.state import create_pool
@@ -83,32 +81,3 @@ def test_embeddings_are_computed_in_the_route_region(route: Route) -> None:
         config=types.EmbedContentConfig(output_dimensionality=768),
     )
     assert response.embeddings and len(response.embeddings[0].values or []) == 768
-
-
-async def test_the_adk_step_reads_a_fact_on_vertex(
-    registry: Registry, gateway: ModelGateway
-) -> None:
-    """The ADK step's derived schema works on the configured model (PXOS-79)."""
-    version = AgentVersion(
-        agent="restock-agent",
-        entity_id=uuid4(),
-        revision=1,
-        digest="probe",
-        instructions=(
-            "You read one extracted fact. If it is a restock promise, answer with the payload "
-            "(sku, quantity, occurred_at = 2026-11-14T09:00:00Z) and the verbatim quote it "
-            "cites. Otherwise answer with payload and quote null."
-        ),
-        memory_instructions="unused",
-        proposes=("retail", "create_restock_order"),
-    )
-    model = await gateway.adk_model()
-    reader = FactReader(model, version, registry.get("retail").models["RestockOrder"])
-    read = await reader.read(
-        'Erin promised 12 boxes of A-1. Verbatim: "Erin: I will restock aisle 3 with 12 boxes"'
-    )
-    assert read is not None
-    payload, quote = read
-    assert (payload["sku"], payload["quantity"]) == ("A-1", 12)
-    assert quote == "Erin: I will restock aisle 3 with 12 boxes"
-    assert await reader.read("Carla thanked Erin for the help.") is None

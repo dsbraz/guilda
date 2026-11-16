@@ -38,8 +38,6 @@ class AgentVersion:
     """The digest of the proposal the approver reviewed."""
     instructions: str
     memory_instructions: str
-    proposes: tuple[str, str]
-    """The package and action the agent proposes."""
 
 
 def register_agents(registry: Registry) -> RegisteredPackage:
@@ -60,7 +58,6 @@ async def approved_version(connection: Connection, agent: str) -> AgentVersion:
     if len(facts) > 1:
         raise AmbiguousDefinition(f"{agent} is defined by {len(facts)} entities")
     fact = facts[0]
-    package, action = fact.payload["proposes"].split(".")
     return AgentVersion(
         agent=agent,
         entity_id=fact.entity_id,
@@ -68,7 +65,6 @@ async def approved_version(connection: Connection, agent: str) -> AgentVersion:
         digest=(await get_proposal(connection, fact.proposal_id)).digest,
         instructions=fact.payload["instructions"],
         memory_instructions=fact.payload["memory_instructions"],
-        proposes=(package, action),
     )
 
 

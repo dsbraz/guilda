@@ -12,7 +12,7 @@ actors:
     kind: internal_person
     name: Célia
     roles: [team-member]
-  # Aprova as versões de agentes (ADR 0004); não aprova compromissos.
+  # Aprova as versões de agentes (ADR 0004).
   - id: eva
     kind: internal_person
     name: Eva (administradora da plataforma)
@@ -21,7 +21,3 @@ actors:
   - id: dora
     kind: external_person
     name: Dora (cliente)
-  - id: scribe-agent
-    kind: agent
-    name: Escriba pós-reunião
-    roles: [agent]

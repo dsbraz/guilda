@@ -1,13 +1,12 @@
 """Hindsight adapter for the context port (PXOS-53), over its HTTP API.
 
-The bank is configured for custom extraction with the distribution's instructions, and
-observations (consolidated summaries) are left out: the kernel reads only the facts
-extracted from the document itself. Retaining is synchronous and keyed by document id,
+The bank is configured for custom extraction with the distribution's instructions, without
+observations (consolidated summaries). Retaining is synchronous and keyed by document id,
 so a replay of an unchanged document keeps its memories as they are.
 """
 
 import os
-from typing import Any, Self
+from typing import Self
 
 import httpx
 
@@ -69,22 +68,6 @@ class HindsightContextStore:
             json={"items": [{"content": text, "document_id": key}], "async": False},
         )
         retained.raise_for_status()
-
-    async def extracted(self, key: str) -> list[str]:
-        items: list[dict[str, Any]] = []
-        while True:
-            response = await self._client.get(
-                f"{self._bank}/memories/list",
-                params={"document_id": key, "limit": 100, "offset": len(items)},
-            )
-            if response.status_code == httpx.codes.NOT_FOUND:
-                return []
-            response.raise_for_status()
-            page = response.json()
-            items += page["items"]
-            if not page["items"] or len(items) >= page["total"]:
-                break
-        return [i["text"] for i in items if i.get("fact_type") != "observation" and i["text"]]
 
 
 def main() -> None:

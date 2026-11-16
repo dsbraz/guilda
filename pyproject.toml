@@ -2,7 +2,7 @@
 name = "pxos"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pxos-kernel", "brq-at-work"]
+dependencies = ["pxos-kernel"]
 
 [tool.uv]
 package = false
@@ -12,7 +12,7 @@ pxos-kernel = { workspace = true }
 brq-at-work = { workspace = true }
 
 [tool.uv.workspace]
-members = ["pxos-kernel", "brq-at-work"]
+members = ["pxos-kernel"]
 exclude = ["spikes/*"]
 
 [tool.ruff]
@@ -38,11 +38,10 @@ files = [
     "pxos-kernel/tests",
     "brq-at-work/src",
     "brq-at-work/tests",
-    "brq-at-work/examples",
     "quality",
     "tests/quality",
 ]
-mypy_path = [".", "pxos-kernel/src", "brq-at-work/src", "pxos-kernel/tests", "brq-at-work"]
+mypy_path = [".", "pxos-kernel/src", "brq-at-work/src", "pxos-kernel/tests"]
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]

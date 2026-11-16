@@ -52,11 +52,11 @@ uv run python -m quality.history_fetch` usa a autenticação do `gh` para obter 
 | Propriedade | Verificação |
 | --- | --- |
 | Kernel independente da distribuição; APIs públicas; ausência de ciclos | Contratos gerados do import-linter; fixtures em `tests/quality/test_configuration.py` |
-| Outro domínio percorre o mesmo fluxo | `test_neutrality.py`, `brq-at-work/tests/test_slice_exit.py` |
+| Outro domínio percorre o mesmo fluxo | `test_neutrality.py`, `test_canonical_state.py`, `test_agent_versions.py` |
 | Isolamento, permissões, imutabilidade por SQL como aplicação | `test_database_guard.py`, `test_identities.py`, `test_installation.py`, `test_slice4_exit.py` |
 | Aprovação antes de fatos; estado e outbox atômicos | `test_canonical_state.py`, `test_outbox.py` |
-| Reexecução sem duplicação | `test_ingestion.py`, `test_ingestion_workflow.py`, `test_review_workflow.py` |
-| Histórico de workflows sem conteúdo sensível | `test_ingestion_workflow.py`, `test_review_workflow.py`, `test_slice5_exit.py` |
+| Reexecução sem duplicação | `test_ingestion.py`, `test_ingestion_workflow.py` |
+| Histórico de workflows sem conteúdo sensível | `test_ingestion_workflow.py` |
 | Aprovação só por uma pessoa agindo por si (PX018) | `test_database_guard.py`, `test_canonical_state.py` |
 | Rota de modelos autorizada pela instalação | `test_model_access.py`, `test_adk_gateway.py`, `test_hindsight_settings.py`, `test_slice6_exit.py` |
 | Ontologia e schemas sincronizados | `test_generation.py` e comando `ontology.generate --check` |

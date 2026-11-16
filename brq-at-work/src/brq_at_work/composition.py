@@ -5,7 +5,6 @@ from pathlib import Path
 
 import asyncpg
 
-from brq_at_work.ontology import work_context_models
 from pxos_kernel.agents import register_agents
 from pxos_kernel.identity import install_identities, read_identities
 from pxos_kernel.model_access import Route, install_route
@@ -13,13 +12,11 @@ from pxos_kernel.ontology import Registry
 from pxos_kernel.state import install_packages, upgrade
 
 ROOT = Path(__file__).resolve().parent
-WORK_CONTEXT = ROOT / "ontology" / "work_context"
 IDENTITIES = ROOT / "identities.yaml"
 
 
 def build_registry() -> Registry:
     registry = Registry()
-    registry.register(WORK_CONTEXT, work_context_models)
     register_agents(registry)
     return registry
 

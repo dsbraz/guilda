@@ -16,7 +16,6 @@ from pxos_kernel.context import ContextStore, FakeContextStore
 
 TEXT = "Erin: I will restock aisle 3 with 12 boxes of A-1 tomorrow morning.\nCarla: thanks.\n"
 INSTRUCTIONS = "Extract every restock promise, with who promised it and the verbatim sentence."
-SCRIPTED = ['RESTOCK | who=erin | quote="Erin: I will restock aisle 3 with 12 boxes of A-1"']
 
 
 ADAPTERS = [
@@ -33,7 +32,7 @@ ADAPTERS = [
 
 def store_for(kind: str, key: str) -> ContextStore:
     if kind == "fake":
-        return FakeContextStore({key: SCRIPTED})
+        return FakeContextStore()
     from pxos_kernel.context.hindsight import HindsightContextStore
 
     return HindsightContextStore.from_environment()
@@ -45,19 +44,10 @@ def key() -> str:
 
 
 @pytest.mark.parametrize("kind", ADAPTERS)
-async def test_unknown_document_has_no_facts(kind: str, key: str) -> None:
-    assert await store_for(kind, key).extracted(key) == []
-
-
-@pytest.mark.parametrize("kind", ADAPTERS)
-async def test_retained_document_yields_facts_once(kind: str, key: str) -> None:
+async def test_retaining_the_same_document_twice_is_harmless(kind: str, key: str) -> None:
     store = store_for(kind, key)
     await store.retain(key, TEXT, INSTRUCTIONS)
-    facts = await store.extracted(key)
-    assert facts and all(isinstance(fact, str) and fact for fact in facts)
-
     await store.retain(key, TEXT, INSTRUCTIONS)
-    assert sorted(await store.extracted(key)) == sorted(facts)
 
 
 def test_only_the_adapter_talks_to_hindsight() -> None:
