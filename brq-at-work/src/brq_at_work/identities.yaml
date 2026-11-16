@@ -4,10 +4,12 @@ actors:
     kind: internal_person
     name: Ana (gerente de projeto)
     roles: [project-manager]
+    channel_ids: [teams:ana]
   - id: bruno
     kind: internal_person
     name: Bruno
     roles: [team-member]
+    channel_ids: [teams:bruno]
   - id: celia
     kind: internal_person
     name: Célia
@@ -21,3 +23,9 @@ actors:
   - id: dora
     kind: external_person
     name: Dora (cliente)
+    channel_ids: [teams:dora]
+  # Posta as perguntas na thread do projeto e lê as respostas (ADR 0006).
+  - id: report-agent
+    kind: agent
+    name: Agente do report semanal
+    roles: [agent]

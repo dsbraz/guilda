@@ -1,10 +1,33 @@
 """Acceptance scenarios of the MVP (PRD v0.27, §MVP): the weekly project follow-up agent.
 
-None is delivered yet. Each stays a strict expected failure until the slice that delivers
-it replaces it with the real test, run with fakes for SharePoint, Granola and Teams.
+Each stays a strict expected failure until the slice that delivers it replaces it with the
+real test, run with fakes for SharePoint, Granola and Teams.
+
+Slice 11 proves the conversation and the correction up to the agent: the question is
+posted in the project's thread, the team's answer is kept with its author and cycle and
+wakes the cycle through the outbox, and a correction becomes context for the next cycle.
+Writing the answer into the report and redoing it belong to the agent and its cycle
+(slices 12 and 13); the PM's rejection of a report waits for the report type (slice 12)
+and is proven on another type in the kernel (``test_conversation.py``).
 """
 
+from collections.abc import AsyncIterator
+from typing import Any
+from uuid import UUID, uuid4
+
+import asyncpg
 import pytest
+
+from db_testing import Database, drain
+from pxos_kernel.channel import FakeChannel
+from pxos_kernel.context import FakeContextStore
+from pxos_kernel.conversation import Inbound, conversation, post, receive, retain_message
+from pxos_kernel.identity import NotAuthorized, session
+from pxos_kernel.state import Event, create_pool
+
+AGENT = "report-agent"
+THREAD = "teams:projeto-alfa"
+INSTRUCTIONS = "Guarde cada correção do time com quem a fez."
 
 
 def pending(slice_: str, scope: str) -> pytest.MarkDecorator:
@@ -16,14 +39,78 @@ def test_update_without_duplication() -> None:
     raise NotImplementedError
 
 
-@pending("fatia 11", "lacuna vira pergunta na thread; a resposta entra na entrega")
-def test_clarification() -> None:
-    raise NotImplementedError
+class TextStore(FakeContextStore):
+    """The reference store, also keeping the text retained under each key."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.texts: dict[str, str] = {}
+
+    async def retain(self, key: str, text: str, instructions: str, **options: Any) -> None:
+        await super().retain(key, text, instructions, **options)
+        self.texts[key] = text
 
 
-@pending("fatia 11", "a correção desta semana vale no ciclo seguinte")
-def test_continuity() -> None:
-    raise NotImplementedError
+@pytest.fixture
+async def publisher(database: Database) -> AsyncIterator[asyncpg.Pool]:
+    pool = await create_pool(database.publisher_dsn)
+    await drain(pool, {})
+    yield pool
+    await pool.close()
+
+
+def said(sender: str, text: str) -> Inbound:
+    return Inbound(thread=THREAD, channel_message=f"m-{uuid4()}", sender=sender, text=text)
+
+
+async def test_clarification(pool: asyncpg.Pool, publisher: asyncpg.Pool) -> None:
+    """A gap becomes a question in the thread; the team's answer is kept for the cycle."""
+    channel = FakeChannel()
+    cycle = f"semana-{uuid4()}"
+
+    question = await post(
+        pool, channel, AGENT, thread=THREAD, cycle=cycle, text="A entrega de sexta saiu?"
+    )
+    woken: list[Event] = []
+
+    async def wake(event: Event) -> None:
+        woken.append(event)
+
+    answer = await receive(pool, said("teams:bruno", "Saiu na segunda: faltou ambiente."))
+    for stranger in ("teams:dora", "teams:convidado"):
+        with pytest.raises(NotAuthorized):
+            await receive(pool, said(stranger, "Saiu sim."))
+    await drain(publisher, {"message.received": wake})
+
+    assert channel.threads[THREAD][-1] == "A entrega de sexta saiu?"
+    assert (answer.author, answer.cycle) == ("bruno", cycle)
+    async with session(pool, AGENT) as connection:
+        assert await conversation(connection, cycle) == [question, answer]
+    assert [event.payload for event in woken] == [{"message_id": str(answer.id), "cycle": cycle}]
+
+
+async def test_continuity(pool: asyncpg.Pool, publisher: asyncpg.Pool) -> None:
+    """This week's correction is context for the next cycle, with who made it."""
+    channel = FakeChannel()
+    this_week = f"semana-{uuid4()}"
+    await post(pool, channel, AGENT, thread=THREAD, cycle=this_week, text="O marco 2 atrasou?")
+    correction = await receive(
+        pool, said("teams:ana", "Não atrasou: o prazo foi renegociado para 30/11.")
+    )
+    store = TextStore()
+
+    async def retain(event: Event) -> None:
+        await retain_message(pool, store, AGENT, UUID(event.payload["message_id"]), INSTRUCTIONS)
+
+    await drain(publisher, {"message.received": retain})
+
+    key = f"message:{correction.id}"
+    assert store.retained == [(key, INSTRUCTIONS)]
+    assert store.texts[key] == (
+        f"Message from ana in cycle {this_week}: Não atrasou: o prazo foi renegociado para 30/11."
+    )
+    async with session(pool, AGENT) as connection:
+        assert correction in await conversation(connection, this_week)
 
 
 @pending("fatia 10", "indisponibilidade sinalizada; exclusão e perda de acesso respeitadas")
