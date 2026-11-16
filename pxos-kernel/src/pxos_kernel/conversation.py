@@ -10,10 +10,11 @@ once. Each accepted message leaves a ``message.received`` event in the outbox, w
 message id and its cycle only.
 
 A message, and the reason a reviewer rejected a proposal, are retained as context for the
-next cycle with their author, read in the agent's session and keyed by the message or the
-proposal, so retaining them again adds nothing.
+next cycle with their author and the access tags of the agent's scope, read in the agent's
+session and keyed by the message or the proposal, so retaining them again adds nothing.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -107,10 +108,49 @@ async def conversation(connection: Connection, cycle: str) -> list[Message]:
     return [Message(**dict(row)) for row in rows]
 
 
+@dataclass(frozen=True)
+class Answer:
+    """A person's message in a cycle with the agent's post it followed: the question."""
+
+    question: str
+    message: Message
+
+
+async def answers(connection: Connection, cycle: str) -> list[Answer]:
+    """The messages people sent in ``cycle``, oldest first, each with the agent's post
+    before it, as the session can read them."""
+    rows = await connection.fetch(
+        """
+        SELECT q.text AS question, a.* FROM pxos.messages a
+        CROSS JOIN LATERAL (
+            SELECT text FROM pxos.messages
+            WHERE cycle = a.cycle AND sender IS NULL AND received_at <= a.received_at
+            ORDER BY received_at DESC, id DESC LIMIT 1
+        ) q
+        WHERE a.cycle = $1 AND a.sender IS NOT NULL
+        ORDER BY a.received_at, a.id
+        """,
+        cycle,
+    )
+    return [
+        Answer(question=row["question"], message=Message(**{k: row[k] for k in _FIELDS}))
+        for row in rows
+    ]
+
+
+_FIELDS = tuple(Message.__dataclass_fields__)
+
+
 async def retain_message(
-    pool: asyncpg.Pool, store: ContextStore, agent: str, message_id: UUID, instructions: str
+    pool: asyncpg.Pool,
+    store: ContextStore,
+    agent: str,
+    message_id: UUID,
+    instructions: str,
+    *,
+    tags: Sequence[str],
 ) -> None:
-    """Retain the message ``message_id`` with its author, read as ``agent``."""
+    """Retain the message ``message_id`` with its author, read as ``agent``, under ``tags``."""
     async with session(pool, agent) as connection:
         row = await connection.fetchrow("SELECT * FROM pxos.messages WHERE id = $1", message_id)
     assert row is not None
@@ -119,13 +159,21 @@ async def retain_message(
         f"message:{message.id}",
         f"Message from {message.author} in cycle {message.cycle}: {message.text}",
         instructions,
+        tags=tags,
     )
 
 
 async def retain_rejection(
-    pool: asyncpg.Pool, store: ContextStore, agent: str, proposal_id: UUID, instructions: str
+    pool: asyncpg.Pool,
+    store: ContextStore,
+    agent: str,
+    proposal_id: UUID,
+    instructions: str,
+    *,
+    tags: Sequence[str],
 ) -> None:
-    """Retain why ``proposal_id`` was rejected, with its reviewer, read as ``agent``."""
+    """Retain why ``proposal_id`` was rejected, with its reviewer, read as ``agent``,
+    under ``tags``."""
     async with session(pool, agent) as connection:
         proposal = await get_proposal(connection, proposal_id)
         decided = await get_review(connection, proposal_id)
@@ -136,6 +184,7 @@ async def retain_rejection(
         f"Correction from {decided.reviewer}: proposal {proposal_id} ({proposal.type_name})"
         f" was rejected because: {decided.reason}",
         instructions,
+        tags=tags,
     )
 
 

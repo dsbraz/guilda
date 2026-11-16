@@ -14,6 +14,8 @@ import asyncpg
 
 from pxos_kernel.agents.runtime import Agent, RoundInput, RoundOutput
 from pxos_kernel.agents.versions import AgentRun, AgentVersion
+from pxos_kernel.channel import Channel
+from pxos_kernel.conversation import Message, post
 from pxos_kernel.errors import PxosError
 from pxos_kernel.identity import Connection, session
 from pxos_kernel.ontology import Registry
@@ -81,6 +83,27 @@ async def run_round(
             usage.cost,
         )
     return output
+
+
+async def post_questions(
+    pool: asyncpg.Pool, channel: Channel, version: AgentVersion, *, cycle: str, round: int
+) -> Message:
+    """Post the questions ``round`` of ``cycle`` asked in the version's thread, in one post
+    of that run; posting them again returns the same message."""
+    async with session(pool, version.agent) as connection:
+        run = await recorded_round(connection, cycle, round)
+    questions = () if run is None else answered(run).questions
+    if run is None or not questions:
+        raise NoRecordedRun(f"no run of {version.agent} asked in {round_ref(cycle, round)}")
+    return await post(
+        pool,
+        channel,
+        version.agent,
+        thread=version.thread,
+        cycle=cycle,
+        text="\n".join(questions),
+        run=run.id,
+    )
 
 
 async def propose_deliverable(

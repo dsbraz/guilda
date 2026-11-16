@@ -12,7 +12,6 @@ the next cycle, with their author, each under a key that retaining again does no
 
 import json
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID, uuid4
 
 import asyncpg
@@ -21,7 +20,7 @@ import pytest
 from db_testing import Database
 from pxos_kernel.agents import approved_version
 from pxos_kernel.channel import FakeChannel
-from pxos_kernel.context import FakeContextStore
+from pxos_kernel.context import FakeContextStore, Recalled
 from pxos_kernel.conversation import (
     Inbound,
     NoCycle,
@@ -37,18 +36,7 @@ from pxos_kernel.state import Decision, Evidence, InvalidProposal, Proposal, pro
 
 AGENT = "restock-agent"
 INSTRUCTIONS = "Keep each correction with who made it."
-
-
-class TextStore(FakeContextStore):
-    """The reference store, also keeping the text retained under each key."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.texts: dict[str, str] = {}
-
-    async def retain(self, key: str, text: str, instructions: str, **options: Any) -> None:
-        await super().retain(key, text, instructions, **options)
-        self.texts[key] = text
+TAGS = ("store:aisle-3",)
 
 
 def fresh(name: str) -> str:
@@ -255,14 +243,15 @@ async def test_a_message_is_retained_with_its_author_under_a_stable_key(
     thread, cycle = fresh("thread"), fresh("cycle")
     await post(pool, FakeChannel(), AGENT, thread=thread, cycle=cycle, text="Quantas?")
     reply = await receive(pool, answer(thread, text="Na verdade foram sete."))
-    store = TextStore()
+    store = FakeContextStore()
 
-    await retain_message(pool, store, AGENT, reply.id, INSTRUCTIONS)
-    await retain_message(pool, store, AGENT, reply.id, INSTRUCTIONS)
+    await retain_message(pool, store, AGENT, reply.id, INSTRUCTIONS, tags=TAGS)
+    await retain_message(pool, store, AGENT, reply.id, INSTRUCTIONS, tags=TAGS)
 
     key = f"message:{reply.id}"
     assert store.retained == [(key, INSTRUCTIONS), (key, INSTRUCTIONS)]
-    assert store.texts[key] == f"Message from erin in cycle {cycle}: Na verdade foram sete."
+    text = f"Message from erin in cycle {cycle}: Na verdade foram sete."
+    assert await store.recall("sete", tags=TAGS) == [Recalled(text=text, source=key)]
 
 
 async def decided(
@@ -289,17 +278,18 @@ async def test_a_rejection_reason_is_retained_as_a_correction_by_its_reviewer(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
     proposal = await decided(pool, registry, "rejected", "Eram sete, não quatro.")
-    store = TextStore()
+    store = FakeContextStore()
 
-    await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS)
-    await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS)
+    await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS, tags=TAGS)
+    await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS, tags=TAGS)
 
     key = f"rejection:{proposal.id}"
     assert store.retained == [(key, INSTRUCTIONS), (key, INSTRUCTIONS)]
-    assert store.texts[key] == (
+    text = (
         f"Correction from carla: proposal {proposal.id} (RestockOrder) was rejected"
         " because: Eram sete, não quatro."
     )
+    assert await store.recall("sete", tags=TAGS) == [Recalled(text=text, source=key)]
 
 
 @pytest.mark.parametrize(
@@ -309,8 +299,8 @@ async def test_only_a_rejection_is_a_correction(
     pool: asyncpg.Pool, registry: Registry, decision: Decision | None, refusal: str
 ) -> None:
     proposal = await decided(pool, registry, decision, None)
-    store = TextStore()
+    store = FakeContextStore()
 
     with pytest.raises(InvalidProposal, match=refusal):
-        await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS)
+        await retain_rejection(pool, store, AGENT, proposal.id, INSTRUCTIONS, tags=TAGS)
     assert store.retained == []

@@ -204,10 +204,14 @@ async def test_continuity(pool: asyncpg.Pool, publisher: asyncpg.Pool, registry:
     store = TextStore()
 
     async def retain_answer(event: Event) -> None:
-        await retain_message(pool, store, AGENT, UUID(event.payload["message_id"]), INSTRUCTIONS)
+        await retain_message(
+            pool, store, AGENT, UUID(event.payload["message_id"]), INSTRUCTIONS, tags=[PROJECT]
+        )
 
     async def retain_reason(event: Event) -> None:
-        await retain_rejection(pool, store, AGENT, UUID(event.payload["proposal_id"]), INSTRUCTIONS)
+        await retain_rejection(
+            pool, store, AGENT, UUID(event.payload["proposal_id"]), INSTRUCTIONS, tags=[PROJECT]
+        )
 
     await drain(publisher, {"message.received": retain_answer, "proposal.rejected": retain_reason})
 

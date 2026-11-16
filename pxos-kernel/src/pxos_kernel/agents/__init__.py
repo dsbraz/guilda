@@ -1,6 +1,12 @@
 """Agents: definitions published as approved versions, and the runs that use them (K34)."""
 
-from pxos_kernel.agents.rounds import NoRecordedRun, propose_deliverable, run_round
+from pxos_kernel.agents.cycle import Effort, cycle_effort, round_input
+from pxos_kernel.agents.rounds import (
+    NoRecordedRun,
+    post_questions,
+    propose_deliverable,
+    run_round,
+)
 from pxos_kernel.agents.runtime import (
     Agent,
     InvalidOutput,
@@ -33,6 +39,7 @@ __all__ = [
     "AgentRun",
     "AgentVersion",
     "AmbiguousDefinition",
+    "Effort",
     "InvalidOutput",
     "MissingTool",
     "NoApprovedVersion",
@@ -43,13 +50,16 @@ __all__ = [
     "RoundOutput",
     "approved_version",
     "build_agent",
+    "cycle_effort",
     "pinned_version",
+    "post_questions",
     "propose_deliverable",
     "propose_version",
     "recall_tool",
     "record_run",
     "recorded_run",
     "register_agents",
+    "round_input",
     "run_round",
     "scoped_recall",
 ]
