@@ -153,21 +153,27 @@ de admin do tenant nem de endpoint público, use as opções de desenvolvimento 
 adaptadores: o login delegado do SharePoint, uma chave pessoal do Granola (plano Business
 ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados de cliente.
 
-1. **Vertex e identidades.** Use um projeto seu com a Vertex AI habilitada e copie
-   para `.secrets/` suas credenciais de aplicação e as identidades da distro, legíveis
-   pelo usuário dos containers. Os dois arquivos precisam existir antes de subir: sem
-   eles, o Docker cria diretórios no lugar.
+1. **Vertex e identidades.** Use um projeto seu com a Vertex AI habilitada e uma conta
+   de serviço só com `roles/aiplatform.user` nele. Grave a chave dela e as identidades
+   da distro em `.secrets/`, legíveis pelo usuário dos containers. Os dois arquivos
+   precisam existir antes de subir: sem eles, o Docker cria diretórios no lugar.
 
    ```sh
-   gcloud auth application-default login
-   gcloud auth application-default set-quota-project <projeto>
-   install -D -m 644 ~/.config/gcloud/application_default_credentials.json .secrets/adc.json
+   P=<projeto>; SA=pxos-local@$P.iam.gserviceaccount.com
+   gcloud iam service-accounts create pxos-local --project $P
+   gcloud projects add-iam-policy-binding $P --member serviceAccount:$SA \
+     --role roles/aiplatform.user --condition=None
+   mkdir -p .secrets
+   gcloud iam service-accounts keys create .secrets/adc.json --iam-account $SA
+   chmod 644 .secrets/adc.json
    install -m 644 brq-at-work/src/brq_at_work/identities.yaml .secrets/identities.yaml
    ```
 
-   A cópia das credenciais carrega o seu refresh token do Google e fica legível por
-   qualquer usuário da máquina: use só numa estação sua. Para desfazer, apague-a e rode
-   `gcloud auth application-default revoke`.
+   A conta de serviço não expira com a sessão do seu login, ao contrário das suas
+   credenciais de aplicação, e a chave só alcança a Vertex desse projeto. Ainda assim
+   fica legível na máquina: use só numa estação sua e, para desfazer, apague a chave
+   com `gcloud iam service-accounts keys delete`. A permissão leva um minuto para
+   propagar: um 403 na primeira subida do Hindsight se resolve no reinício seguinte.
 
 2. **`deploy/.env`.** Parta do `.env.example`. Preencha a rota do modelo, as senhas e
    `PXOS_DOMAIN=localhost`, que o compose base exige mesmo sem o Caddy. O caminho dos

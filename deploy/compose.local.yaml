@@ -1,10 +1,10 @@
 # Override para rodar a instalação no localhost, em desenvolvimento:
 #   docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml up -d --build
 # Sem Caddy (fica no perfil "public"); o endpoint do app escuta só em loopback, na 8000.
-# Fora da VM não há conta de serviço da máquina: o app e o Hindsight chamam a Vertex com as
-# credenciais de aplicação do desenvolvedor, copiadas para .secrets/adc.json (veja
-# deploy/README.md, "Rodar no localhost"). A imagem roda com outro usuário, por isso a cópia
-# precisa ser legível por ele; .secrets/ é ignorado pelo git e pelo build. As identidades
+# Fora da VM não há conta de serviço da máquina: o app e o Hindsight chamam a Vertex com a
+# chave de uma conta de serviço só da Vertex, em .secrets/adc.json (veja deploy/README.md,
+# "Rodar no localhost"). A imagem roda com outro usuário, por isso a chave precisa ser
+# legível por ele; .secrets/ é ignorado pelo git e pelo build. As identidades
 # com os ids reais dos canais também ficam em .secrets/, fora do arquivo versionado.
 # O compose de deploy fixa o projeto "pxos", o mesmo nome que o compose da raiz (o dos
 # testes) recebe num checkout em pxOS/: sem outro nome, os dois dividiriam containers e o
