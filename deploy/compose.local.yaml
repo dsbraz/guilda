@@ -4,9 +4,11 @@
 # Fora da VM não há conta de serviço da máquina: o app e o Hindsight chamam a Vertex com as
 # credenciais de aplicação do desenvolvedor, copiadas para .secrets/adc.json (veja
 # deploy/README.md, "Rodar no localhost"). A imagem roda com outro usuário, por isso a cópia
-# precisa ser legível por ele; .secrets/ é ignorado pelo git e pelo build.
-# O nome do projeto difere do compose de desenvolvimento da raiz, que também se chamaria
-# "pxos": sem isso, os dois dividiriam containers e o volume do Postgres.
+# precisa ser legível por ele; .secrets/ é ignorado pelo git e pelo build. As identidades
+# com os ids reais dos canais também ficam em .secrets/, fora do arquivo versionado.
+# O compose de deploy fixa o projeto "pxos", o mesmo nome que o compose da raiz (o dos
+# testes) recebe num checkout em pxOS/: sem outro nome, os dois dividiriam containers e o
+# volume do Postgres.
 name: pxos-local
 
 x-adc: &adc
@@ -21,12 +23,13 @@ services:
   app:
     environment:
       <<: *adc
-      # Estado de desenvolvimento no volume do app: o token do login delegado do
-      # SharePoint e a mensagem de cada card do Telegram.
-      PXOS_SHAREPOINT_TOKEN_PATH: /var/lib/pxos/sharepoint-token
+      PXOS_IDENTITIES_PATH: /run/secrets/identities.yaml
+      # A mensagem de cada card do Telegram, no volume do app. O token do login delegado
+      # do SharePoint, quando usado, vai no .env: aqui ele venceria um segredo do .env.
       PXOS_TELEGRAM_CARDS_PATH: /var/lib/pxos/telegram-cards
     volumes:
       - ../.secrets/adc.json:/run/secrets/adc.json:ro
+      - ../.secrets/identities.yaml:/run/secrets/identities.yaml:ro
     ports: ["127.0.0.1:8000:8000"]
 
   caddy:

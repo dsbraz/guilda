@@ -153,25 +153,35 @@ de admin do tenant nem de endpoint público, use as opções de desenvolvimento 
 adaptadores: o login delegado do SharePoint, uma chave pessoal do Granola (plano Business
 ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados de cliente.
 
-1. **Vertex.** Use um projeto seu com a Vertex AI habilitada e copie suas credenciais
-   de aplicação para `.secrets/`, legíveis pelo usuário dos containers:
+1. **Vertex e identidades.** Use um projeto seu com a Vertex AI habilitada e copie
+   para `.secrets/` suas credenciais de aplicação e as identidades da distro, legíveis
+   pelo usuário dos containers. Os dois arquivos precisam existir antes de subir: sem
+   eles, o Docker cria diretórios no lugar.
 
    ```sh
    gcloud auth application-default login
    gcloud auth application-default set-quota-project <projeto>
-   install -m 644 ~/.config/gcloud/application_default_credentials.json .secrets/adc.json
+   install -D -m 644 ~/.config/gcloud/application_default_credentials.json .secrets/adc.json
+   install -m 644 brq-at-work/src/brq_at_work/identities.yaml .secrets/identities.yaml
    ```
 
+   A cópia das credenciais carrega o seu refresh token do Google e fica legível por
+   qualquer usuário da máquina: use só numa estação sua. Para desfazer, apague-a e rode
+   `gcloud auth application-default revoke`.
+
 2. **`deploy/.env`.** Parta do `.env.example`. Preencha a rota do modelo, as senhas e
-   `PXOS_DOMAIN=localhost`, que o compose base exige mesmo sem o Caddy. Os caminhos do
-   token do SharePoint e dos cards do Telegram já vêm do override.
+   `PXOS_DOMAIN=localhost`, que o compose base exige mesmo sem o Caddy. O caminho dos
+   cards do Telegram já vem do override.
 3. **Granola.** No app, gere uma chave em Settings → Connectors → API keys → Personal
    API key e coloque-a em `PXOS_GRANOLA_API_KEY`. A chave lê as suas notas e as
    compartilhadas com você.
 4. **SharePoint sem admin.** Registre o app no Entra como o `.env.example` descreve
-   (cliente público, permissões delegadas). Preencha `PXOS_SHAREPOINT_TENANT` e
-   `PXOS_SHAREPOINT_CLIENT_ID`, e faça o login uma vez, gravando o token no volume do
-   app. Com `--link`, o comando também imprime o drive e a pasta:
+   (cliente público, permissões delegadas). Preencha `PXOS_SHAREPOINT_TENANT`,
+   `PXOS_SHAREPOINT_CLIENT_ID` e `PXOS_SHAREPOINT_TOKEN_PATH=/var/lib/pxos/sharepoint-token`,
+   sem segredo nem certificado, e faça o login uma vez, gravando o token no volume do
+   app. Com `--link`, o comando também imprime `PXOS_SHAREPOINT_DRIVE_ID` e
+   `PXOS_SHAREPOINT_FOLDER_ID`; copie os dois para o `deploy/.env`. Sem o drive, o app
+   não sobe:
 
    ```sh
    C="docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
@@ -184,8 +194,8 @@ ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados
    adicione-o a um grupo e mande `/start` ao bot no privado. Antes de subir o app, leia
    os ids em `https://api.telegram.org/bot<token>/getUpdates`:
    - `chat.id` do grupo vai em `PXOS_TELEGRAM_CHAT_ID`;
-   - `from.id` de cada pessoa vai nos `channel_ids` dela em `identities.yaml`, como
-     `telegram:<id>`.
+   - `from.id` de cada pessoa vai nos `channel_ids` dela em `.secrets/identities.yaml`,
+     como `telegram:<id>`. O arquivo versionado da distro fica como está.
 
    Defina `PXOS_CHANNEL=telegram` e `PXOS_TELEGRAM_BOT_TOKEN`. Quem revisa (PM e
    administrador da plataforma) precisa ter mandado `/start` ao bot.
