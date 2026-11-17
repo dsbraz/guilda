@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 from brq_at_work.composition import ACCESS, IDENTITIES
-from brq_at_work.environment import MissingSetting, sharepoint, teams
+from brq_at_work.environment import MissingSetting, identities, sharepoint, teams
 from brq_at_work.publish_agent import AGENT_FILE
 from brq_at_work.serve import AGENT, adapters
 from pxos_granola import GranolaTranscripts
@@ -239,3 +239,12 @@ def test_teams_authenticates_with_a_certificate_when_one_is_given(tmp_path: Path
 
     assert (settings.secret, settings.certificate) == (None, Certificate("pem", "ab12"))
     assert settings.threads == {"projeto-piloto": CONVERSATION}
+
+
+def test_identities_come_from_the_distro_unless_the_deploy_points_elsewhere(
+    tmp_path: Path,
+) -> None:
+    own = tmp_path / "identities.yaml"
+    assert identities({}) == IDENTITIES
+    assert identities({"PXOS_IDENTITIES_PATH": " "}) == IDENTITIES
+    assert identities({"PXOS_IDENTITIES_PATH": str(own)}) == own

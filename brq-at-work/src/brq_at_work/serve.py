@@ -19,7 +19,7 @@ import httpx
 import yaml
 
 from brq_at_work import environment
-from brq_at_work.composition import IDENTITIES, bootstrap, build_registry
+from brq_at_work.composition import bootstrap, build_registry
 from brq_at_work.publish_agent import AGENT_FILE
 from pxos_kernel import service
 from pxos_kernel.channel import Channel
@@ -107,7 +107,9 @@ async def serve(registry: Registry) -> None:
     pool = await create_pool(os.environ["PXOS_DATABASE_URL"])
     publisher = await create_pool(os.environ["PXOS_PUBLISHER_DATABASE_URL"])
     try:
-        async with adapters(pool, registry, read_identities(IDENTITIES)) as wired:
+        async with adapters(
+            pool, registry, read_identities(environment.identities(os.environ))
+        ) as wired:
             await service.serve(
                 temporal=os.environ["PXOS_TEMPORAL_ADDRESS"],
                 task_queue=os.environ["PXOS_TASK_QUEUE"],
@@ -129,7 +131,12 @@ async def serve(registry: Registry) -> None:
 
 def main() -> None:
     registry = build_registry()
-    bootstrap(os.environ["PXOS_OWNER_DATABASE_URL"], registry, route=Route.from_environment())
+    bootstrap(
+        os.environ["PXOS_OWNER_DATABASE_URL"],
+        registry,
+        environment.identities(os.environ),
+        route=Route.from_environment(),
+    )
     service.run(serve(registry))
 
 

@@ -12,7 +12,7 @@ Every connector delivers its sources under the distro's access tags (``ACCESS``)
 from collections.abc import Mapping
 from pathlib import Path
 
-from brq_at_work.composition import ACCESS
+from brq_at_work.composition import ACCESS, IDENTITIES
 from pxos_granola import GranolaTranscripts
 from pxos_kernel.errors import PxosError
 from pxos_sharepoint import ClientCertificate, ClientSecret, DelegatedToken, SharePointConnector
@@ -36,6 +36,13 @@ def required(env: Environment, name: str) -> str:
 def optional(env: Environment, name: str) -> str | None:
     value = env.get(name, "")
     return value if value.strip() else None
+
+
+def identities(env: Environment) -> Path:
+    """The people and their channel ids: the distro's file, or the deploy's own, which
+    keeps real ids out of the repository."""
+    path = optional(env, "PXOS_IDENTITIES_PATH")
+    return IDENTITIES if path is None else Path(path)
 
 
 def _secret_or_key(env: Environment, secret: str, key: str) -> tuple[str | None, str | None]:
