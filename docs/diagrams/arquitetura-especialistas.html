@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pxOS · Arquitetura dos especialistas</title>
+<style>
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:5rem}body{margin:0;background:#f6f7f3;color:#172e37;font:16px/1.53 system-ui,sans-serif}nav,header,main,footer{padding-inline:max(5vw,calc((100% - 1180px)/2))}nav{display:flex;gap:1.3rem;align-items:center;background:#10383c;color:white;padding-block:13px;position:sticky;top:0;z-index:2}nav b{margin-right:auto}nav a{color:#d8f2e8;font-size:.9rem}header{background:#e3ede6;padding-block:44px 36px;border-bottom:1px solid #c3d3c8}small,.index{font:700 13px/1.4 monospace;letter-spacing:.07em;text-transform:uppercase;color:#216152}h1{font-size:clamp(2rem,5vw,3.4rem);letter-spacing:-.045em;line-height:1.05;margin:12px 0}header p,section>p{max-width:84ch}section{padding-block:36px 22px;border-bottom:1px solid #c8d6d0}h2{font-size:clamp(1.6rem,3vw,2.25rem);letter-spacing:-.035em;margin:0}h3{margin:24px 0 5px}figure{margin:15px 0;background:white;border:1px solid #c2d4ca;border-radius:12px;overflow:auto}svg{display:block;width:100%;min-width:790px;height:auto;font:16px system-ui,sans-serif}svg text{fill:#18383e}.box{fill:#e6efe8;stroke:#9eb8ad}.outer{fill:#f5f4f0;stroke:#c6c9c0}.core{fill:#194e50;stroke:#194e50}text.light{fill:white}.edge{stroke:#50736d;stroke-width:2;fill:none}.rel{font-size:13px;paint-order:stroke;stroke:white;stroke-width:5px;stroke-linejoin:round}.dash{stroke:#94afa9;stroke-dasharray:5 5}figcaption{padding:10px 18px;color:#45625a;font-size:.9rem;background:#f4f8f5}footer{padding-block:28px}a{color:#115c55}@media(max-width:600px){nav{gap:.7rem}nav a{font-size:.8rem}}@media print{nav{display:none}figure{break-inside:avoid}svg{min-width:0}section{break-before:page}header{padding-block:10px}body{background:white}}
+</style></head><body>
+<nav aria-label="Vistas"><b>pxOS</b><a href="#c1">C1</a><a href="#c2">C2</a><a href="#c3">C3</a><a href="#seq">Sequências</a></nav>
+<header><small>Distribuição por cliente · arquitetura proposta</small><h1>Especialistas com memória corporativa</h1><p>O FDE publica Ana de Delivery e Vendas. Cada especialista responde com evidências já processadas na instalação. O Temporal coordena o trabalho que precisa continuar depois da conversa.</p></header><main>
+<section id="c1"><span class="index">C1 / Contexto</span><h2>Pessoas, produto e fontes</h2><p>Cada cliente recebe uma instalação pxOS. O PM conversa com um especialista ou revisa uma entrega. O FDE controla a definição publicada de cada perfil e processo.</p>
+<figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 235" role="img" aria-labelledby="t1"><title id="t1">Contexto do pxOS</title><defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#50736d"/></marker></defs>
+<rect x="20" y="30" width="260" height="62" rx="8" class="outer"/><text x="150.0" y="55" text-anchor="middle" class="" font-size="16" font-weight="650">PM e equipe</text><text x="150.0" y="77" text-anchor="middle" class="" font-size="13" font-weight="400">perguntas e revisões</text>
+<rect x="20" y="140" width="260" height="62" rx="8" class="outer"/><text x="150.0" y="165" text-anchor="middle" class="" font-size="16" font-weight="650">FDE</text><text x="150.0" y="187" text-anchor="middle" class="" font-size="13" font-weight="400">configuração e publicação</text>
+<rect x="410" y="85" width="260" height="62" rx="8" class="core"/><text x="540.0" y="110" text-anchor="middle" class="light" font-size="16" font-weight="650">pxOS do cliente</text><text x="540.0" y="132" text-anchor="middle" class="light" font-size="13" font-weight="400">especialistas, memória e processos</text>
+<rect x="800" y="20" width="260" height="62" rx="8" class="outer"/><text x="930.0" y="45" text-anchor="middle" class="" font-size="16" font-weight="650">Granola e SharePoint</text><text x="930.0" y="67" text-anchor="middle" class="" font-size="13" font-weight="400">transcrições e documentos</text>
+<rect x="800" y="155" width="260" height="62" rx="8" class="outer"/><text x="930.0" y="180" text-anchor="middle" class="" font-size="16" font-weight="650">Anthropic · Claude</text><text x="930.0" y="202" text-anchor="middle" class="" font-size="13" font-weight="400">inferência do modelo</text>
+<polyline class="edge" points="280,61 345,61 345,100 410,100" marker-end="url(#m1)"/><text x="344" y="48" text-anchor="middle" class="rel" font-size="16" font-weight="400">interage</text>
+<polyline class="edge" points="280,171 350,171 350,131 410,131" marker-end="url(#m1)"/><text x="346" y="192" text-anchor="middle" class="rel" font-size="16" font-weight="400">publica</text>
+<polyline class="edge" points="800,51 731,51 731,99 670,99" marker-end="url(#m1)"/><text x="731" y="39" text-anchor="middle" class="rel" font-size="16" font-weight="400">sincronização</text>
+<polyline class="edge" points="670,132 733,132 733,186 800,186" marker-end="url(#m1)"/><text x="738" y="211" text-anchor="middle" class="rel" font-size="16" font-weight="400">inferência</text></svg><figcaption>Canais previstos: Teams, Slack, web, desktop e CLI. O acesso do funcionário deve ficar restrito aos especialistas e fontes autorizados.</figcaption></figure>
+</section>
+<section id="c2"><span class="index">C2 / Contêineres</span><h2>O que roda em cada instalação</h2><p>O Temporal agenda e mantém o estado dos processos. Os workers executam as tarefas. A interface de operação e o editor opcional de workflows têm públicos e funções distintos.</p>
+<figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 357" role="img" aria-labelledby="t2"><title id="t2">Contêineres e interfaces da instalação</title><defs><marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#50736d"/></marker></defs>
+<rect x="20" y="25" width="260" height="62" rx="8" class="box"/><text x="150.0" y="50" text-anchor="middle" class="" font-size="16" font-weight="650">Workflow Builder · opcional</text><text x="150.0" y="72" text-anchor="middle" class="" font-size="13" font-weight="400">editor React + publicação do grafo</text>
+<rect x="410" y="25" width="260" height="62" rx="8" class="core"/><text x="540.0" y="50" text-anchor="middle" class="light" font-size="16" font-weight="650">Temporal Service</text><text x="540.0" y="72" text-anchor="middle" class="light" font-size="13" font-weight="400">execuções, filas, sinais e agendas</text>
+<rect x="800" y="25" width="260" height="62" rx="8" class="box"/><text x="930.0" y="50" text-anchor="middle" class="" font-size="16" font-weight="650">Temporal Web UI</text><text x="930.0" y="72" text-anchor="middle" class="" font-size="13" font-weight="400">FDE inspeciona execuções e falhas</text>
+<rect x="20" y="145" width="260" height="62" rx="8" class="box"/><text x="150.0" y="170" text-anchor="middle" class="" font-size="16" font-weight="650">Worker Node.js · opcional</text><text x="150.0" y="192" text-anchor="middle" class="" font-size="13" font-weight="400">interpreta o grafo com o plugin</text>
+<rect x="410" y="145" width="260" height="62" rx="8" class="box"/><text x="540.0" y="170" text-anchor="middle" class="" font-size="16" font-weight="650">Worker Python pxOS</text><text x="540.0" y="192" text-anchor="middle" class="" font-size="13" font-weight="400">workflows em código e Activities</text>
+<rect x="800" y="145" width="260" height="62" rx="8" class="outer"/><text x="930.0" y="170" text-anchor="middle" class="" font-size="16" font-weight="650">Granola e SharePoint</text><text x="930.0" y="192" text-anchor="middle" class="" font-size="13" font-weight="400">fontes externas de ingestão</text>
+<rect x="20" y="270" width="260" height="62" rx="8" class="core"/><text x="150.0" y="295" text-anchor="middle" class="light" font-size="16" font-weight="650">Hermes</text><text x="150.0" y="317" text-anchor="middle" class="light" font-size="13" font-weight="400">perfis, ferramentas e Claude</text>
+<rect x="410" y="270" width="260" height="62" rx="8" class="box"/><text x="540.0" y="295" text-anchor="middle" class="" font-size="16" font-weight="650">Hindsight</text><text x="540.0" y="317" text-anchor="middle" class="" font-size="13" font-weight="400">retenção e recuperação autorizada</text>
+<rect x="800" y="270" width="260" height="62" rx="8" class="core"/><text x="930.0" y="295" text-anchor="middle" class="light" font-size="16" font-weight="650">PostgreSQL + pgvector</text><text x="930.0" y="317" text-anchor="middle" class="light" font-size="13" font-weight="400">persistência no ambiente do cliente</text>
+<polyline class="edge" points="280,55 410,55" marker-end="url(#m2)"/><text x="345" y="47" text-anchor="middle" class="rel" font-size="16" font-weight="400">inicia versão</text>
+<polyline class="edge" points="800,55 670,55" marker-end="url(#m2)"/><text x="734" y="47" text-anchor="middle" class="rel" font-size="16" font-weight="400">opera</text>
+<polyline class="edge" points="445,87 445,110 150,110 150,145" marker-end="url(#m2)"/><text x="302" y="104" text-anchor="middle" class="rel" font-size="16" font-weight="400">tarefas do grafo</text>
+<polyline class="edge" points="540,87 540,145" marker-end="url(#m2)"/><text x="574" y="122" text-anchor="middle" class="rel" font-size="16" font-weight="400">tarefas</text>
+<polyline class="edge" points="800,178 670,178" marker-end="url(#m2)"/><text x="733" y="169" text-anchor="middle" class="rel" font-size="16" font-weight="400">conteúdo</text>
+<polyline class="edge" points="280,177 410,177" marker-end="url(#m2)"/><text x="345" y="167" text-anchor="middle" class="rel" font-size="16" font-weight="400">ponte¹</text>
+<polyline class="edge" points="445,207 445,237 150,237 150,270" marker-end="url(#m2)"/><text x="302" y="230" text-anchor="middle" class="rel" font-size="16" font-weight="400">invoca perfil</text>
+<polyline class="edge" points="540,207 540,270" marker-end="url(#m2)"/><text x="568" y="243" text-anchor="middle" class="rel" font-size="16" font-weight="400">retém</text>
+<polyline class="edge" points="280,301 410,301" marker-end="url(#m2)"/><text x="345" y="292" text-anchor="middle" class="rel" font-size="16" font-weight="400">consulta</text>
+<polyline class="edge" points="670,301 800,301" marker-end="url(#m2)"/><text x="735" y="292" text-anchor="middle" class="rel" font-size="16" font-weight="400">lê e grava</text></svg><figcaption>¹ Se a autoria visual for adotada, o executor Node.js precisa de uma integração explícita para reutilizar os conectores Python. O Temporal permanece o motor de execução.</figcaption></figure>
+<p>O FDE publica perfis e skills versionados com o vocabulário do cliente. Hermes chama Claude para inferência. A conversa privada permanece fora da base corporativa compartilhada por padrão.</p></section>
+<section id="c3"><span class="index">C3 / Componentes</span><h2>Por dentro do worker Python</h2><p>Duas responsabilidades usam o mesmo SDK do Temporal: sincronizar evidências de forma incremental e conduzir entregas até a revisão humana. As integrações externas rodam em Activities.</p>
+<figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 358" role="img" aria-labelledby="t3"><title id="t3">Componentes internos do worker Python</title><defs><marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#50736d"/></marker></defs>
+<rect x="20" y="30" width="260" height="62" rx="8" class="core"/><text x="150.0" y="55" text-anchor="middle" class="light" font-size="16" font-weight="650">Workflow de ingestão</text><text x="150.0" y="77" text-anchor="middle" class="light" font-size="13" font-weight="400">agenda, cursor e retomada</text>
+<rect x="410" y="30" width="260" height="62" rx="8" class="box"/><text x="540.0" y="55" text-anchor="middle" class="" font-size="16" font-weight="650">Conectores de leitura</text><text x="540.0" y="77" text-anchor="middle" class="" font-size="13" font-weight="400">Granola autorizado · Microsoft Graph</text>
+<rect x="800" y="30" width="260" height="62" rx="8" class="box"/><text x="930.0" y="55" text-anchor="middle" class="" font-size="16" font-weight="650">Normalização</text><text x="930.0" y="77" text-anchor="middle" class="" font-size="13" font-weight="400">texto integral, versão, origem e ACL</text>
+<rect x="800" y="150" width="260" height="62" rx="8" class="box"/><text x="930.0" y="175" text-anchor="middle" class="" font-size="16" font-weight="650">Gravação e expurgo</text><text x="930.0" y="197" text-anchor="middle" class="" font-size="13" font-weight="400">Hindsight e registros de sincronização</text>
+<rect x="20" y="150" width="260" height="62" rx="8" class="core"/><text x="150.0" y="175" text-anchor="middle" class="light" font-size="16" font-weight="650">Workflow de relatório</text><text x="150.0" y="197" text-anchor="middle" class="light" font-size="13" font-weight="400">projeto, período e versão do perfil</text>
+<rect x="410" y="150" width="260" height="62" rx="8" class="box"/><text x="540.0" y="175" text-anchor="middle" class="" font-size="16" font-weight="650">Activity de consulta</text><text x="540.0" y="197" text-anchor="middle" class="" font-size="13" font-weight="400">trechos permitidos no banco local</text>
+<rect x="410" y="270" width="260" height="62" rx="8" class="box"/><text x="540.0" y="295" text-anchor="middle" class="" font-size="16" font-weight="650">Activity do especialista</text><text x="540.0" y="317" text-anchor="middle" class="" font-size="13" font-weight="400">invoca Ana e persiste o rascunho</text>
+<rect x="20" y="270" width="260" height="62" rx="8" class="box"/><text x="150.0" y="295" text-anchor="middle" class="" font-size="16" font-weight="650">Revisão e publicação</text><text x="150.0" y="317" text-anchor="middle" class="" font-size="13" font-weight="400">PM, versão aprovada e comprovante</text>
+<polyline class="edge" points="280,61 410,61" marker-end="url(#m3)"/><text x="345" y="52" text-anchor="middle" class="rel" font-size="16" font-weight="400">busca delta</text>
+<polyline class="edge" points="670,61 800,61" marker-end="url(#m3)"/><text x="735" y="52" text-anchor="middle" class="rel" font-size="16" font-weight="400">extrai</text>
+<polyline class="edge" points="930,92 930,150" marker-end="url(#m3)"/><text x="970" y="125" text-anchor="middle" class="rel" font-size="16" font-weight="400">persiste</text>
+<polyline class="edge" points="280,181 410,181" marker-end="url(#m3)"/><text x="345" y="171" text-anchor="middle" class="rel" font-size="16" font-weight="400">solicita</text>
+<polyline class="edge" points="540,212 540,270" marker-end="url(#m3)"/><text x="592" y="245" text-anchor="middle" class="rel" font-size="16" font-weight="400">evidências</text>
+<polyline class="edge" points="410,301 280,301" marker-end="url(#m3)"/><text x="345" y="292" text-anchor="middle" class="rel" font-size="16" font-weight="400">rascunho</text></svg><figcaption>A consulta e a publicação verificam a identidade e o público da entrega. O histórico do workflow carrega referências às fontes e ao relatório; os textos permanecem no armazenamento do cliente.</figcaption></figure>
+</section>
+<section id="seq"><span class="index">Fluxos no tempo</span><h2>Diagramas de sequência</h2><p>As setas mostram a ordem das mensagens. Cada sequência identifica quem toma a iniciativa, quem acessa o banco e onde o processo pode esperar.</p>
+<h3>01 · Ingestão e atualização</h3>
+<figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 372" role="img" aria-labelledby="t4"><title id="t4">01 · Ingestão e atualização</title><defs><marker id="m4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#50736d"/></marker></defs>
+<line class="dash" x1="110.0" y1="49" x2="110.0" y2="362"/>
+<rect x="13.0" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="110.0" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Temporal</text>
+<line class="dash" x1="396.6666666666667" y1="49" x2="396.6666666666667" y2="362"/>
+<rect x="299.6666666666667" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="396.6666666666667" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Worker Python</text>
+<line class="dash" x1="683.3333333333334" y1="49" x2="683.3333333333334" y2="362"/>
+<rect x="586.3333333333334" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="683.3333333333334" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Granola / SharePoint</text>
+<line class="dash" x1="970.0" y1="49" x2="970.0" y2="362"/>
+<rect x="873.0" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="970.0" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">BD via Hindsight</text>
+<polyline class="edge" points="110.0,103 396.6666666666667,103" marker-end="url(#m4)"/>
+<text x="253.33333333333334" y="95" text-anchor="middle" class="rel" font-size="16" font-weight="400">1. Disparar carga inicial ou incremental</text>
+<polyline class="edge" points="396.6666666666667,149 683.3333333333334,149" marker-end="url(#m4)"/>
+<text x="540.0" y="141" text-anchor="middle" class="rel" font-size="16" font-weight="400">2. Ler fontes autorizadas desde o cursor</text>
+<polyline class="edge" points="683.3333333333334,195 396.6666666666667,195" marker-end="url(#m4)"/>
+<text x="540.0" y="187" text-anchor="middle" class="rel" font-size="16" font-weight="400">3. Transcrição ou arquivo + metadados</text>
+<polyline class="edge" points="396.6666666666667,241 970.0,241" marker-end="url(#m4)"/>
+<text x="683.3333333333334" y="233" text-anchor="middle" class="rel" font-size="16" font-weight="400">4. Gravar texto normalizado, origem, versão e acesso</text>
+<polyline class="edge" points="970.0,287 396.6666666666667,287" marker-end="url(#m4)"/>
+<text x="683.3333333333334" y="279" text-anchor="middle" class="rel" font-size="16" font-weight="400">5. Confirmar persistência e indexação</text>
+<polyline class="edge" points="396.6666666666667,333 110.0,333" marker-end="url(#m4)"/>
+<text x="253.33333333333334" y="325" text-anchor="middle" class="rel" font-size="16" font-weight="400">6. Confirmar lote e avançar cursor</text></svg><figcaption>Em retry, a mesma fonte e versão não duplicam conteúdo. Exclusões e revogações removem o acesso ao texto e aos derivados; falhas deixam o lote pendente.</figcaption></figure>
+<h3>02 · Pergunta à Ana</h3>
+<figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 372" role="img" aria-labelledby="t5"><title id="t5">02 · Pergunta à Ana</title><defs><marker id="m5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#50736d"/></marker></defs>
+<line class="dash" x1="110.0" y1="49" x2="110.0" y2="362"/>
+<rect x="13.0" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="110.0" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Pessoa / canal</text>
+<line class="dash" x1="396.6666666666667" y1="49" x2="396.6666666666667" y2="362"/>
+<rect x="299.6666666666667" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="396.6666666666667" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Ana · Hermes</text>
+<line class="dash" x1="683.3333333333334" y1="49" x2="683.3333333333334" y2="362"/>
+<rect x="586.3333333333334" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="683.3333333333334" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Hindsight + BD</text>
+<line class="dash" x1="970.0" y1="49" x2="970.0" y2="362"/>
+<rect x="873.0" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="970.0" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Claude</text>
+<polyline class="edge" points="110.0,103 396.6666666666667,103" marker-end="url(#m5)"/>
+<text x="253.33333333333334" y="95" text-anchor="middle" class="rel" font-size="16" font-weight="400">1. Perguntar com identidade e público</text>
+<polyline class="edge" points="396.6666666666667,149 683.3333333333334,149" marker-end="url(#m5)"/>
+<text x="540.0" y="141" text-anchor="middle" class="rel" font-size="16" font-weight="400">2. Buscar no escopo autorizado</text>
+<polyline class="edge" points="683.3333333333334,195 396.6666666666667,195" marker-end="url(#m5)"/>
+<text x="540.0" y="187" text-anchor="middle" class="rel" font-size="16" font-weight="400">3. Retornar trechos e referências</text>
+<polyline class="edge" points="396.6666666666667,241 970.0,241" marker-end="url(#m5)"/>
+<text x="683.3333333333334" y="233" text-anchor="middle" class="rel" font-size="16" font-weight="400">4. Enviar pergunta e evidências</text>
+<polyline class="edge" points="970.0,287 396.6666666666667,287" marker-end="url(#m5)"/>
+<text x="683.3333333333334" y="279" text-anchor="middle" class="rel" font-size="16" font-weight="400">5. Gerar resposta</text>
+<polyline class="edge" points="396.6666666666667,333 110.0,333" marker-end="url(#m5)"/>
+<text x="253.33333333333334" y="325" text-anchor="middle" class="rel" font-size="16" font-weight="400">6. Responder com fontes</text></svg><figcaption>Granola e SharePoint estão fora deste caminho. Se a sincronização das permissões de uma fonte restrita ultrapassar o limite definido pelo cliente, a consulta exclui essa fonte até a reconciliação.</figcaption></figure>
+<h3>03 · Relatório semanal e revisão</h3>
+<figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 464" role="img" aria-labelledby="t6"><title id="t6">03 · Relatório semanal e revisão</title><defs><marker id="m6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#50736d"/></marker></defs>
+<line class="dash" x1="110.0" y1="49" x2="110.0" y2="454"/>
+<rect x="13.0" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="110.0" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Temporal</text>
+<line class="dash" x1="396.6666666666667" y1="49" x2="396.6666666666667" y2="454"/>
+<rect x="299.6666666666667" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="396.6666666666667" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Worker Python</text>
+<line class="dash" x1="683.3333333333334" y1="49" x2="683.3333333333334" y2="454"/>
+<rect x="586.3333333333334" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="683.3333333333334" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">Ana · Hermes</text>
+<line class="dash" x1="970.0" y1="49" x2="970.0" y2="454"/>
+<rect x="873.0" y="12" width="194" height="38" rx="7" class="box"/>
+<text x="970.0" y="37" text-anchor="middle" class="" font-size="15" font-weight="650">PM / canal</text>
+<polyline class="edge" points="110.0,103 396.6666666666667,103" marker-end="url(#m6)"/>
+<text x="253.33333333333334" y="95" text-anchor="middle" class="rel" font-size="16" font-weight="400">1. Iniciar período e fixar versão da Ana</text>
+<polyline class="edge" points="396.6666666666667,149 683.3333333333334,149" marker-end="url(#m6)"/>
+<text x="540.0" y="141" text-anchor="middle" class="rel" font-size="16" font-weight="400">2. Invocar perfil com evidências locais autorizadas</text>
+<polyline class="edge" points="683.3333333333334,195 396.6666666666667,195" marker-end="url(#m6)"/>
+<text x="540.0" y="187" text-anchor="middle" class="rel" font-size="16" font-weight="400">3. Devolver rascunho com fontes</text>
+<polyline class="edge" points="396.6666666666667,241 970.0,241" marker-end="url(#m6)"/>
+<text x="683.3333333333334" y="233" text-anchor="middle" class="rel" font-size="16" font-weight="400">4. Apresentar versão para revisão</text>
+<polyline class="edge" points="970.0,287 396.6666666666667,287" marker-end="url(#m6)"/>
+<text x="683.3333333333334" y="279" text-anchor="middle" class="rel" font-size="16" font-weight="400">5. Informar decisão sobre a versão</text>
+<polyline class="edge" points="396.6666666666667,333 110.0,333" marker-end="url(#m6)"/>
+<text x="253.33333333333334" y="325" text-anchor="middle" class="rel" font-size="16" font-weight="400">6. Sinalizar decisão autenticada</text>
+<polyline class="edge" points="110.0,379 396.6666666666667,379" marker-end="url(#m6)"/>
+<text x="253.33333333333334" y="371" text-anchor="middle" class="rel" font-size="16" font-weight="400">7. Retomar e conferir aprovação</text>
+<polyline class="edge" points="396.6666666666667,425 970.0,425" marker-end="url(#m6)"/>
+<text x="683.3333333333334" y="417" text-anchor="middle" class="rel" font-size="16" font-weight="400">8. Publicar a versão aprovada</text></svg><figcaption>Na rejeição, gerar nova versão e solicitar revisão. Na aprovação, verificar o papel do PM e usar chave de idempotência para que uma repetição não duplique a publicação.</figcaption></figure>
+</section></main><footer>pxOS · Proposta de arquitetura por instalação · 25 nov 2026</footer></body></html>
