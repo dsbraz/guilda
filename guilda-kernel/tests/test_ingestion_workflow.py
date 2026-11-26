@@ -7,7 +7,7 @@ Temporal history, even when the connector or the context memory fails quoting it
 """
 
 import asyncio
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
@@ -149,15 +149,19 @@ async def test_a_transient_failure_is_retried(
 
 
 @pytest.mark.parametrize(
-    ("fake", "store"),
+    ("make_connector", "make_store"),
     [
-        pytest.param(connector(), Store(failures=1, error=ValueError), id="context memory"),
-        pytest.param(Garbled("fixture-garbled"), Store(), id="connector"),
+        pytest.param(connector, lambda: Store(failures=1, error=ValueError), id="context memory"),
+        pytest.param(lambda: Garbled("fixture-garbled"), Store, id="connector"),
     ],
 )
 async def test_a_failure_does_not_carry_the_source_into_history(
-    temporal: Client, pool: asyncpg.Pool, fake: Connector, store: Store
+    temporal: Client,
+    pool: asyncpg.Pool,
+    make_connector: Callable[[], Connector],
+    make_store: Callable[[], Store],
 ) -> None:
+    fake, store = make_connector(), make_store()
     async with worker(temporal, pool, fake, store) as queue:
         handle = await start(temporal, queue, fake.name)
         with pytest.raises(WorkflowFailureError):

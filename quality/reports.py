@@ -21,7 +21,7 @@ def write(directory: Path, report: dict[str, Any]) -> None:
     lines += [
         f"| {key} | {'PASS' if value else 'FAIL'} |" for key, value in report["checks"].items()
     ]
-    lines += ["", "```json", json.dumps(report, indent=2), "```", ""]
+    lines += ["", f"Full report: `{name}.json`", ""]
     (directory / f"{name}.md").write_text("\n".join(lines))
 
 

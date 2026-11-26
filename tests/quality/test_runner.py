@@ -131,4 +131,5 @@ def test_cli_writes_summary_and_returns_gate_status(
         ["quality", mode, "--output", str(repository)] + (["--aggregate"] if aggregate else []),
     )
     assert runner.main() == int(aggregate)
-    assert summary.is_file()
+    assert "| Check | Result |" in summary.read_text()
+    assert "```json" not in summary.read_text()
