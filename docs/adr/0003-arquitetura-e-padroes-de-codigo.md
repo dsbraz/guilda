@@ -6,7 +6,7 @@
 
 O kernel vai ser construído por um time de duas pessoas (mantenedor e agente), mas
 precisa durar e ser operado por instalação dedicada por cliente. Os padrões abaixo
-valem para `pxos-kernel/` e `brq-at-work/`. Eles derivam do que os spikes provaram e das
+valem para `guilda-kernel/` e `brq-at-work/`. Eles derivam do que os spikes provaram e das
 regras do `AGENTS.md` (simplicidade, mudanças cirúrgicas).
 
 ## Decisões
@@ -19,7 +19,7 @@ microsserviços. Um módulo só vira processo separado quando houver motivo medi
 (escala, isolamento de falha, ciclo de deploy).
 
 ```
-pxos-kernel/src/pxos_kernel/
+guilda-kernel/src/guilda_kernel/
 ├── ontology/      base, metamodelo, carga de pacotes, geração
 ├── state/         estado canônico: propostas, revisões, fatos, outbox
 ├── identity/      atores, papéis, delegação, contexto de sessão
@@ -36,7 +36,7 @@ seus pacotes (modelos gerados, manifestos e configuração) por uma API pública
 O kernel nunca importa código da distribuição, nem dinamicamente por nome; ele só conhece
 o que recebe no registro. Cada pacote guarda o seu LinkML e o código gerado a partir dele
 na própria pasta, dentro do pacote Python, para que o código gerado seja importável e
-a ontologia vá junto na distribuição do pacote (`pxos_kernel/ontology/base/` para a base,
+a ontologia vá junto na distribuição do pacote (`guilda_kernel/ontology/base/` para a base,
 `brq_at_work/ontology/<pacote>/` para os pacotes da distribuição). Os testes do kernel
 registram o pacote fixture da mesma forma.
 
@@ -85,7 +85,7 @@ já funcionam assim. Modelos Pydantic gerados do LinkML validam o que entra e sa
 ### 7. Erros
 
 Falhas são explícitas. Uma hierarquia pequena por módulo (ex.: `ProposalRejected`,
-`NotAuthorized`, `StaleRevision`) herdando de `PxosError`. Sem `except` genérico, sem
+`NotAuthorized`, `StaleRevision`) herdando de `GuildaError`. Sem `except` genérico, sem
 fallback silencioso, sem retorno `None` para indicar erro.
 
 ### 8. Eventos

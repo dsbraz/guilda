@@ -24,30 +24,30 @@ from brq_at_work.composition import ACCESS, IDENTITIES
 from brq_at_work.environment import MissingSetting, identities, sharepoint, teams
 from brq_at_work.publish_agent import AGENT_FILE
 from brq_at_work.serve import AGENT, adapters
-from pxos_granola import GranolaTranscripts
-from pxos_kernel.channel import Card
-from pxos_kernel.identity import read_identities
-from pxos_kernel.meetings import MeetingConnector
-from pxos_kernel.ontology import Registry
-from pxos_sharepoint import ClientCertificate, ClientSecret, DelegatedToken, SharePointConnector
-from pxos_teams import Certificate
+from guilda_granola import GranolaTranscripts
+from guilda_kernel.channel import Card
+from guilda_kernel.identity import read_identities
+from guilda_kernel.meetings import MeetingConnector
+from guilda_kernel.ontology import Registry
+from guilda_sharepoint import ClientCertificate, ClientSecret, DelegatedToken, SharePointConnector
+from guilda_teams import Certificate
 
 CONVERSATION = "19:project@thread.tacv2"
 REQUIRED = {
-    "PXOS_SHAREPOINT_TENANT": "tenant-sp",
-    "PXOS_SHAREPOINT_CLIENT_ID": "client-sp",
-    "PXOS_SHAREPOINT_DRIVE_ID": "drive-1",
-    "PXOS_GRANOLA_API_KEY": "grn_key",
-    "PXOS_TEAMS_APP_ID": "app-1",
-    "PXOS_TEAMS_TENANT_ID": "tenant-teams",
-    "PXOS_TEAMS_SERVICE_URL": "https://smba.example.test/teams/",
-    "PXOS_TEAMS_CONVERSATION": CONVERSATION,
+    "GUILDA_SHAREPOINT_TENANT": "tenant-sp",
+    "GUILDA_SHAREPOINT_CLIENT_ID": "client-sp",
+    "GUILDA_SHAREPOINT_DRIVE_ID": "drive-1",
+    "GUILDA_GRANOLA_API_KEY": "grn_key",
+    "GUILDA_TEAMS_APP_ID": "app-1",
+    "GUILDA_TEAMS_TENANT_ID": "tenant-teams",
+    "GUILDA_TEAMS_SERVICE_URL": "https://smba.example.test/teams/",
+    "GUILDA_TEAMS_CONVERSATION": CONVERSATION,
 }
-SECRETS = {"PXOS_SHAREPOINT_CLIENT_SECRET": "sp-secret", "PXOS_TEAMS_SECRET": "bot-secret"}
+SECRETS = {"GUILDA_SHAREPOINT_CLIENT_SECRET": "sp-secret", "GUILDA_TEAMS_SECRET": "bot-secret"}
 
 
 def environment(cards: Path, **overrides: str) -> dict[str, str]:
-    return {**REQUIRED, **SECRETS, "PXOS_TEAMS_CARDS_PATH": str(cards), **overrides}
+    return {**REQUIRED, **SECRETS, "GUILDA_TEAMS_CARDS_PATH": str(cards), **overrides}
 
 
 class Microsoft:
@@ -143,7 +143,7 @@ async def test_a_card_delivered_again_after_a_restart_replaces_its_message(
 
     methods = [r.method for r in microsoft.requests if "/activities" in str(r.url)]
     assert methods == ["POST", "PUT"]
-    with shelve.open(env["PXOS_TEAMS_CARDS_PATH"]) as cards:
+    with shelve.open(env["GUILDA_TEAMS_CARDS_PATH"]) as cards:
         assert list(cards) == [f"{review.proposal_id}:ana"]
 
 
@@ -165,7 +165,7 @@ async def test_the_bot_endpoint_refuses_an_unauthenticated_call(
     assert response.status_code == 401
 
 
-@pytest.mark.parametrize("name", [*REQUIRED, "PXOS_TEAMS_CARDS_PATH"])
+@pytest.mark.parametrize("name", [*REQUIRED, "GUILDA_TEAMS_CARDS_PATH"])
 async def test_a_missing_variable_stops_the_installation_naming_it(
     pool: asyncpg.Pool, registry: Registry, tmp_path: Path, name: str
 ) -> None:
@@ -180,8 +180,8 @@ async def test_a_missing_variable_stops_the_installation_naming_it(
 @pytest.mark.parametrize(
     ("secret", "key"),
     [
-        ("PXOS_SHAREPOINT_CLIENT_SECRET", "PXOS_SHAREPOINT_CERTIFICATE_KEY"),
-        ("PXOS_TEAMS_SECRET", "PXOS_TEAMS_CERTIFICATE_KEY"),
+        ("GUILDA_SHAREPOINT_CLIENT_SECRET", "GUILDA_SHAREPOINT_CERTIFICATE_KEY"),
+        ("GUILDA_TEAMS_SECRET", "GUILDA_TEAMS_CERTIFICATE_KEY"),
     ],
 )
 def test_a_credential_is_a_secret_or_a_certificate_never_both_or_neither(
@@ -201,14 +201,14 @@ def test_sharepoint_authenticates_with_a_certificate_when_one_is_given(tmp_path:
     key, certificate = pem_pair()
     env = environment(
         tmp_path,
-        PXOS_SHAREPOINT_CLIENT_SECRET="",
-        PXOS_SHAREPOINT_CERTIFICATE_KEY=key,
-        PXOS_SHAREPOINT_FOLDER_ID="folder-9",
+        GUILDA_SHAREPOINT_CLIENT_SECRET="",
+        GUILDA_SHAREPOINT_CERTIFICATE_KEY=key,
+        GUILDA_SHAREPOINT_FOLDER_ID="folder-9",
     )
-    with pytest.raises(MissingSetting, match="PXOS_SHAREPOINT_CERTIFICATE\\b"):
+    with pytest.raises(MissingSetting, match="GUILDA_SHAREPOINT_CERTIFICATE\\b"):
         sharepoint(env)
 
-    library = sharepoint({**env, "PXOS_SHAREPOINT_CERTIFICATE": certificate})
+    library = sharepoint({**env, "GUILDA_SHAREPOINT_CERTIFICATE": certificate})
 
     assert library._credential == ClientCertificate(key.encode(), certificate.encode())
     assert library._start.endswith("/drives/drive-1/items/folder-9/delta")
@@ -217,25 +217,25 @@ def test_sharepoint_authenticates_with_a_certificate_when_one_is_given(tmp_path:
 
 def test_sharepoint_reads_as_a_signed_in_user_when_a_token_path_is_given(tmp_path: Path) -> None:
     token = str(tmp_path / "sharepoint-token")
-    env = environment(tmp_path, PXOS_SHAREPOINT_CLIENT_SECRET="")
+    env = environment(tmp_path, GUILDA_SHAREPOINT_CLIENT_SECRET="")
 
-    library = sharepoint({**env, "PXOS_SHAREPOINT_TOKEN_PATH": token})
+    library = sharepoint({**env, "GUILDA_SHAREPOINT_TOKEN_PATH": token})
 
     assert library._credential == DelegatedToken(Path(token))
     for other in (
-        {"PXOS_SHAREPOINT_CLIENT_SECRET": "sp-secret"},
-        {"PXOS_SHAREPOINT_CERTIFICATE_KEY": "-----BEGIN PRIVATE KEY-----"},
+        {"GUILDA_SHAREPOINT_CLIENT_SECRET": "sp-secret"},
+        {"GUILDA_SHAREPOINT_CERTIFICATE_KEY": "-----BEGIN PRIVATE KEY-----"},
     ):
-        with pytest.raises(MissingSetting, match="PXOS_SHAREPOINT_TOKEN_PATH"):
-            sharepoint({**env, "PXOS_SHAREPOINT_TOKEN_PATH": token, **other})
+        with pytest.raises(MissingSetting, match="GUILDA_SHAREPOINT_TOKEN_PATH"):
+            sharepoint({**env, "GUILDA_SHAREPOINT_TOKEN_PATH": token, **other})
 
 
 def test_teams_authenticates_with_a_certificate_when_one_is_given(tmp_path: Path) -> None:
-    env = environment(tmp_path, PXOS_TEAMS_SECRET="", PXOS_TEAMS_CERTIFICATE_KEY="pem")
-    with pytest.raises(MissingSetting, match="PXOS_TEAMS_CERTIFICATE_THUMBPRINT"):
+    env = environment(tmp_path, GUILDA_TEAMS_SECRET="", GUILDA_TEAMS_CERTIFICATE_KEY="pem")
+    with pytest.raises(MissingSetting, match="GUILDA_TEAMS_CERTIFICATE_THUMBPRINT"):
         teams(env, "projeto-piloto")
 
-    settings = teams({**env, "PXOS_TEAMS_CERTIFICATE_THUMBPRINT": "ab12"}, "projeto-piloto")
+    settings = teams({**env, "GUILDA_TEAMS_CERTIFICATE_THUMBPRINT": "ab12"}, "projeto-piloto")
 
     assert (settings.secret, settings.certificate) == (None, Certificate("pem", "ab12"))
     assert settings.threads == {"projeto-piloto": CONVERSATION}
@@ -246,5 +246,5 @@ def test_identities_come_from_the_distro_unless_the_deploy_points_elsewhere(
 ) -> None:
     own = tmp_path / "identities.yaml"
     assert identities({}) == IDENTITIES
-    assert identities({"PXOS_IDENTITIES_PATH": " "}) == IDENTITIES
-    assert identities({"PXOS_IDENTITIES_PATH": str(own)}) == own
+    assert identities({"GUILDA_IDENTITIES_PATH": " "}) == IDENTITIES
+    assert identities({"GUILDA_IDENTITIES_PATH": str(own)}) == own

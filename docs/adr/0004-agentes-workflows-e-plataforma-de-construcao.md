@@ -52,7 +52,7 @@ decidiu adotar os dois motores e fazer da plataforma o lugar de construção e o
 
 ### 3. Plataforma de construção
 
-A área web do pxOS é o lugar único para configurar a instalação, construir agentes, compor
+A área web da Guilda é o lugar único para configurar a instalação, construir agentes, compor
 workflows, publicar e acompanhar execuções e aprovações. É kernel pela regra do ADR 0002:
 não mudaria se o cliente fosse outro.
 
@@ -91,7 +91,7 @@ não mudaria se o cliente fosse outro.
 
 ## Nota de escopo — 15/11/2026: MVP antes do builder
 
-O [PRD v0.27](../../pxos-brq-work-prd.html#mvp) antecipa o piloto de um agente por
+O [PRD v0.27](../../guilda-brq-work-prd.html#mvp) antecipa o piloto de um agente por
 projeto, que prepara acompanhamento semanal com contexto contínuo, esclarecimentos em
 threads no Teams e revisão do PM antes de compartilhar com o cliente. O builder vem depois
 do MVP.
@@ -109,11 +109,11 @@ o piloto.
 
 As responsabilidades dos motores não mudam: ADK executa o trabalho do agente em Activities;
 Temporal mantém agenda, espera e retomada. Contexto, fontes, respostas e trabalho em
-andamento persistem no pxOS entre conversas e semanas. Ingerir contexto não exige
+andamento persistem na Guilda entre conversas e semanas. Ingerir contexto não exige
 aprovação de cada trecho e não autoriza alterações canônicas ou ações externas; a entrega
 semanal passa pela revisão do PM.
 
 SharePoint entra por Microsoft Graph direto, com carga inicial e consulta incremental
-periódica; Granola por conexão própria do pxOS (API se disponível, ou MCP autenticado após
+periódica; Granola por conexão própria da Guilda (API se disponível, ou MCP autenticado após
 validar operação agendada). Acessos, ambiente e condições do piloto permanecem
-[dependências abertas com critérios de resolução](../../pxos-brq-work-prd.html#mvp-dependencias).
+[dependências abertas com critérios de resolução](../../guilda-brq-work-prd.html#mvp-dependencias).

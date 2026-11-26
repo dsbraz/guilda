@@ -17,10 +17,10 @@ from brq_at_work.composition import ACCESS
 from brq_at_work.publish_agent import AGENT_FILE, main
 from brq_at_work.serve import AGENT
 from db_testing import Database
-from pxos_kernel.agents import AgentVersion, approved_version
-from pxos_kernel.identity import session
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import Proposal, create_pool, get_proposal, review
+from guilda_kernel.agents import AgentVersion, approved_version
+from guilda_kernel.identity import session
+from guilda_kernel.ontology import Registry
+from guilda_kernel.state import Proposal, create_pool, get_proposal, review
 
 
 async def approve(

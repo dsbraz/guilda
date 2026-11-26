@@ -1,18 +1,18 @@
-# Roadmap: pxOS kernel → BRQ@work
+# Roadmap: Guilda kernel → BRQ@work
 
 ## Contexto
 
-O PRD `pxos-brq-work-prd.html` (v0.27) descreve o **kernel do pxOS** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B), em construção por fatias verticais. Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026. O spike ADK + Temporal foi concluído em 14/11/2026; o mantenedor aprovou a adoção dos dois motores e a criação e operação de agentes e workflows dentro da plataforma.
+O PRD `guilda-brq-work-prd.html` (v0.27) descreve o **kernel da Guilda** (Parte A) e sua primeira distribuição, a **BRQ@work** (Parte B), em construção por fatias verticais. Os spikes de memória, ontologia e governança, e execução e isolamento foram concluídos em 13/11/2026. O spike ADK + Temporal foi concluído em 14/11/2026; o mantenedor aprovou a adoção dos dois motores e a criação e operação de agentes e workflows dentro da plataforma.
 
 Decisões já tomadas:
 - **Entregável:** roadmap em fases, com marcos, dependências, gates e critérios de saída.
-- **Primeiro marco:** piloto do [agente de acompanhamento de projeto](pxos-brq-work-prd.html#mvp) com um time real, status semanal revisado pelo PM e contexto contínuo. **Kernel completo** permanece como marco posterior, com os 13 contêineres do §5 e os 13 requisitos do §4.
+- **Primeiro marco:** piloto do [agente de acompanhamento de projeto](guilda-brq-work-prd.html#mvp) com um time real, status semanal revisado pelo PM e contexto contínuo. **Kernel completo** permanece como marco posterior, com os 13 contêineres do §5 e os 13 requisitos do §4.
 - **Memória:** contexto no Hindsight sobre PostgreSQL + pgvector (AlloyDB como opção de implantação); estado canônico tipado e governado próprio em PostgreSQL ([ADR 0001](docs/adr/0001-memoria-contexto-e-estado-canonico.md)). Graphiti, Neo4j, Mem0 e LangExtract rejeitados.
 - **Fronteira kernel/distribuição** por natureza, com o mantenedor como árbitro ([ADR 0002](docs/adr/0002-fronteira-kernel-distribuicao.md)).
 - **Arquitetura e padrões de código** em [ADR 0003](docs/adr/0003-arquitetura-e-padroes-de-codigo.md).
 - **Agentes e workflows:** Google ADK para agentes; Temporal como único motor de processos duráveis. ADK roda em Activities quando participa de um workflow. Aprovação, identidade e execução autorizada permanecem no kernel; o histórico dos motores não substitui a memória corporativa. [Evidência do spike](spikes/adk-temporal/reports/ADR-001.md): 13 testes passaram, incluindo Gemini real, retomada e execução incerta. Integração e operação de produção ainda precisam ser entregues ([ADR 0004](docs/adr/0004-agentes-workflows-e-plataforma-de-construcao.md)).
 - **Experiência de construção:** a plataforma é o lugar único para configurar a instalação, construir agentes, compor workflows, publicar e acompanhar ([ADR 0004](docs/adr/0004-agentes-workflows-e-plataforma-de-construcao.md)). Configuração fica na plataforma (conectores já existentes, papéis, aprovadores, autonomia, agentes, workflows); código de conectores e ferramentas e a ontologia continuam em código, escritos pelo FDE. Toda mudança feita na plataforma vira versão publicada, imutável, com digest e aprovada por um papel; o Git deixa de ser a fonte de verdade das definições de agentes e workflows. Editar a ontologia pela interface fica fora do escopo atual. APIs e MCP permitem integrar outras plataformas sob as mesmas permissões e política. A biblioteca de interface ainda não foi escolhida.
-- **Experiência unificada:** uma única área web do pxOS, com login, navegação e identidade visual próprios, reúne memória corporativa, agentes, workflows, execuções e aprovações. O backend aplica permissões e integra os motores. Canais como Teams continuam disponíveis; web e canais compartilham fatos, decisões e fila de revisão.
+- **Experiência unificada:** uma única área web da Guilda, com login, navegação e identidade visual próprios, reúne memória corporativa, agentes, workflows, execuções e aprovações. O backend aplica permissões e integra os motores. Canais como Teams continuam disponíveis; web e canais compartilham fatos, decisões e fila de revisão.
 - **Implantação:** instalação dedicada por cliente é o padrão, e dentro dela valem as permissões internas. O modo compartilhado fica adiado.
 - **Time:** você e eu. O gargalo é o seu tempo de revisão e os acessos externos (TI, jurídico, GCP), não a escrita de código. Por isso o plano é sequenciado por critério de saída, sem datas.
 
@@ -27,7 +27,7 @@ Assim cada fase tem um critério executável.
 ## Princípios de execução
 
 - **Local primeiro** (CLAUDE.md): Docker Compose com portas só em loopback, Postgres 16 + pgvector local e emuladores (Pub/Sub, Firestore/Datastore se preciso). Cada serviço GCP (Vertex, Agent Gateway, eventual Agent Engine, BigQuery, Secret Manager) fica atrás de um **adaptador** com implementação local e GCP. ADK e Temporal rodam localmente; a implantação de produção será validada sem trocar o motor de workflows. Isso também atende o requisito 12 (portabilidade).
-- **Monorepo:** workspace uv na raiz com `pxos-kernel/` (kernel) e `brq-at-work/` (distribuição), `docs/adr/` e `spikes/`. Outras pastas (`infra/`, `evals/`, Constituição) nascem com a issue que as usa.
+- **Monorepo:** workspace uv na raiz com `guilda-kernel/` (kernel) e `brq-at-work/` (distribuição), `docs/adr/` e `spikes/`. Outras pastas (`infra/`, `evals/`, Constituição) nascem com a issue que as usa.
 - **Stack:** Python 3.12, LinkML, Pydantic, asyncpg com SQL explícito, Alembic, PostgreSQL/AlloyDB, Hindsight, Google ADK, Temporal, pytest e Terraform (ADR 0003). O MCP básico entregue na fatia 3 saiu do código em 15/11/2026, por estar fora do MVP ([ADR 0005](docs/adr/0005-poda-para-o-mvp.md)). A Fase 8 implementa a integração dos motores escolhidos; as versões do spike são evidência, não uma política de versões de produção.
 - **Requisitos viram testes:** cada um dos 13 requisitos do §4 vira um teste automatizado de aceitação, que roda no CI desde que existe.
 - **Medição desde o começo (intenção):** traces (OpenTelemetry) e conjuntos de avaliação devem começar na primeira chamada de modelo, não no fim. Ainda não há medição no código; o piloto exige ao menos uso e custo por execução (fatia 13).
@@ -49,7 +49,7 @@ Revisão de 15/11/2026. Esta sequência orienta as próximas entregas utilizáve
 
 As fatias 10, 11 e 12 podem andar em paralelo; a 13 as junta e roda os sete cenários com fakes; a 14 depende dos acessos. Os cenários estão em `brq-at-work/tests/test_mvp_scenarios.py`, como falha esperada estrita até cada fatia entregá-los.
 
-As [dependências e seus critérios de resolução](pxos-brq-work-prd.html#mvp-dependencias) e os [cenários de aceitação](pxos-brq-work-prd.html#mvp-aceitacao) são o contrato do piloto. Projeto/participantes, Teams/TI, Graph, Granola, ambiente, agenda e duração permanecem abertos. Resolver acessos e validar o ambiente antes do uso real; não presumir APIs, credenciais ou infraestrutura disponíveis.
+As [dependências e seus critérios de resolução](guilda-brq-work-prd.html#mvp-dependencias) e os [cenários de aceitação](guilda-brq-work-prd.html#mvp-aceitacao) são o contrato do piloto. Projeto/participantes, Teams/TI, Graph, Granola, ambiente, agenda e duração permanecem abertos. Resolver acessos e validar o ambiente antes do uso real; não presumir APIs, credenciais ou infraestrutura disponíveis.
 
 **Refinamento arquitetural:** [ADR 0006](docs/adr/0006-arquitetura-do-agente-especialista.md) mantém ADK, Temporal e LinkML e amplia o uso do Hindsight. Vocabulário específico e configuração do agente e do ciclo ficam na distro; integração, autorização, montagem do agente, workflow do ciclo e revisão ficam no kernel. Só o report semanal vira fato canônico, revisado pelo PM; riscos e decisões das fontes continuam contexto. A avaliação do piloto cobre distinção entre risco, atraso e prazo renegociado, fontes e correções.
 
@@ -65,7 +65,7 @@ As [dependências e seus critérios de resolução](pxos-brq-work-prd.html#mvp-d
 - **Abrir já as frentes externas** (prazo longo, bloqueiam as respectivas entregas do piloto): permissões no Entra ID e contas de serviço, API do portal de alocação e horas, modelo de acesso ao Granola, política de transcrições com cliente e residência de dados (jurídico).
 - **Saída:** `docker compose up` sobe a base, o CI roda, os ADRs 0001–0003 estão aceitos e as frentes externas têm dono e status.
 
-**Fatia 1 (atravessa F0–F2):** PXOS-1 (K01), as sub-issues PXOS-47 a 51 (partes de K04, K05, K06, K08 e K09), PXOS-7 (K07) e, na BRQ@work, o pacote de contexto de trabalho (PXOS-46). **Saída:** um compromisso é proposto com evidência, aprovado pelo papel declarado, lido em duas datas e corrigido sem perder histórico; o pacote fixture de outro domínio faz o mesmo ciclo; nenhum tipo de domínio aparece em `pxos-kernel/`.
+**Fatia 1 (atravessa F0–F2):** PXOS-1 (K01), as sub-issues PXOS-47 a 51 (partes de K04, K05, K06, K08 e K09), PXOS-7 (K07) e, na BRQ@work, o pacote de contexto de trabalho (PXOS-46). **Saída:** um compromisso é proposto com evidência, aprovado pelo papel declarado, lido em duas datas e corrigido sem perder histórico; o pacote fixture de outro domínio faz o mesmo ciclo; nenhum tipo de domínio aparece em `guilda-kernel/`.
 
 ### Fase 1: Ontologia e geração de código
 - Ontologia base em LinkML (Organização, Contrato, Ator, Papel, Evento, Evidência, Métrica, Resultado e suas ações), mais o pacote de contexto de trabalho (na distribuição BRQ@work) e um pacote fixture de outro domínio.
@@ -114,7 +114,7 @@ As [dependências e seus critérios de resolução](pxos-brq-work-prd.html#mvp-d
 - **Saída:** passam os testes dos requisitos 1 (o mesmo MCP serve pessoa e agente), 6 (ação irreversível sempre aprovada) e 7 (latência p95 do caminho síncrono dentro da meta definida no ADR).
 
 ### Fase 8: Construção e operação de agentes e workflows
-Uma única área web do pxOS, construída nesta ordem, cada etapa útil sozinha:
+Uma única área web da Guilda, construída nesta ordem, cada etapa útil sozinha:
 
 1. **Aprovações e execuções:** navegação e autenticação comuns; a fila de aprovações é a mesma dos canais, com decisão única e estado consistente nas duas superfícies; a memória permite consultar contexto, fatos, fontes e histórico; o painel lista execuções por instalação, função, período e estado e mostra etapa, versão, evidência, ferramentas, aprovação, resultado, custo e erro, correlacionando IDs Temporal/ADK com proposta e ação do gateway. Intervenções só as autorizadas pelo processo (esclarecer, aprovar, cancelar, reconciliar); nada de retry cego para efeito incerto.
 2. **Agentes por formulário:** função, instruções, contexto, modelo, ferramentas do catálogo, saída esperada, responsável e autonomia; teste com exemplos e resultados esperados; publicação como versão imutável com digest, aprovada por um papel. Identidade própria e leitura com a delegação da pessoa.
@@ -125,7 +125,7 @@ Edição da ontologia pela interface fica fora desta fase e do marco do kernel; 
 
 - **Motores:** ADK executa interpretação e ferramentas; Temporal controla processos duráveis, espera, prazos e retomada. Chamadas ADK ficam em Activities. Não duplicar o ciclo de aprovação nos dois motores nem construir motor próprio. Sessões e histórico de execução não substituem Hindsight e estado canônico.
 - **Regras de integração (ADR 0004):** chamadas de modelo do ADK passam pelo acesso a modelos (Fase 3); workflows carregam só referências, nunca conteúdo ou dados pessoais, para a exclusão continuar efetiva; namespace Temporal e credenciais de worker por instalação; o worker abre a sessão no banco como o agente, agindo pela pessoa; a decisão de revisão chega ao workflow como sinal a partir da outbox, sem segunda fila.
-- **Gatilhos:** Temporal Schedules para agenda e entrada de eventos do estado vivo. Integração com fila de revisão e política do kernel, incluindo expiração e revogação. ADK Web e Temporal Web UI apoiam desenvolvimento e diagnóstico; o painel de produto aplica as permissões do pxOS.
+- **Gatilhos:** Temporal Schedules para agenda e entrada de eventos do estado vivo. Integração com fila de revisão e política do kernel, incluindo expiração e revogação. ADK Web e Temporal Web UI apoiam desenvolvimento e diagnóstico; o painel de produto aplica as permissões da Guilda.
 - **Issues:** K34 (runtime e versão publicada do agente), K35 (gatilhos), K36 (Temporal), K65 (área web: aprovações, execuções, memória), K66 (agentes por formulário), K67 (workflows compostos), K68 (configuração da instalação).
 - **Saída:** o FDE registra uma ferramenta e configura um agente/workflow sem alterar o mecanismo comum; publica uma versão, aciona por agenda e evento e acompanha a execução no painel. O agente consulta contexto via MCP e age via gateway em fase de autonomia 1. Testes de produto demonstram espera por esclarecimento/aprovação, retomada após queda, aprovação exata, resultado incerto sem duplicação e retorno de confirmação ao estado vivo. Uma função de referência produz uma entrega baseada no contexto e identifica lacunas sem exigir que a pessoa reconstrua todo o histórico. A progressão de autonomia só acontece por métrica.
 
@@ -217,7 +217,7 @@ Os recortes de fontes, Teams e status semanal entram na sequência prioritária 
 ## Próximo passo
 
 A fatia 1 foi concluída em 13/11/2026: PXOS-1, PXOS-47 a 51, PXOS-7 e PXOS-46, com o teste de
-saída verde no CI contra Postgres. A suíte de aceitação (`pxos-kernel/tests/acceptance/`) tem
+saída verde no CI contra Postgres. A suíte de aceitação (`guilda-kernel/tests/acceptance/`) tem
 um teste por requisito do §4; o req. 3 está verde e os demais são falhas esperadas que nomeiam
 a issue que os entrega.
 

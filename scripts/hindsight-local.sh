@@ -16,9 +16,9 @@ if [[ -f .env ]]; then
 fi
 
 : "${GOOGLE_APPLICATION_CREDENTIALS:?defina GOOGLE_APPLICATION_CREDENTIALS}"
-: "${PXOS_VERTEX_PROJECT:?defina PXOS_VERTEX_PROJECT}"
-port="${PXOS_HINDSIGHT_PORT:-18888}"
-db_port="${PXOS_DB_PORT:-25432}"
+: "${GUILDA_VERTEX_PROJECT:?defina GUILDA_VERTEX_PROJECT}"
+port="${GUILDA_HINDSIGHT_PORT:-18888}"
+db_port="${GUILDA_DB_PORT:-25432}"
 
 docker compose exec -T postgres psql -U pxos -d postgres -tc \
   "SELECT 1 FROM pg_database WHERE datname = 'hindsight_local'" | grep -q 1 ||
@@ -26,9 +26,9 @@ docker compose exec -T postgres psql -U pxos -d postgres -tc \
 docker compose exec -T postgres psql -U pxos -d hindsight_local -qc \
   "CREATE EXTENSION IF NOT EXISTS vector"
 
-export GOOGLE_CLOUD_PROJECT="$PXOS_VERTEX_PROJECT"
+export GOOGLE_CLOUD_PROJECT="$GUILDA_VERTEX_PROJECT"
 export HINDSIGHT_API_DATABASE_URL="postgresql://pxos:pxos-local@127.0.0.1:${db_port}/hindsight_local"
-eval "$(uv run python -c 'from pxos_kernel.context.hindsight import main; main()')"
+eval "$(uv run python -c 'from guilda_kernel.context.hindsight import main; main()')"
 export HINDSIGHT_API_LLM_PROMPT_CACHE_ENABLED=false
 export HINDSIGHT_API_EMBEDDINGS_GEMINI_OUTPUT_DIMENSIONALITY=768
 export HINDSIGHT_API_RERANKER_PROVIDER=rrf

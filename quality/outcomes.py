@@ -53,6 +53,6 @@ def pytest_runtest_makereport(item: Any, call: Any) -> Any:
 
 
 def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
-    destination = os.environ.get("PXOS_QUALITY_OUTCOMES")
+    destination = os.environ.get("GUILDA_QUALITY_OUTCOMES")
     if destination:
         Path(destination).write_text(json.dumps({"exitstatus": exitstatus, "tests": _rows}))

@@ -1,7 +1,7 @@
 {
   "project_id": "pxos-spikes",
   "project_number": "1092891583062",
-  "purpose": "Projeto reutilizável de experimentos pxOS",
+  "purpose": "Projeto reutilizável de experimentos Guilda",
   "organization": "getbud.co",
   "billing_owner": "Bud",
   "service_account": "spike-runner@pxos-spikes.iam.gserviceaccount.com",

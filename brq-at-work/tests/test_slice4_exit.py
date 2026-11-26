@@ -10,8 +10,8 @@ import pytest
 
 from brq_at_work.composition import bootstrap
 from db_testing import Database, create_test_database, on_database
-from pxos_kernel.identity import NotAuthorized, session
-from pxos_kernel.ontology import Registry
+from guilda_kernel.identity import NotAuthorized, session
+from guilda_kernel.ontology import Registry
 
 
 @pytest.fixture(scope="module")

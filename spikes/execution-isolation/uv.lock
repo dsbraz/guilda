@@ -65,7 +65,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pxos-execution-isolation-spike"
+name = "guilda-execution-isolation-spike"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

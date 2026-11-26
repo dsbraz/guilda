@@ -6,11 +6,11 @@ from pathlib import Path
 import asyncpg
 
 from brq_at_work.weekly_report import models as weekly_report
-from pxos_kernel.agents import register_agents
-from pxos_kernel.identity import install_identities, read_identities
-from pxos_kernel.model_access import Route, install_route
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import install_packages, upgrade
+from guilda_kernel.agents import register_agents
+from guilda_kernel.identity import install_identities, read_identities
+from guilda_kernel.model_access import Route, install_route
+from guilda_kernel.ontology import Registry
+from guilda_kernel.state import install_packages, upgrade
 
 ROOT = Path(__file__).resolve().parent
 IDENTITIES = ROOT / "identities.yaml"

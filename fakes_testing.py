@@ -1,4 +1,4 @@
-"""In-memory stand-ins for the kernel's ports, shared by pxos-kernel and brq-at-work tests.
+"""In-memory stand-ins for the kernel's ports, shared by guilda-kernel and brq-at-work tests.
 
 They live with the tests, not in the product: a deploy wires real adapters only.
 """
@@ -13,11 +13,11 @@ from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 from pydantic import PrivateAttr
 
-from pxos_kernel.channel import Card
-from pxos_kernel.context import Recalled
-from pxos_kernel.ingestion import Changes, ConnectorUnavailable, SourceDocument
-from pxos_kernel.meetings import Recording, RecordingChanges
-from pxos_kernel.model_access import Route
+from guilda_kernel.channel import Card
+from guilda_kernel.context import Recalled
+from guilda_kernel.ingestion import Changes, ConnectorUnavailable, SourceDocument
+from guilda_kernel.meetings import Recording, RecordingChanges
+from guilda_kernel.model_access import Route
 
 
 class FakeConnector:

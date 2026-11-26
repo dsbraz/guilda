@@ -27,13 +27,13 @@ from temporalio.worker import Worker
 
 from brq_at_work.composition import ACCESS, build_registry
 from fakes_testing import FakeChannel, FakeConnector, FakeContextStore, FakeModels
-from pxos_kernel.channel import Channel
-from pxos_kernel.context import ContextStore
-from pxos_kernel.ingestion import SourceDocument
-from pxos_kernel.model_access import ModelGateway
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import create_pool
-from pxos_kernel.workflows import AgentCycle, CycleActivities, workflow_runner
+from guilda_kernel.channel import Channel
+from guilda_kernel.context import ContextStore
+from guilda_kernel.ingestion import SourceDocument
+from guilda_kernel.model_access import ModelGateway
+from guilda_kernel.ontology import Registry
+from guilda_kernel.state import create_pool
+from guilda_kernel.workflows import AgentCycle, CycleActivities, workflow_runner
 
 PROJECT = ACCESS[0]  # the version's recall tag
 QUESTION = "A entrega de sexta saiu?"

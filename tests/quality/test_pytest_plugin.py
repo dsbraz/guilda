@@ -15,7 +15,7 @@ def isolate_plugin_rows(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_plugin_records_strict_pending_requirements(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("PXOS_QUALITY_OUTCOMES", str(tmp_path / "outcomes.json"))
+    monkeypatch.setenv("GUILDA_QUALITY_OUTCOMES", str(tmp_path / "outcomes.json"))
     session = SimpleNamespace(config=SimpleNamespace(getoption=lambda *a, **kw: 0))
     outcomes.pytest_sessionstart(session)
     item = SimpleNamespace(get_closest_marker=lambda name: SimpleNamespace(kwargs={"strict": True}))
@@ -41,7 +41,7 @@ def test_plugin_records_strict_pending_requirements(
 def test_plugin_ignores_successful_setup_and_handles_missing_destination(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("PXOS_QUALITY_OUTCOMES", raising=False)
+    monkeypatch.delenv("GUILDA_QUALITY_OUTCOMES", raising=False)
     hook = outcomes.pytest_runtest_makereport(None, None)
     next(hook)
     report = SimpleNamespace(when="setup", skipped=False, failed=False)

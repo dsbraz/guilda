@@ -1,7 +1,7 @@
 [project]
-name = "pxos-graphiti-spike"
+name = "guilda-graphiti-spike"
 version = "0.1.0"
-description = "Experimento isolado de memória e ontologia para pxOS"
+description = "Experimento isolado de memória e ontologia para Guilda"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "graphiti-core[google-genai]==0.31.2",

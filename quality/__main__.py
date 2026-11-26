@@ -79,7 +79,7 @@ def perform(mode: str, policy: dict[str, Any], output: Path) -> dict[str, Any]:
             [
                 sys.executable,
                 "-m",
-                "pxos_kernel.ontology.generate",
+                "guilda_kernel.ontology.generate",
                 "--check",
                 *policy["generation"],
             ],
@@ -96,7 +96,7 @@ def aggregate(output: Path, reports: list[dict[str, Any]]) -> dict[str, Any]:
     failures = approve(reports, sha, digest(policy))
     if workspace(ROOT):
         failures.append("final evidence requires a clean workspace")
-    if os.environ.get("PXOS_QUALITY_JOBS_STATUS", "success") != "success":
+    if os.environ.get("GUILDA_QUALITY_JOBS_STATUS", "success") != "success":
         failures.append("required CI jobs did not finish successfully")
     report = {
         "schema": 1,

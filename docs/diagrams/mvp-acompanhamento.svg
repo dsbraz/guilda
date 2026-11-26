@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="930" viewBox="0 0 1200 930" role="img" aria-labelledby="title desc">
 <title id="title">MVP: acompanhamento semanal de um projeto</title>
-<desc id="desc">Fontes autorizadas alimentam o contexto persistente do pxOS. Um agente ADK conversa em threads no Teams, prepara o status e recebe revisão do PM. Temporal agenda, espera e retoma; respostas e correções permanecem para a semana seguinte. Acessos e ambiente do piloto ainda estão abertos.</desc>
+<desc id="desc">Fontes autorizadas alimentam o contexto persistente da Guilda. Um agente ADK conversa em threads no Teams, prepara o status e recebe revisão do PM. Temporal agenda, espera e retoma; respostas e correções permanecem para a semana seguinte. Acessos e ambiente do piloto ainda estão abertos.</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#67517b" stroke-width="1.5"/></marker></defs>
 <style>text{font-family:Arial,sans-serif;fill:#24172f} .title{font-size:30px;font-weight:700}.h{font-size:23px;font-weight:700}.b{font-size:20px}.small{font-size:18px}.line{fill:none;stroke:#67517b;stroke-width:2.5;marker-end:url(#arrow)}.box{fill:#f3edf9;stroke:#b69bcf;stroke-width:1.5}</style>
 <rect width="1200" height="930" fill="#fff"/>
@@ -11,12 +11,12 @@
 <text x="62" y="186" class="b">Carga inicial + consulta incremental periódica</text>
 <text x="62" y="220" class="b">Identificação, versão, origem e acesso restrito</text>
 <rect x="620" y="118" width="540" height="142" rx="14" fill="#f4f5f7" stroke="#bac2cb"/>
-<text x="642" y="152" class="h">Granola → conexão própria do pxOS</text>
+<text x="642" y="152" class="h">Granola → conexão própria da Guilda</text>
 <text x="642" y="186" class="b">API se disponível; alternativa: MCP autenticado</text>
 <text x="642" y="220" class="b">Validar acesso e operação agendada</text>
 <path d="M310 260 V300" class="line"/><path d="M890 260 V300" class="line"/>
 <rect x="40" y="303" width="1120" height="114" rx="14" class="box"/>
-<text x="62" y="338" class="h">pxOS · contexto e continuidade do trabalho</text>
+<text x="62" y="338" class="h">Guilda · contexto e continuidade do trabalho</text>
 <text x="62" y="370" class="b">Fontes, respostas, correções e trabalho em andamento persistem entre semanas.</text>
 <text x="62" y="399" class="small">Sem duplicação; exclusões e perda de acesso respeitadas. Ingestão sem confirmar cada trecho.</text>
 <path d="M310 417 V460" class="line"/>

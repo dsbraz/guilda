@@ -1,0 +1,39 @@
+# Ontologia base da Guilda (PRD §7). Nomes em inglês, rótulos em português (ADR 0003).
+# Todo tipo declara pxos.kind: canonical (autoriza ação ou alimenta medição).
+id: https://pxos.example/ontology/base
+name: pxos_base
+title: Ontologia base da Guilda
+version: 0.1.0
+prefixes:
+  linkml: https://w3id.org/linkml/
+  pxos: https://pxos.example/ontology/base/
+default_prefix: pxos
+default_range: string
+imports:
+  - linkml:types
+
+classes:
+  Actor:
+    title: Ator
+    description: Pessoa interna, pessoa externa ou agente.
+    annotations:
+      pxos.kind: canonical
+    attributes:
+      name:
+        title: nome
+        required: true
+      actor_kind:
+        title: tipo de ator
+        range: ActorKind
+        required: true
+
+enums:
+  ActorKind:
+    title: Tipo de ator
+    permissible_values:
+      internal_person:
+        title: pessoa interna
+      external_person:
+        title: pessoa externa
+      agent:
+        title: agente

@@ -21,18 +21,18 @@ import yaml
 from brq_at_work import environment
 from brq_at_work.composition import bootstrap, build_registry
 from brq_at_work.publish_agent import AGENT_FILE
-from pxos_kernel import service
-from pxos_kernel.channel import Channel
-from pxos_kernel.context import HindsightContextStore
-from pxos_kernel.identity import Identities, read_identities
-from pxos_kernel.ingestion import Connector
-from pxos_kernel.meetings import MeetingConnector
-from pxos_kernel.model_access import ModelGateway, Route, vertex_models
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import create_pool
-from pxos_teams import TeamsChannel, create_app
-from pxos_telegram import TelegramChannel
-from pxos_telegram import create_app as create_telegram_app
+from guilda_kernel import service
+from guilda_kernel.channel import Channel
+from guilda_kernel.context import HindsightContextStore
+from guilda_kernel.identity import Identities, read_identities
+from guilda_kernel.ingestion import Connector
+from guilda_kernel.meetings import MeetingConnector
+from guilda_kernel.model_access import ModelGateway, Route, vertex_models
+from guilda_kernel.ontology import Registry
+from guilda_kernel.state import create_pool
+from guilda_teams import TeamsChannel, create_app
+from guilda_telegram import TelegramChannel
+from guilda_telegram import create_app as create_telegram_app
 
 AGENT = "project-assistant"
 
@@ -55,11 +55,11 @@ async def adapters(
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> AsyncIterator[Adapters]:
     """COMPOSITION POINT of the adapters, from the deploy's environment: the SharePoint
-    library and the Granola transcripts as connectors, and the channel ``PXOS_CHANNEL``
+    library and the Granola transcripts as connectors, and the channel ``GUILDA_CHANNEL``
     picks with its app: Teams and the bot's endpoint, or, for local development, Telegram
     and its long poll. The assistant's thread (its definition file's ``thread``) is the
     project's Teams conversation or Telegram group. The message of each card is kept in a
-    shelf at ``PXOS_TEAMS_CARDS_PATH`` or ``PXOS_TELEGRAM_CARDS_PATH``, which survives
+    shelf at ``GUILDA_TEAMS_CARDS_PATH`` or ``GUILDA_TELEGRAM_CARDS_PATH``, which survives
     restarts; only the event loop touches it, so it needs no lock. The shelf and the bot's
     HTTP client close on the way out."""
     connectors = (
@@ -93,36 +93,36 @@ def _channel(
             channel = TelegramChannel(bot, http, identities, cards=cards)
             return channel, create_telegram_app(bot, pool, registry, http, cards)
 
-        return environment.required(env, "PXOS_TELEGRAM_CARDS_PATH"), telegram
+        return environment.required(env, "GUILDA_TELEGRAM_CARDS_PATH"), telegram
     settings = environment.teams(env, thread)
 
     def teams(http: httpx.AsyncClient, cards: Shelf) -> Wired:
         channel = TeamsChannel(settings, http, identities, cards=cards)
         return channel, create_app(settings, pool, registry, http)
 
-    return environment.required(env, "PXOS_TEAMS_CARDS_PATH"), teams
+    return environment.required(env, "GUILDA_TEAMS_CARDS_PATH"), teams
 
 
 async def serve(registry: Registry) -> None:
-    pool = await create_pool(os.environ["PXOS_DATABASE_URL"])
-    publisher = await create_pool(os.environ["PXOS_PUBLISHER_DATABASE_URL"])
+    pool = await create_pool(os.environ["GUILDA_DATABASE_URL"])
+    publisher = await create_pool(os.environ["GUILDA_PUBLISHER_DATABASE_URL"])
     try:
         async with adapters(
             pool, registry, read_identities(environment.identities(os.environ))
         ) as wired:
             await service.serve(
-                temporal=os.environ["PXOS_TEMPORAL_ADDRESS"],
-                task_queue=os.environ["PXOS_TASK_QUEUE"],
+                temporal=os.environ["GUILDA_TEMPORAL_ADDRESS"],
+                task_queue=os.environ["GUILDA_TASK_QUEUE"],
                 agent=AGENT,
                 pool=pool,
                 publisher=publisher,
                 store=HindsightContextStore.from_environment(),
                 connectors=wired.connectors,
-                gateway=ModelGateway(pool, vertex_models(os.environ["PXOS_VERTEX_PROJECT"])),
+                gateway=ModelGateway(pool, vertex_models(os.environ["GUILDA_VERTEX_PROJECT"])),
                 registry=registry,
                 channel=wired.channel,
                 app=wired.app,
-                port=int(os.environ.get("PXOS_HTTP_PORT", "8000")),
+                port=int(os.environ.get("GUILDA_HTTP_PORT", "8000")),
             )
     finally:
         await pool.close()
@@ -132,7 +132,7 @@ async def serve(registry: Registry) -> None:
 def main() -> None:
     registry = build_registry()
     bootstrap(
-        os.environ["PXOS_OWNER_DATABASE_URL"],
+        os.environ["GUILDA_OWNER_DATABASE_URL"],
         registry,
         environment.identities(os.environ),
         route=Route.from_environment(),

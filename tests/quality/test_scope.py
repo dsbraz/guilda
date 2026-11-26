@@ -6,11 +6,11 @@ from quality.policy import areas, digest, excluded, load
 
 
 def test_areas_discover_new_subpackages_and_unimported_files(tmp_path: Path) -> None:
-    source = tmp_path / "src/pxos_kernel/new"
+    source = tmp_path / "src/guilda_kernel/new"
     source.mkdir(parents=True)
     (source / "never.py").write_text("x = 1")
     (source / "generated.py").write_text("x = 1")
-    policy = {**load(), "sources": ["src/pxos_kernel"]}
+    policy = {**load(), "sources": ["src/guilda_kernel"]}
     assert areas(policy, tmp_path) == {"new": [source / "never.py"]}
 
 
@@ -25,14 +25,14 @@ def test_policy_hash_is_order_independent_and_captures_limits() -> None:
 
 
 def test_exclusions_preserve_manual_sources() -> None:
-    assert excluded("pxos-kernel/src/pxos_kernel/state/migrations/env.py", load())
-    assert not excluded("pxos-kernel/src/pxos_kernel/state/db.py", load())
+    assert excluded("guilda-kernel/src/guilda_kernel/state/migrations/env.py", load())
+    assert not excluded("guilda-kernel/src/guilda_kernel/state/db.py", load())
 
 
 def test_each_adapter_is_its_own_area(tmp_path: Path) -> None:
-    source = tmp_path / "connectors/pxos-granola/src/pxos_granola"
+    source = tmp_path / "connectors/guilda-granola/src/guilda_granola"
     source.mkdir(parents=True)
     (source / "notes.py").write_text("x = 1")
-    adapter = "connectors/pxos-granola/src/pxos_granola"
+    adapter = "connectors/guilda-granola/src/guilda_granola"
     policy = {**load(), "sources": [adapter], "adapters": [adapter]}
-    assert areas(policy, tmp_path) == {"pxos_granola": [source / "notes.py"]}
+    assert areas(policy, tmp_path) == {"guilda_granola": [source / "notes.py"]}

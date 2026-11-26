@@ -616,7 +616,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pxos-ontology-governance-spike"
+name = "guilda-ontology-governance-spike"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

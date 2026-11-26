@@ -1,8 +1,8 @@
 # Validação das rotas de modelos no Vertex AI (PXOS-75)
 
 **Data:** 14/11/2026. **Projeto:** `pxos-spikes`, pela conta de serviço `spike-runner`
-(impersonação, sem chave). **Teste:** `pxos-kernel/tests/test_vertex_routes.py`, opt-in
-(`PXOS_VERTEX_PROJECT`), com prompts sintéticos e chamadas mínimas.
+(impersonação, sem chave). **Teste:** `guilda-kernel/tests/test_vertex_routes.py`, opt-in
+(`GUILDA_VERTEX_PROJECT`), com prompts sintéticos e chamadas mínimas.
 
 ## Resultado
 
@@ -42,7 +42,7 @@ schema e a leitura, não a residência; a etapa na rota `br` continua esperando 
 ## Rota configurada no deploy
 
 Ainda em 14/11/2026, as rotas fixas saíram do código: o teste opt-in valida a rota que o
-ambiente configura, a mesma que um deploy gravaria. Com `PXOS_MODEL_PROVIDER=gemini`,
+ambiente configura, a mesma que um deploy gravaria. Com `GUILDA_MODEL_PROVIDER=gemini`,
 `gemini-3.8-flash` em `global` para o agente e a memória, e `gemini-embedding-001` em
 `southamerica-east1` para os embeddings, os quatro testes passaram: o agente pelo gateway, o
 modelo da memória, os embeddings e a etapa ADK. É uma rota de teste, não a escolha de um

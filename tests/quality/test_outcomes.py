@@ -13,9 +13,9 @@ def test_explicit_external_skip_is_allowed() -> None:
         check_outcomes(
             [
                 {
-                    "nodeid": "pxos-kernel/tests/test_vertex_routes.py::test_route",
+                    "nodeid": "guilda-kernel/tests/test_vertex_routes.py::test_route",
                     "outcome": "skipped",
-                    "reason": "PXOS_VERTEX_PROJECT not set",
+                    "reason": "GUILDA_VERTEX_PROJECT not set",
                 }
             ],
             load(),
@@ -26,7 +26,7 @@ def test_explicit_external_skip_is_allowed() -> None:
 
 def test_xfail_requires_pending_requirement_and_strict_marker() -> None:
     row = {
-        "nodeid": "pxos-kernel/tests/acceptance/test_requirements.py::test_requirement_2",
+        "nodeid": "guilda-kernel/tests/acceptance/test_requirements.py::test_requirement_2",
         "outcome": "xfailed",
         "strict": True,
     }

@@ -6,9 +6,7 @@
 # "Rodar no localhost"). A imagem roda com outro usuário, por isso a chave precisa ser
 # legível por ele; .secrets/ é ignorado pelo git e pelo build. As identidades
 # com os ids reais dos canais também ficam em .secrets/, fora do arquivo versionado.
-# O compose de deploy fixa o projeto "pxos", o mesmo nome que o compose da raiz (o dos
-# testes) recebe num checkout em pxOS/: sem outro nome, os dois dividiriam containers e o
-# volume do Postgres.
+# Nome persistente do projeto local, com volumes próprios para esta instalação.
 name: pxos-local
 
 x-adc: &adc
@@ -23,10 +21,10 @@ services:
   app:
     environment:
       <<: *adc
-      PXOS_IDENTITIES_PATH: /run/secrets/identities.yaml
+      GUILDA_IDENTITIES_PATH: /run/secrets/identities.yaml
       # A mensagem de cada card do Telegram, no volume do app. O token do login delegado
       # do SharePoint, quando usado, vai no .env: aqui ele venceria um segredo do .env.
-      PXOS_TELEGRAM_CARDS_PATH: /var/lib/pxos/telegram-cards
+      GUILDA_TELEGRAM_CARDS_PATH: /var/lib/pxos/telegram-cards
     volumes:
       - ../.secrets/adc.json:/run/secrets/adc.json:ro
       - ../.secrets/identities.yaml:/run/secrets/identities.yaml:ro

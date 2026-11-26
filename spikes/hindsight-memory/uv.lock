@@ -2103,7 +2103,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pxos-hindsight-spike"
+name = "guilda-hindsight-spike"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

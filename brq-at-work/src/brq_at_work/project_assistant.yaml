@@ -8,7 +8,7 @@
 # agente e às retenções do ciclo, e só a aprovação de uma nova versão as muda. São as
 # tags que a distro dá a todo conector (composition.ACCESS): a base corporativa inteira.
 # thread é a referência da thread do projeto; o deploy a liga à conversa do Teams
-# (PXOS_TEAMS_CONVERSATION).
+# (GUILDA_TEAMS_CONVERSATION).
 agent: project-assistant
 instructions: |
   Você é o assistente do projeto. Sua primeira função é preparar o report semanal do

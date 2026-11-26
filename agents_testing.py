@@ -6,10 +6,10 @@ from uuid import uuid4
 
 import asyncpg
 
-from pxos_kernel.agents import AGENTS, AgentVersion
-from pxos_kernel.identity import session
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import Evidence, Proposal, propose, review
+from guilda_kernel.agents import AGENTS, AgentVersion
+from guilda_kernel.identity import session
+from guilda_kernel.ontology import Registry
+from guilda_kernel.state import Evidence, Proposal, propose, review
 
 
 async def publish(

@@ -15,8 +15,8 @@ from pathlib import Path
 import yaml
 
 from brq_at_work.composition import ROOT, build_registry
-from pxos_kernel.agents import propose_version
-from pxos_kernel.state import Evidence, Proposal, create_pool
+from guilda_kernel.agents import propose_version
+from guilda_kernel.state import Evidence, Proposal, create_pool
 
 AGENT_FILE = ROOT / "project_assistant.yaml"
 

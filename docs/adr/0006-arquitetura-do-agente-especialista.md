@@ -8,7 +8,7 @@
 > MVP é um recorte que vai para produção e valida a hipótese de valor: o sistema conectado
 > onde o trabalho acontece.
 >
-> - **Base corporativa.** O pxOS coleta reuniões e documentos e torna o conhecimento
+> - **Base corporativa.** A Guilda coleta reuniões e documentos e torna o conhecimento
 >   disponível para qualquer pessoa e qualquer agente em pé de igualdade. O acesso segue a
 >   visibilidade na origem; não há vínculo de fonte com projeto nem agenda de projeto no MVP.
 > - **Formas no kernel, adaptadores em pacotes próprios** (ADR 0002): transcrições de
@@ -44,7 +44,7 @@ validar o piloto não exige outro banco vetorial ou de grafos.
   (observações) só entram depois de um teste de expurgo provar que excluir a fonte
   remove também seus derivados: no spike, excluir o documento não expurgou todos os
   traces de `reflect`. Não reconstruir um segundo extrator, resolvedor ou reconciliador
-  no pxOS.
+  na Guilda.
 - **ADK:** executa o agente, interpreta a tarefa e usa as ferramentas disponibilizadas
   pelo kernel, entre elas a consulta ao Hindsight; a responsabilidade pela entrega e
   pelo uso de ferramentas continua no agente.
@@ -58,7 +58,7 @@ validar o piloto não exige outro banco vetorial ou de grafos.
 
 A regra de natureza do ADR 0002 permanece. Não criar abstrações sem consumidor no MVP.
 
-| Kernel pxOS | Distribuição BRQ@work |
+| Kernel Guilda | Distribuição BRQ@work |
 |---|---|
 | Carregar LinkML, gerar modelos/schemas e validar dados; conceitos gerais só quando houver consumidor (hoje, `Actor`) | Pacote LinkML do report semanal: tipo canônico `WeeklyReport`, com as categorias do projeto (progresso, risco de atraso, atraso confirmado, prazo renegociado, impedimento, decisão, mudança) como enums |
 | Integrar Hindsight e aplicar autorização às operações e fontes | Instruções de retenção e critérios para interpretar o projeto |

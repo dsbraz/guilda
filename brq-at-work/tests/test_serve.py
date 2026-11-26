@@ -22,22 +22,22 @@ from temporalio.api.workflowservice.v1 import DescribeTaskQueueRequest
 from temporalio.client import Client
 
 from db_testing import Database
+from guilda_kernel import service
+from guilda_kernel.model_access import Route
 from model_testing import ROUTE
-from pxos_kernel import service
-from pxos_kernel.model_access import Route
 
 from .test_adapters import REQUIRED, SECRETS
 
 ROUTE_ENVIRONMENT = {
-    "PXOS_MODEL_PROVIDER": ROUTE.provider,
-    "PXOS_MODEL": ROUTE.model,
-    "PXOS_MODEL_REGION": ROUTE.region,
-    "PXOS_MEMORY_MODEL": ROUTE.memory_model,
-    "PXOS_MEMORY_REGION": ROUTE.memory_region,
-    "PXOS_EMBEDDING_MODEL": ROUTE.embedding_model,
-    "PXOS_EMBEDDING_REGION": ROUTE.embedding_region,
-    "PXOS_MODEL_INPUT_PRICE": str(ROUTE.input_price),
-    "PXOS_MODEL_OUTPUT_PRICE": str(ROUTE.output_price),
+    "GUILDA_MODEL_PROVIDER": ROUTE.provider,
+    "GUILDA_MODEL": ROUTE.model,
+    "GUILDA_MODEL_REGION": ROUTE.region,
+    "GUILDA_MEMORY_MODEL": ROUTE.memory_model,
+    "GUILDA_MEMORY_REGION": ROUTE.memory_region,
+    "GUILDA_EMBEDDING_MODEL": ROUTE.embedding_model,
+    "GUILDA_EMBEDDING_REGION": ROUTE.embedding_region,
+    "GUILDA_MODEL_INPUT_PRICE": str(ROUTE.input_price),
+    "GUILDA_MODEL_OUTPUT_PRICE": str(ROUTE.output_price),
 }
 
 
@@ -91,17 +91,17 @@ def test_the_command_bootstraps_and_serves_the_installation(
     queue, port = f"brq-{uuid4()}", free_port()
     environment = {
         **ROUTE_ENVIRONMENT,
-        "PXOS_OWNER_DATABASE_URL": database.owner_dsn,
-        "PXOS_DATABASE_URL": database.app_dsn,
-        "PXOS_PUBLISHER_DATABASE_URL": database.publisher_dsn,
-        "PXOS_TEMPORAL_ADDRESS": temporal_address,
-        "PXOS_TASK_QUEUE": queue,
-        "PXOS_HTTP_PORT": str(port),
-        "PXOS_VERTEX_PROJECT": "project-a",
-        "PXOS_HINDSIGHT_URL": "http://127.0.0.1:9",
+        "GUILDA_OWNER_DATABASE_URL": database.owner_dsn,
+        "GUILDA_DATABASE_URL": database.app_dsn,
+        "GUILDA_PUBLISHER_DATABASE_URL": database.publisher_dsn,
+        "GUILDA_TEMPORAL_ADDRESS": temporal_address,
+        "GUILDA_TASK_QUEUE": queue,
+        "GUILDA_HTTP_PORT": str(port),
+        "GUILDA_VERTEX_PROJECT": "project-a",
+        "GUILDA_HINDSIGHT_URL": "http://127.0.0.1:9",
         **REQUIRED,
         **SECRETS,
-        "PXOS_TEAMS_CARDS_PATH": str(tmp_path / "cards"),
+        "GUILDA_TEAMS_CARDS_PATH": str(tmp_path / "cards"),
     }
     for name, value in environment.items():
         monkeypatch.setenv(name, value)

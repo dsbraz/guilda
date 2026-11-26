@@ -1,7 +1,7 @@
-# Spike de memória do pxOS
+# Spike de memória da Guilda
 
 Experimento descartável e independente do produto. Hipótese: Graphiti, guiado pela ontologia,
-consegue atender à memória do pxOS sem construir outro extrator, resolvedor ou reconciliador?
+consegue atender à memória da Guilda sem construir outro extrator, resolvedor ou reconciliador?
 Compatibilidade com Neo4j, por si só, não aprova essa hipótese.
 
 Conclusão executada: [ADR-001](reports/ADR-001.md). A hipótese de memória canônica única não foi aprovada.

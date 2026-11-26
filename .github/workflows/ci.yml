@@ -57,7 +57,7 @@ jobs:
       - run: uv run python -m quality all --aggregate
         if: always()
         env:
-          PXOS_QUALITY_JOBS_STATUS: ${{ needs.quality.result }}
+          GUILDA_QUALITY_JOBS_STATUS: ${{ needs.quality.result }}
       - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:

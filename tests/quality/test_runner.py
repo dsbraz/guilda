@@ -45,7 +45,7 @@ def test_cancelled_job_cannot_approve_existing_reports(
 ) -> None:
     monkeypatch.setattr(runner, "perform", success)
     reports = [runner.execute(mode, repository) for mode in ["ci", "mutation"]]
-    monkeypatch.setenv("PXOS_QUALITY_JOBS_STATUS", "cancelled")
+    monkeypatch.setenv("GUILDA_QUALITY_JOBS_STATUS", "cancelled")
     assert not runner.aggregate(repository, reports)["passed"]
 
 

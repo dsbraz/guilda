@@ -9,11 +9,11 @@
 # O dono (POSTGRES_USER) migra e faz o bootstrap; nunca é usado em tempo de execução.
 set -euo pipefail
 
-: "${PXOS_DB_APP_PASSWORD:?}" "${PXOS_DB_PUBLISHER_PASSWORD:?}"
+: "${GUILDA_DB_APP_PASSWORD:?}" "${GUILDA_DB_PUBLISHER_PASSWORD:?}"
 : "${TEMPORAL_DB_PASSWORD:?}" "${HINDSIGHT_DB_PASSWORD:?}"
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-  -v app="$PXOS_DB_APP_PASSWORD" -v publisher="$PXOS_DB_PUBLISHER_PASSWORD" \
+  -v app="$GUILDA_DB_APP_PASSWORD" -v publisher="$GUILDA_DB_PUBLISHER_PASSWORD" \
   -v temporal="$TEMPORAL_DB_PASSWORD" -v hindsight="$HINDSIGHT_DB_PASSWORD" <<'SQL'
 CREATE ROLE pxos_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
 CREATE ROLE pxos_publisher NOLOGIN NOSUPERUSER NOBYPASSRLS;

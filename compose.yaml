@@ -1,3 +1,4 @@
+name: pxos  # Identifica os volumes existentes independentemente da pasta do checkout.
 # Base local de desenvolvimento. Portas só em loopback; credenciais apenas locais.
 services:
   postgres:
@@ -6,7 +7,7 @@ services:
       POSTGRES_USER: pxos
       POSTGRES_PASSWORD: pxos-local
       POSTGRES_DB: pxos
-    ports: ["127.0.0.1:${PXOS_DB_PORT:-25432}:5432"]
+    ports: ["127.0.0.1:${GUILDA_DB_PORT:-25432}:5432"]
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:

@@ -21,7 +21,7 @@ O kernel tem **duas camadas de memória**, com responsabilidades separadas.
 | Camada | O que guarda | Implementação | Quem escreve |
 |---|---|---|---|
 | **Contexto** | Conteúdo ingerido, fatos extraídos, entidades de índice, recuperação e respostas | Hindsight sobre AlloyDB, com extração nativa e extensões públicas | Ingestão, sem aprovação humana |
-| **Estado canônico** | Fatos tipados que **autorizam ação ou alimentam medição** (ex.: compromisso, papel, contrato) | Código próprio do pxOS em PostgreSQL/AlloyDB | Só pelo ciclo proposta → aprovação |
+| **Estado canônico** | Fatos tipados que **autorizam ação ou alimentam medição** (ex.: compromisso, papel, contrato) | Código próprio da Guilda em PostgreSQL/AlloyDB | Só pelo ciclo proposta → aprovação |
 
 Fronteira: um fato só é canônico se uma ação, uma política ou uma métrica depende dele.
 O resto é contexto. O tipo declara isso no pacote de ontologia.
@@ -37,7 +37,7 @@ rascunho nunca pareça fato confirmado.
   aplica permissão da fonte e não permite aprovar antes de gravar
   (`spikes/graphiti-memory/reports/ADR-001.md`). Neo4j não é tecnologia aprovada.
 - **Mem0 e LangExtract.** Sem lacuna demonstrada que os justifique.
-- **Segundo extrator, resolvedor ou reconciliador ao lado do Hindsight.** O pxOS não
+- **Segundo extrator, resolvedor ou reconciliador ao lado do Hindsight.** A Guilda não
   reconstrói o que o Hindsight já faz para contexto.
 
 ## Critérios do PXOS-3, por camada

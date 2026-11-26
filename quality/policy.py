@@ -34,7 +34,7 @@ def areas(policy: dict[str, Any], root: Path = ROOT) -> dict[str, list[Path]]:
             area = "automation" if source == "quality" else "distribution"
             if source in policy.get("adapters", []):
                 area = directory.name
-            if directory.name == "pxos_kernel":
+            if directory.name == "guilda_kernel":
                 area = relative.parts[0] if len(relative.parts) > 1 else "services"
             result.setdefault(area, []).append(file)
     return result

@@ -1,5 +1,5 @@
 [project]
-name = "pxos-hindsight-spike"
+name = "guilda-hindsight-spike"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = ["hindsight-api-slim==1.2.1", "hindsight-client==1.2.1"]

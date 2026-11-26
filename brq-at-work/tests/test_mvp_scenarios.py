@@ -36,15 +36,15 @@ from brq_at_work.publish_agent import AGENT_FILE, publish
 from brq_at_work.serve import AGENT
 from db_testing import Database, create_test_database, drain
 from fakes_testing import FakeChannel, FakeConnector, FakeContextStore
+from guilda_kernel.agents import cycle_effort, round_input
+from guilda_kernel.channel import Card, decide
+from guilda_kernel.conversation import Inbound, Message, conversation, receive
+from guilda_kernel.identity import NotAuthorized, session
+from guilda_kernel.ingestion import SourceDocument, sync
+from guilda_kernel.ontology import Registry
+from guilda_kernel.state import Decision, Proposal, create_pool, review
+from guilda_kernel.workflows import cycle_handlers, start_cycle
 from model_testing import ROUTE
-from pxos_kernel.agents import cycle_effort, round_input
-from pxos_kernel.channel import Card, decide
-from pxos_kernel.conversation import Inbound, Message, conversation, receive
-from pxos_kernel.identity import NotAuthorized, session
-from pxos_kernel.ingestion import SourceDocument, sync
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import Decision, Proposal, create_pool, review
-from pxos_kernel.workflows import cycle_handlers, start_cycle
 
 from .pilot import QUESTION, TOKENS, Script, continuing, cycle_worker, reviewing, weekly
 

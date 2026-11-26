@@ -3,7 +3,7 @@ whatever route the deploy configures, and the tests show only that it obeys it."
 
 from decimal import Decimal
 
-from pxos_kernel.model_access import Route
+from guilda_kernel.model_access import Route
 
 ROUTE = Route(
     provider="gemini",

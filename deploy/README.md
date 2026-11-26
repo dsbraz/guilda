@@ -1,5 +1,7 @@
 # Deploy numa VM do GCP
 
+Ao atualizar uma instalação anterior à renomeação, substitua o prefixo das chaves de configuração no arquivo privado com `sed -i 's/^PXOS_/GUILDA_/' deploy/.env` antes do próximo deploy. Aplique a mesma mudança às variáveis exportadas no ambiente. Conserve os valores de banco, fila Temporal e banco de memória, além dos identificadores dos recursos já provisionados.
+
 Uma instalação roda numa VM com Docker Compose: Postgres (pgvector), Temporal, Hindsight,
 o app (`python -m brq_at_work.serve`) e o Caddy, que é o único serviço com portas
 públicas e termina o TLS com certificado automático. O app e o Hindsight chamam a Vertex AI
@@ -17,7 +19,7 @@ ZONA=us-central1-a
 gcloud config set project "$PROJETO"
 gcloud services enable compute.googleapis.com aiplatform.googleapis.com
 
-gcloud iam service-accounts create pxos-vm --display-name="pxOS VM"
+gcloud iam service-accounts create pxos-vm --display-name="Guilda VM"
 gcloud projects add-iam-policy-binding "$PROJETO" \
   --member="serviceAccount:pxos-vm@$PROJETO.iam.gserviceaccount.com" \
   --role="roles/aiplatform.user"
@@ -49,7 +51,7 @@ Se a rede tiver `default-allow-ssh` aberta para `0.0.0.0/0`, remova-a.
 
 ## 3. DNS e TLS
 
-Crie um registro A do domínio do bot (`PXOS_DOMAIN`) para o IP reservado:
+Crie um registro A do domínio do bot (`GUILDA_DOMAIN`) para o IP reservado:
 
 ```sh
 gcloud compute addresses describe pxos-ip --region="$REGIAO" --format='value(address)'
@@ -67,18 +69,18 @@ conector entrega suas fontes com as tags de acesso da distro (`corporate`), as m
 
 | Variável | Uso |
 | --- | --- |
-| `PXOS_SHAREPOINT_TENANT`, `PXOS_SHAREPOINT_CLIENT_ID` | Tenant e app do Entra que lê a biblioteca |
-| `PXOS_SHAREPOINT_CLIENT_SECRET` | Segredo do app; ou `PXOS_SHAREPOINT_CERTIFICATE_KEY` + `PXOS_SHAREPOINT_CERTIFICATE` (PEM da chave e do certificado) |
-| `PXOS_SHAREPOINT_DRIVE_ID`, `PXOS_SHAREPOINT_FOLDER_ID` | Drive da biblioteca; pasta opcional |
-| `PXOS_GRANOLA_API_KEY` | Chave de API do workspace do Granola |
-| `PXOS_GRANOLA_SPACE_ID`, `PXOS_GRANOLA_FOLDER_ID` | Opcionais: restringem a um espaço ou pasta |
-| `PXOS_TEAMS_APP_ID`, `PXOS_TEAMS_TENANT_ID` | Azure Bot (single tenant) e seu tenant |
-| `PXOS_TEAMS_SERVICE_URL` | Bot Connector da região, ex. `https://smba.trafficmanager.net/teams/` |
-| `PXOS_TEAMS_SECRET` | Segredo do bot; ou `PXOS_TEAMS_CERTIFICATE_KEY` + `PXOS_TEAMS_CERTIFICATE_THUMBPRINT` |
-| `PXOS_TEAMS_CONVERSATION` | Conversa da thread do projeto (canal ou cadeia de respostas) |
+| `GUILDA_SHAREPOINT_TENANT`, `GUILDA_SHAREPOINT_CLIENT_ID` | Tenant e app do Entra que lê a biblioteca |
+| `GUILDA_SHAREPOINT_CLIENT_SECRET` | Segredo do app; ou `GUILDA_SHAREPOINT_CERTIFICATE_KEY` + `GUILDA_SHAREPOINT_CERTIFICATE` (PEM da chave e do certificado) |
+| `GUILDA_SHAREPOINT_DRIVE_ID`, `GUILDA_SHAREPOINT_FOLDER_ID` | Drive da biblioteca; pasta opcional |
+| `GUILDA_GRANOLA_API_KEY` | Chave de API do workspace do Granola |
+| `GUILDA_GRANOLA_SPACE_ID`, `GUILDA_GRANOLA_FOLDER_ID` | Opcionais: restringem a um espaço ou pasta |
+| `GUILDA_TEAMS_APP_ID`, `GUILDA_TEAMS_TENANT_ID` | Azure Bot (single tenant) e seu tenant |
+| `GUILDA_TEAMS_SERVICE_URL` | Bot Connector da região, ex. `https://smba.trafficmanager.net/teams/` |
+| `GUILDA_TEAMS_SECRET` | Segredo do bot; ou `GUILDA_TEAMS_CERTIFICATE_KEY` + `GUILDA_TEAMS_CERTIFICATE_THUMBPRINT` |
+| `GUILDA_TEAMS_CONVERSATION` | Conversa da thread do projeto (canal ou cadeia de respostas) |
 
 Cada app usa um segredo ou um certificado, nunca os dois. Um PEM vai entre aspas duplas
-no `.env`, com as quebras de linha do arquivo. O compose define `PXOS_TEAMS_CARDS_PATH`
+no `.env`, com as quebras de linha do arquivo. O compose define `GUILDA_TEAMS_CARDS_PATH`
 num volume (`app-state`): é onde o canal guarda a mensagem de cada card, para
 substituí-la depois de um restart.
 
@@ -90,11 +92,11 @@ Passos da TI do cliente:
    `read`). Crie um segredo ou envie um certificado. O drive id sai de
    `GET /sites/{site-id}/drives`.
 2. **Teams.** Crie um Azure Bot single tenant e, nele, o canal Microsoft Teams. O
-   endpoint de mensagens é `https://<PXOS_DOMAIN>/api/messages`. Crie o segredo ou envie
+   endpoint de mensagens é `https://<GUILDA_DOMAIN>/api/messages`. Crie o segredo ou envie
    o certificado no app do bot no Entra. Publique o pacote do app do Teams na
    organização. Instale-o na equipe do projeto e no escopo pessoal de quem revisa (o PM),
    que recebe os cards em chat 1:1. O id do canal do projeto (`19:...@thread.tacv2`) vai
-   em `PXOS_TEAMS_CONVERSATION`. O id de objeto do Entra de cada pessoa vai em
+   em `GUILDA_TEAMS_CONVERSATION`. O id de objeto do Entra de cada pessoa vai em
    `identities.yaml` como `teams:<id>`.
 3. **Granola.** Um administrador do workspace gera uma chave de API. A chave lê só as
    notas compartilhadas nos espaços do workspace. Compartilhe as reuniões do projeto num
@@ -107,7 +109,7 @@ gcloud compute ssh pxos --zone="$ZONA" --tunnel-through-iap
 # na VM:
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER" && newgrp docker
-git clone <repositório> pxos && cd pxos
+git clone https://github.com/dsbraz/guilda.git && cd guilda
 cp .env.example deploy/.env   # preencha as variáveis (veja a seção 4); o arquivo nunca é commitado
 chmod 600 deploy/.env
 docker compose -f deploy/compose.yaml up -d --build
@@ -138,7 +140,7 @@ os ciclos.
 
 ```sh
 docker compose -f deploy/compose.yaml exec app sh -c \
-  'python -m brq_at_work.publish_agent --dsn "$PXOS_DATABASE_URL" --author <ator>'
+  'python -m brq_at_work.publish_agent --dsn "$GUILDA_DATABASE_URL" --author <ator>'
 ```
 
 O comando imprime o id da proposta.
@@ -176,22 +178,22 @@ ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados
    propagar: um 403 na primeira subida do Hindsight se resolve no reinício seguinte.
 
 2. **`deploy/.env`.** Parta do `.env.example`. Preencha a rota do modelo, as senhas e
-   `PXOS_DOMAIN=localhost`, que o compose base exige mesmo sem o Caddy. O caminho dos
+   `GUILDA_DOMAIN=localhost`, que o compose base exige mesmo sem o Caddy. O caminho dos
    cards do Telegram já vem do override.
 3. **Granola.** No app, gere uma chave em Settings → Connectors → API keys → Personal
-   API key e coloque-a em `PXOS_GRANOLA_API_KEY`. A chave lê as suas notas e as
+   API key e coloque-a em `GUILDA_GRANOLA_API_KEY`. A chave lê as suas notas e as
    compartilhadas com você.
 4. **SharePoint sem admin.** Registre o app no Entra como o `.env.example` descreve
-   (cliente público, permissões delegadas). Preencha `PXOS_SHAREPOINT_TENANT`,
-   `PXOS_SHAREPOINT_CLIENT_ID` e `PXOS_SHAREPOINT_TOKEN_PATH=/var/lib/pxos/sharepoint-token`,
+   (cliente público, permissões delegadas). Preencha `GUILDA_SHAREPOINT_TENANT`,
+   `GUILDA_SHAREPOINT_CLIENT_ID` e `GUILDA_SHAREPOINT_TOKEN_PATH=/var/lib/pxos/sharepoint-token`,
    sem segredo nem certificado, e faça o login uma vez, gravando o token no volume do
-   app. Com `--link`, o comando também imprime `PXOS_SHAREPOINT_DRIVE_ID` e
-   `PXOS_SHAREPOINT_FOLDER_ID`; copie os dois para o `deploy/.env`. Sem o drive, o app
+   app. Com `--link`, o comando também imprime `GUILDA_SHAREPOINT_DRIVE_ID` e
+   `GUILDA_SHAREPOINT_FOLDER_ID`; copie os dois para o `deploy/.env`. Sem o drive, o app
    não sobe:
 
    ```sh
    C="docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
-   $C run --rm --no-deps app python -m pxos_sharepoint.login \
+   $C run --rm --no-deps app python -m guilda_sharepoint.login \
      --tenant <tenant> --client-id <app> --token-path /var/lib/pxos/sharepoint-token \
      --link '<link copiado da pasta>'
    ```
@@ -199,11 +201,11 @@ ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados
 5. **Telegram.** Crie o bot com o `@BotFather`, desative o privacy mode (`/setprivacy`),
    adicione-o a um grupo e mande `/start` ao bot no privado. Antes de subir o app, leia
    os ids em `https://api.telegram.org/bot<token>/getUpdates`:
-   - `chat.id` do grupo vai em `PXOS_TELEGRAM_CHAT_ID`;
+   - `chat.id` do grupo vai em `GUILDA_TELEGRAM_CHAT_ID`;
    - `from.id` de cada pessoa vai nos `channel_ids` dela em `.secrets/identities.yaml`,
      como `telegram:<id>`. O arquivo versionado da distro fica como está.
 
-   Defina `PXOS_CHANNEL=telegram` e `PXOS_TELEGRAM_BOT_TOKEN`. Quem revisa (PM e
+   Defina `GUILDA_CHANNEL=telegram` e `GUILDA_TELEGRAM_BOT_TOKEN`. Quem revisa (PM e
    administrador da plataforma) precisa ter mandado `/start` ao bot.
 6. **Subir e publicar.** Suba com `$C up -d --build` e publique o assistente como na
    seção 6, trocando o compose pelo `$C`. O card de aprovação da versão chega no privado

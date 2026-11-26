@@ -18,7 +18,7 @@ resultados dos testes. `mutation` executa Mutmut em uma cópia temporária. `all
 os relatórios aprovados para o mesmo commit limpo e a mesma política.
 
 PostgreSQL real é obrigatório para `ci` e `mutation`. Use `docker compose up -d postgres`
-ou `PXOS_TEST_DATABASE_URL` com um servidor de testes. Os testes recriam seus bancos;
+ou `GUILDA_TEST_DATABASE_URL` com um servidor de testes. Os testes recriam seus bancos;
 não execute duas suítes simultâneas no mesmo servidor. No CI cada job tem seu serviço
 PostgreSQL. Temporal usa o servidor de desenvolvimento já utilizado pelos testes.
 
@@ -61,7 +61,7 @@ uv run python -m quality.history_fetch` usa a autenticação do `gh` para obter 
 | Rota de modelos autorizada pela instalação | `test_model_access.py`, `test_adk_gateway.py`, `test_hindsight_settings.py`, `test_slice6_exit.py` |
 | Ontologia e schemas sincronizados | `test_generation.py` e comando `ontology.generate --check` |
 
-Os nomes acima referem-se a `pxos-kernel/tests/`, exceto os testes de saída da distribuição.
+Os nomes acima referem-se a `guilda-kernel/tests/`, exceto os testes de saída da distribuição.
 O mapeamento identifica evidências, não declara que requisitos pendentes foram entregues.
 
 ## Interpretação e manutenção

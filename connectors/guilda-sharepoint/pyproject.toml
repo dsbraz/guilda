@@ -1,0 +1,18 @@
+[project]
+name = "guilda-sharepoint"
+version = "0.1.0"
+description = "Base de documentos do SharePoint para a Guilda"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "cryptography>=50.0.2",
+    "httpx>=0.28.1",
+    "guilda-kernel",
+    "pypdf>=6.21.4",
+]
+
+[tool.uv.sources]
+guilda-kernel = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"

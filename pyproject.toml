@@ -1,22 +1,22 @@
 [project]
-name = "pxos"
+name = "guilda"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pxos-kernel", "brq-at-work", "pxos-granola", "pxos-sharepoint", "pxos-teams", "pxos-telegram"]
+dependencies = ["guilda-kernel", "brq-at-work", "guilda-granola", "guilda-sharepoint", "guilda-teams", "guilda-telegram"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
-pxos-kernel = { workspace = true }
+guilda-kernel = { workspace = true }
 brq-at-work = { workspace = true }
-pxos-granola = { workspace = true }
-pxos-sharepoint = { workspace = true }
-pxos-teams = { workspace = true }
-pxos-telegram = { workspace = true }
+guilda-granola = { workspace = true }
+guilda-sharepoint = { workspace = true }
+guilda-teams = { workspace = true }
+guilda-telegram = { workspace = true }
 
 [tool.uv.workspace]
-members = ["pxos-kernel", "brq-at-work", "connectors/*"]
+members = ["guilda-kernel", "brq-at-work", "connectors/*"]
 exclude = ["spikes/*"]
 
 [tool.ruff]
@@ -28,7 +28,7 @@ extend-exclude = ["spikes", "**/generated.py"]
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["pxos_kernel", "brq_at_work", "pxos_granola", "pxos_sharepoint", "pxos_teams", "pxos_telegram"]
+known-first-party = ["guilda_kernel", "brq_at_work", "guilda_granola", "guilda_sharepoint", "guilda_teams", "guilda_telegram"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -39,30 +39,30 @@ files = [
     "fakes_testing.py",
     "model_testing.py",
     "temporal_testing.py",
-    "pxos-kernel/src",
-    "pxos-kernel/tests",
+    "guilda-kernel/src",
+    "guilda-kernel/tests",
     "brq-at-work/src",
     "brq-at-work/tests",
-    "connectors/pxos-granola/src",
-    "connectors/pxos-granola/tests",
-    "connectors/pxos-sharepoint/src",
-    "connectors/pxos-sharepoint/tests",
-    "connectors/pxos-teams/src",
-    "connectors/pxos-teams/tests",
-    "connectors/pxos-telegram/src",
-    "connectors/pxos-telegram/tests",
+    "connectors/guilda-granola/src",
+    "connectors/guilda-granola/tests",
+    "connectors/guilda-sharepoint/src",
+    "connectors/guilda-sharepoint/tests",
+    "connectors/guilda-teams/src",
+    "connectors/guilda-teams/tests",
+    "connectors/guilda-telegram/src",
+    "connectors/guilda-telegram/tests",
     "quality",
     "tests/quality",
 ]
 mypy_path = [
     ".",
-    "pxos-kernel/src",
+    "guilda-kernel/src",
     "brq-at-work/src",
-    "connectors/pxos-granola/src",
-    "connectors/pxos-sharepoint/src",
-    "connectors/pxos-teams/src",
-    "connectors/pxos-telegram/src",
-    "pxos-kernel/tests",
+    "connectors/guilda-granola/src",
+    "connectors/guilda-sharepoint/src",
+    "connectors/guilda-teams/src",
+    "connectors/guilda-telegram/src",
+    "guilda-kernel/tests",
 ]
 explicit_package_bases = true
 
@@ -76,26 +76,26 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = [
-    "pxos-kernel/tests",
+    "guilda-kernel/tests",
     "brq-at-work/tests",
-    "connectors/pxos-granola/tests",
-    "connectors/pxos-sharepoint/tests",
-    "connectors/pxos-teams/tests",
-    "connectors/pxos-telegram/tests",
+    "connectors/guilda-granola/tests",
+    "connectors/guilda-sharepoint/tests",
+    "connectors/guilda-teams/tests",
+    "connectors/guilda-telegram/tests",
     "tests/quality",
 ]
-pythonpath = [".", "pxos-kernel/tests", "connectors/pxos-teams/tests", "connectors/pxos-telegram/tests"]
+pythonpath = [".", "guilda-kernel/tests", "connectors/guilda-teams/tests", "connectors/guilda-telegram/tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = ["--import-mode=importlib"]
 
 [tool.importlinter]
-root_packages = ["pxos_kernel", "brq_at_work"]
+root_packages = ["guilda_kernel", "brq_at_work"]
 
 [[tool.importlinter.contracts]]
 name = "O kernel não importa a distribuição"
 type = "forbidden"
-source_modules = ["pxos_kernel"]
+source_modules = ["guilda_kernel"]
 forbidden_modules = ["brq_at_work"]
 
 [dependency-groups]

@@ -931,7 +931,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pxos-graphiti-spike"
+name = "guilda-graphiti-spike"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

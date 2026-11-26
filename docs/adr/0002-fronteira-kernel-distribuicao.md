@@ -27,7 +27,7 @@ Precisamos de uma regra que funcione agora.
 **Regra de natureza.** Pergunta: "esse código mudaria se o cliente fosse uma rede de
 varejo em vez da BRQ?"
 
-- **Não mudaria → kernel** (`pxos-kernel/`). Mecanismos sem vocabulário de domínio.
+- **Não mudaria → kernel** (`guilda-kernel/`). Mecanismos sem vocabulário de domínio.
 - **Mudaria → distribuição** (`brq-at-work/`). Tudo que fala a língua de um domínio ou de
   um sistema específico.
 
@@ -51,7 +51,7 @@ distribuições) volta a valer para promoções.
 
 ## Garantias automáticas
 
-- `brq-at-work` depende de `pxos-kernel`; nunca o contrário (contrato de importação no CI).
+- `brq-at-work` depende de `guilda-kernel`; nunca o contrário (contrato de importação no CI).
 - Teste de neutralidade: o código e a ontologia do kernel não contêm termos de domínio.
 - Um pacote fixture de outro domínio passa pelos mesmos fluxos nos testes do kernel.
 

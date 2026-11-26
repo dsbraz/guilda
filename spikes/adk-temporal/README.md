@@ -1,6 +1,6 @@
 # Spike ADK + Temporal
 
-Experimento da plataforma de agentes e workflows do pxOS. O cenário é uma decisão de
+Experimento da plataforma de agentes e workflows da Guilda. O cenário é uma decisão de
 movimentação de designer entre projetos: contexto → proposta → aprovação → portal →
 confirmação. Toda informação é sintética. Não altera kernel, distribuição, CI ou nuvem.
 
@@ -109,7 +109,7 @@ briefings, contexto longo ou residência de dados no Brasil. Ver [resultado](rep
 ## O que o FDE constrói
 
 - `spike/domain.py`: contrato Pydantic de movimentação, exemplo mínimo de schema de domínio.
-- `fixtures/context.json`: contexto sintético; numa integração, viria do pxOS e do portal.
+- `fixtures/context.json`: contexto sintético; numa integração, viria da Guilda e do portal.
 - `spike/fde_tools.py`: ferramentas somente de leitura disponíveis ao agente.
 - `fixtures/agent.json`: instruções e seleção de ferramentas.
 - `spike/activities.py`: conector HTTP, execução, reconciliação e registro do resultado.

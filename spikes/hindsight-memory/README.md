@@ -3,7 +3,7 @@
 Experimento separado do produto e do [spike Graphiti](../graphiti-memory/README.md).
 Testa se Hindsight pode assumir extração, resolução, consolidação e recuperação da memória
 com PostgreSQL gerenciado, usando pontos públicos de extensão e sem outro motor de memória.
-A hipótese só é aprovada se as evidências atenderem aos requisitos do pxOS; conseguir conectar
+A hipótese só é aprovada se as evidências atenderem aos requisitos da Guilda; conseguir conectar
 Hindsight ao AlloyDB é o primeiro teste, não a conclusão.
 
 ## Ambiente

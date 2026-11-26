@@ -1,6 +1,6 @@
-"""Shared test database helpers for pxos-kernel and brq-at-work tests.
+"""Shared test database helpers for guilda-kernel and brq-at-work tests.
 
-Integration tests need the Compose Postgres (or PXOS_TEST_DATABASE_URL). They fail, not
+Integration tests need the Compose Postgres (or GUILDA_TEST_DATABASE_URL). They fail, not
 skip, when it is absent. The schema is migrated by the owner; tests connect as logins
 of that database only, members of pxos_app, so RLS and grants are what production sees.
 Each database stands for an installation and has its own logins (PXOS-63).
@@ -14,14 +14,14 @@ from urllib.parse import urlsplit, urlunsplit
 
 import asyncpg
 
-from pxos_kernel.identity import Connection
-from pxos_kernel.state import Fact, Handler, grant_connect, publish, upgrade
+from guilda_kernel.identity import Connection
+from guilda_kernel.state import Fact, Handler, grant_connect, publish, upgrade
 
 ADMIN_DSN = os.environ.get(
-    "PXOS_TEST_DATABASE_URL", "postgresql://pxos:pxos-local@127.0.0.1:25432/postgres"
+    "GUILDA_TEST_DATABASE_URL", "postgresql://pxos:pxos-local@127.0.0.1:25432/postgres"
 )
 PASSWORD = "pxos-test"
-SUFFIX = os.environ.get("PXOS_TEST_DB_SUFFIX", "")
+SUFFIX = os.environ.get("GUILDA_TEST_DB_SUFFIX", "")
 """Appended to every test database name, so suites in separate worktrees share one
 Postgres without recreating each other's databases."""
 

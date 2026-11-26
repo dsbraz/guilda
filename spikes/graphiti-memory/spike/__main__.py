@@ -92,7 +92,7 @@ async def execute(args):
                 ],
                 response_model=Pessoa,
             )
-            vector = await graph.embedder.create("Teste sintético de memória pxOS")
+            vector = await graph.embedder.create("Teste sintético de memória Guilda")
             if len(vector) != settings.embedding_dim:
                 raise ValueError("Dimensão retornada pelo Vertex diferente da configuração")
             dump(directory / "result.json", {"schema_response": answer, "dimensions": len(vector)})

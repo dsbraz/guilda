@@ -5,9 +5,9 @@ import pytest
 
 from brq_at_work.composition import bootstrap, build_registry
 from db_testing import Database, create_test_database
+from guilda_kernel.ontology import Registry
+from guilda_kernel.state import create_pool
 from model_testing import ROUTE
-from pxos_kernel.ontology import Registry
-from pxos_kernel.state import create_pool
 from temporal_testing import dev_server
 
 

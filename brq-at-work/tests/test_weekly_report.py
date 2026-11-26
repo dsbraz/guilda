@@ -17,17 +17,17 @@ from brq_at_work.publish_agent import AGENT_FILE, publish
 from brq_at_work.serve import AGENT
 from db_testing import Database
 from fakes_testing import FakeModels
-from pxos_kernel.agents import (
+from guilda_kernel.agents import (
     RoundInput,
     approved_version,
     build_agent,
     propose_deliverable,
     run_round,
 )
-from pxos_kernel.identity import session
-from pxos_kernel.model_access import ModelGateway
-from pxos_kernel.ontology import InvalidPayload, Registry
-from pxos_kernel.state import InvalidProposal, review
+from guilda_kernel.identity import session
+from guilda_kernel.model_access import ModelGateway
+from guilda_kernel.ontology import InvalidPayload, Registry
+from guilda_kernel.state import InvalidProposal, review
 
 REPORT: dict[str, Any] = {
     "summary": "Semana de homologação.",

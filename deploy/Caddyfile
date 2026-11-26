@@ -1,5 +1,5 @@
 # TLS automático (Let's Encrypt) para o domínio da instalação. Só o endpoint HTTP do app
 # (o do bot do canal) fica exposto; o resto do compose não publica portas.
-{$PXOS_DOMAIN} {
+{$GUILDA_DOMAIN} {
 	reverse_proxy app:8000
 }

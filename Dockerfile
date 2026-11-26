@@ -7,7 +7,7 @@ COPY --from=uv /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
-COPY pxos-kernel pxos-kernel
+COPY guilda-kernel guilda-kernel
 COPY brq-at-work brq-at-work
 COPY connectors connectors
 RUN uv sync --frozen --no-dev --no-editable

@@ -78,7 +78,7 @@ def suite(policy: dict[str, Any], root: Path, output: Path) -> dict[str, Any]:
         ],
         output / "tests.log",
         cwd=root,
-        env={"PXOS_QUALITY_OUTCOMES": str(outcomes)},
+        env={"GUILDA_QUALITY_OUTCOMES": str(outcomes)},
     )
     failures = []
     measured: dict[str, Any] = {}

@@ -18,11 +18,11 @@ def _relative(path: str) -> str:
 def settings(policy: dict[str, Any]) -> dict[str, Any]:
     selected = [_relative(path) for paths in policy["mutation_areas"].values() for path in paths]
     return {
-        "source_paths": ["pxos_kernel", "brq_at_work"],
+        "source_paths": ["guilda_kernel", "brq_at_work"],
         "only_mutate": [p if p.endswith(".py") else f"{p}/*" for p in selected],
         "do_not_mutate": policy["exclude"],
         "also_copy": [
-            "pxos-kernel",
+            "guilda-kernel",
             "brq-at-work",
             "agents_testing.py",
             "db_testing.py",
@@ -84,7 +84,7 @@ def read_results(directory: Path, policy: dict[str, Any]) -> dict[str, Any]:
 
 
 def campaign(policy: dict[str, Any], root: Path, output: Path) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory(prefix="pxos-mutation-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="guilda-mutation-") as temporary:
         target = Path(temporary)
         prepare(root, target, policy)
         result = run(["mutmut", "run", "--max-children", "1"], output / "mutation.log", cwd=target)

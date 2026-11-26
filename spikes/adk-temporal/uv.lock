@@ -497,7 +497,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pxos-adk-temporal-spike"
+name = "guilda-adk-temporal-spike"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
