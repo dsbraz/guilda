@@ -1,4 +1,4 @@
-> Linear: projeto Guilda (brq-px), https://linear.app/brq-px/project/pxos-38c291a57da8.
+> Projeto Guilda no workspace `brq-px` do Linear.
 
 Os números com `#` identificam issues do Linear.
 
