@@ -8,6 +8,8 @@ Hindsight ao AlloyDB é o primeiro teste, não a conclusão.
 
 ## Ambiente
 
+O projeto Guilda tem Vertex habilitado. O cluster AlloyDB descrito abaixo é opcional e requer provisionamento para repetir o experimento. Os relatórios registram a execução no projeto anterior.
+
 - Hindsight API slim e cliente 1.2.1, Python 3.12, dependências em `uv.lock`.
 - Projeto GCP definido em `cloud.json`, reutilizável; cluster exclusivo `hindsight-spike`, região `us-central1`.
 - AlloyDB PostgreSQL 16, instância `primary`, 2 vCPUs, zonal, banco `hindsight_spike`.

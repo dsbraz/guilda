@@ -1,10 +1,10 @@
 {
-  "project_id": "pxos-spikes",
-  "project_number": "1092891583062",
+  "project_id": "guilda-spikes",
+  "project_number": "775274702377",
   "purpose": "Projeto reutilizável de experimentos Guilda",
   "organization": "getbud.co",
   "billing_owner": "Bud",
-  "service_account": "spike-runner@pxos-spikes.iam.gserviceaccount.com",
+  "service_account": "spike-runner@guilda-spikes.iam.gserviceaccount.com",
   "authentication": "gcloud user login + service account impersonation; no service account keys",
   "apis": ["aiplatform.googleapis.com", "iamcredentials.googleapis.com", "iam.googleapis.com"],
   "automatic_project_cleanup": false
