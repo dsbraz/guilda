@@ -56,7 +56,7 @@ def registry() -> Registry:
 @pytest.fixture(scope="module")
 def database(registry: Registry) -> Database:
     """An installation of the kernel's retail fixture whose people are bound to Teams."""
-    database = create_test_database("pxos_test_teams")
+    database = create_test_database("guilda_test_teams")
 
     async def bootstrap() -> None:
         owner = await asyncpg.connect(database.owner_dsn)

@@ -184,7 +184,7 @@ async def test_the_agent_gets_only_the_tools_of_its_version(
 
 async def runs(pool: asyncpg.Pool, cycle: str) -> list[asyncpg.Record]:
     async with session(pool, AGENT) as connection:
-        return await connection.fetch("SELECT * FROM pxos.agent_runs WHERE cycle = $1", cycle)
+        return await connection.fetch("SELECT * FROM guilda.agent_runs WHERE cycle = $1", cycle)
 
 
 async def test_a_round_runs_once_and_a_retry_gets_what_it_answered(
@@ -226,7 +226,7 @@ async def test_a_refused_answer_records_no_run(pool: asyncpg.Pool, registry: Reg
 async def test_the_database_runs_a_round_of_a_cycle_once(pool: asyncpg.Pool) -> None:
     version = await version_in_force(pool)
     insert = (
-        "INSERT INTO pxos.agent_runs (definition, revision, context_ref, cycle, round)"
+        "INSERT INTO guilda.agent_runs (definition, revision, context_ref, cycle, round)"
         " VALUES ($1, $2, 'raw', $3, 1)"
     )
     cycle = f"cycle:{uuid4()}"
@@ -268,12 +268,12 @@ async def test_the_database_takes_one_deliverable_per_run(
     await run_round(pool, agent, INPUT, cycle=cycle, round=1)
     proposal = await propose_deliverable(pool, registry, agent.version, cycle=cycle, round=1)
     copy = """
-        INSERT INTO pxos.proposals (package, package_version, package_digest, action,
+        INSERT INTO guilda.proposals (package, package_version, package_digest, action,
             type_name, entity_id, base_revision, valid_from, payload, evidence, digest,
             author, author_principal)
         SELECT package, package_version, package_digest, action, type_name,
             gen_random_uuid(), 0, valid_from, payload, evidence, digest, '', ''
-        FROM pxos.proposals WHERE id = $1
+        FROM guilda.proposals WHERE id = $1
     """
     async with session(pool, AGENT) as connection:
         with pytest.raises(asyncpg.UniqueViolationError):

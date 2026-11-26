@@ -1,24 +1,24 @@
 # Pacote fixture de outro domínio (varejo), para provar a neutralidade do kernel.
-id: https://pxos.example/fixtures/retail
+id: https://guilda.example/fixtures/retail
 name: retail
 title: Varejo (fixture)
 version: 0.1.0
 annotations:
-  pxos.base_version: 0.1.0
+  guilda.base_version: 0.1.0
 prefixes:
   linkml: https://w3id.org/linkml/
-  retail: https://pxos.example/fixtures/retail/
+  retail: https://guilda.example/fixtures/retail/
 default_prefix: retail
 default_range: string
 imports:
   - linkml:types
-  - pxos_base
+  - guilda_base
 
 classes:
   RestockOrder:
     title: Pedido de reposição
     annotations:
-      pxos.kind: canonical
+      guilda.kind: canonical
     attributes:
       occurred_at:
         title: ocorreu em
@@ -35,5 +35,5 @@ classes:
       assignee:
         title: responsável
         annotations:
-          pxos.refers_to: Actor
+          guilda.refers_to: Actor
 

@@ -1,4 +1,4 @@
-"""Context port (PXOS-53): retain, recall and forget content in the context memory.
+"""Context port (K53): retain, recall and forget content in the context memory.
 Extraction belongs to the context memory (ADR 0001); the kernel only supplies the
 distribution's extraction instructions and the access tags (ADR 0006 §1).
 

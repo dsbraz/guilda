@@ -1,10 +1,10 @@
 """Source states and connector cursors (ADR 0006 §1, slice 10).
 
-- pxos.source_states keeps, per source, its connector, the latest version ingested,
+- guilda.source_states keeps, per source, its connector, the latest version ingested,
   whether the context memory retained it, and its state: available, unavailable (the
   connector could not be reached), deleted or no_access (both forgotten). A version
   committed but not retained is pending, so a failure to retain loses no source;
-- pxos.connector_cursors keeps where each connector's next delta starts;
+- guilda.connector_cursors keeps where each connector's next delta starts;
 - neither holds content, and the application can read and write them but not delete.
 """
 
@@ -15,7 +15,7 @@ down_revision = "0009"
 
 STATEMENTS = [
     """
-    CREATE TABLE pxos.source_states (
+    CREATE TABLE guilda.source_states (
         source text PRIMARY KEY CHECK (source <> ''),
         connector text NOT NULL CHECK (connector <> ''),
         version text,
@@ -23,14 +23,14 @@ STATEMENTS = [
         retained boolean NOT NULL DEFAULT false
     )
     """,
-    "GRANT SELECT, INSERT, UPDATE ON pxos.source_states TO pxos_app",
+    "GRANT SELECT, INSERT, UPDATE ON guilda.source_states TO guilda_app",
     """
-    CREATE TABLE pxos.connector_cursors (
+    CREATE TABLE guilda.connector_cursors (
         connector text PRIMARY KEY CHECK (connector <> ''),
         cursor text NOT NULL
     )
     """,
-    "GRANT SELECT, INSERT, UPDATE ON pxos.connector_cursors TO pxos_app",
+    "GRANT SELECT, INSERT, UPDATE ON guilda.connector_cursors TO guilda_app",
 ]
 
 

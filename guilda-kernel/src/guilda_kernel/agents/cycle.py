@@ -21,9 +21,9 @@ from guilda_kernel.conversation import answers
 from guilda_kernel.identity import Connection, session
 
 _DELIVERED = """
-    FROM pxos.agent_runs a
-    JOIN pxos.proposals p ON p.evidence->>'source' = 'agent-run:' || a.id
-    JOIN pxos.reviews r ON r.proposal_id = p.id
+    FROM guilda.agent_runs a
+    JOIN guilda.proposals p ON p.evidence->>'source' = 'agent-run:' || a.id
+    JOIN guilda.reviews r ON r.proposal_id = p.id
     WHERE a.cycle = $1
 """
 
@@ -40,7 +40,7 @@ async def round_input(
             cycle,
         )
         unavailable = await connection.fetch(
-            "SELECT source FROM pxos.source_states WHERE state = 'unavailable' ORDER BY source"
+            "SELECT source FROM guilda.source_states WHERE state = 'unavailable' ORDER BY source"
         )
     return RoundInput(
         answers=tuple(
@@ -80,7 +80,7 @@ async def cycle_effort(connection: Connection, cycle: str) -> Effort:
                coalesce(sum(input_tokens), 0) AS input_tokens,
                coalesce(sum(output_tokens), 0) AS output_tokens,
                coalesce(sum(cost), 0) AS cost
-        FROM pxos.agent_runs WHERE cycle = $1
+        FROM guilda.agent_runs WHERE cycle = $1
         """,
         cycle,
     )
@@ -90,7 +90,7 @@ async def cycle_effort(connection: Connection, cycle: str) -> Effort:
         cycle,
     )
     people = await connection.fetchval(
-        "SELECT count(*) FROM pxos.messages WHERE cycle = $1 AND sender IS NOT NULL", cycle
+        "SELECT count(*) FROM guilda.messages WHERE cycle = $1 AND sender IS NOT NULL", cycle
     )
     assert runs is not None and reviews is not None
     return Effort(answers=people, **dict(runs), **dict(reviews))

@@ -1,13 +1,13 @@
 # Ontologia base da Guilda (PRD §7). Nomes em inglês, rótulos em português (ADR 0003).
-# Todo tipo declara pxos.kind: canonical (autoriza ação ou alimenta medição).
-id: https://pxos.example/ontology/base
-name: pxos_base
+# Todo tipo declara guilda.kind: canonical (autoriza ação ou alimenta medição).
+id: https://guilda.example/ontology/base
+name: guilda_base
 title: Ontologia base da Guilda
 version: 0.1.0
 prefixes:
   linkml: https://w3id.org/linkml/
-  pxos: https://pxos.example/ontology/base/
-default_prefix: pxos
+  guilda: https://guilda.example/ontology/base/
+default_prefix: guilda
 default_range: string
 imports:
   - linkml:types
@@ -17,7 +17,7 @@ classes:
     title: Ator
     description: Pessoa interna, pessoa externa ou agente.
     annotations:
-      pxos.kind: canonical
+      guilda.kind: canonical
     attributes:
       name:
         title: nome

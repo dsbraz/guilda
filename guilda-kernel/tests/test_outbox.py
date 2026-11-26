@@ -1,4 +1,4 @@
-"""Outbox publisher (PXOS-52): canonical events reach consumers at least once.
+"""Outbox publisher (K52): canonical events reach consumers at least once.
 
 The publisher has its own role: it reads and marks the outbox and nothing else. Event
 payloads carry identifiers only; consumers read content in their own session.
@@ -79,7 +79,7 @@ async def test_rejection_event_carries_identifiers_only(
     await proposed(pool, registry, quantity=7)
     async with session(pool, "erin") as connection:
         row = await connection.fetchrow(
-            "SELECT id, digest FROM pxos.proposals WHERE payload->>'quantity' = '7'"
+            "SELECT id, digest FROM guilda.proposals WHERE payload->>'quantity' = '7'"
         )
     assert row is not None
     async with session(pool, "carla") as connection:
@@ -98,12 +98,12 @@ async def test_rejection_event_carries_identifiers_only(
 @pytest.mark.parametrize(
     "statement",
     [
-        "SELECT * FROM pxos.proposals",
-        "SELECT * FROM pxos.facts",
-        "INSERT INTO pxos.outbox (event_type, entity_id, payload)"
+        "SELECT * FROM guilda.proposals",
+        "SELECT * FROM guilda.facts",
+        "INSERT INTO guilda.outbox (event_type, entity_id, payload)"
         " VALUES ('x', gen_random_uuid(), '{}')",
-        "UPDATE pxos.outbox SET payload = '{}'",
-        "DELETE FROM pxos.outbox",
+        "UPDATE guilda.outbox SET payload = '{}'",
+        "DELETE FROM guilda.outbox",
     ],
 )
 async def test_publisher_reads_and_marks_the_outbox_only(

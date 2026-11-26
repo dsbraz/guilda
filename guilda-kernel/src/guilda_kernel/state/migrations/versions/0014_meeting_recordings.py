@@ -1,6 +1,6 @@
 """Recordings of meetings, one description per meeting (meeting transcripts port).
 
-- pxos.meeting_recordings keeps each recording a transcript source reported: its
+- guilda.meeting_recordings keeps each recording a transcript source reported: its
   meeting's key and calendar identity, its version, how many seconds it covers and its
   access tags. Never its transcript: that goes to the context memory only;
 - a source's recording is unique; a recording removed at the source is deleted here, so
@@ -16,7 +16,7 @@ down_revision = "0013"
 
 STATEMENTS = [
     """
-    CREATE TABLE pxos.meeting_recordings (
+    CREATE TABLE guilda.meeting_recordings (
         source text NOT NULL CHECK (source <> ''),
         recording text NOT NULL CHECK (recording <> ''),
         meeting text NOT NULL CHECK (meeting <> ''),
@@ -29,15 +29,15 @@ STATEMENTS = [
         PRIMARY KEY (source, recording)
     )
     """,
-    "CREATE INDEX meeting_recordings_meeting ON pxos.meeting_recordings (source, meeting)",
-    "GRANT SELECT, INSERT, UPDATE, DELETE ON pxos.meeting_recordings TO pxos_app",
-    "ALTER TABLE pxos.meeting_recordings ENABLE ROW LEVEL SECURITY",
-    "ALTER TABLE pxos.meeting_recordings FORCE ROW LEVEL SECURITY",
+    "CREATE INDEX meeting_recordings_meeting ON guilda.meeting_recordings (source, meeting)",
+    "GRANT SELECT, INSERT, UPDATE, DELETE ON guilda.meeting_recordings TO guilda_app",
+    "ALTER TABLE guilda.meeting_recordings ENABLE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.meeting_recordings FORCE ROW LEVEL SECURITY",
     """
-    CREATE POLICY meeting_recordings_agents ON pxos.meeting_recordings
-    USING (EXISTS (SELECT FROM pxos.actors WHERE id = pxos.current_actor() AND kind = 'agent'))
+    CREATE POLICY meeting_recordings_agents ON guilda.meeting_recordings
+    USING (EXISTS (SELECT FROM guilda.actors WHERE id = guilda.current_actor() AND kind = 'agent'))
     WITH CHECK (
-        EXISTS (SELECT FROM pxos.actors WHERE id = pxos.current_actor() AND kind = 'agent')
+        EXISTS (SELECT FROM guilda.actors WHERE id = guilda.current_actor() AND kind = 'agent')
     )
     """,
 ]

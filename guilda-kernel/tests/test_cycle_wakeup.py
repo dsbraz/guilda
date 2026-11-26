@@ -94,7 +94,7 @@ async def test_answers_and_reviews_are_retained_in_scope_and_wake_the_cycle(
 
 @pytest.fixture
 def scheduled(registry: Registry) -> Database:
-    return installation("pxos_test_cycle_schedule", registry, ROUTE)
+    return installation("guilda_test_cycle_schedule", registry, ROUTE)
 
 
 async def test_each_version_of_the_agent_schedules_its_cycles(

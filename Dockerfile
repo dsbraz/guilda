@@ -13,11 +13,11 @@ COPY connectors connectors
 RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.12-slim-bookworm
-# /var/lib/pxos é do usuário do app, para que o volume montado ali herde o dono.
-RUN useradd --system --uid 10001 --no-create-home pxos \
-    && mkdir -p /var/lib/pxos && chown pxos /var/lib/pxos
+# /var/lib/guilda é do usuário do app, para que o volume montado ali herde o dono.
+RUN useradd --system --uid 10001 --no-create-home guilda \
+    && mkdir -p /var/lib/guilda && chown guilda /var/lib/guilda
 COPY --from=build /app/.venv /app/.venv
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
-USER pxos
+USER guilda
 EXPOSE 8000
 CMD ["python", "-m", "brq_at_work.serve"]

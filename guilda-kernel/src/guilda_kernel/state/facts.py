@@ -1,4 +1,4 @@
-"""Reading canonical facts (PXOS-7): the facts of a type in force at two dates.
+"""Reading canonical facts (K7): the facts of a type in force at two dates.
 
 Facts are bitemporal: each revision is a full snapshot valid from ``valid_from`` and
 known from ``known_at``. RLS decides which facts the session's actor can read.
@@ -41,7 +41,7 @@ async def current(
     """
     rows = await connection.fetch(
         """
-        SELECT DISTINCT ON (entity_id) * FROM pxos.facts
+        SELECT DISTINCT ON (entity_id) * FROM guilda.facts
         WHERE package = $1 AND type_name = $2 AND known_at <= $4 AND valid_from <= $3
         ORDER BY entity_id, valid_from DESC, revision DESC
         """,

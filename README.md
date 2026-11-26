@@ -81,14 +81,14 @@ uv run python -m guilda_kernel.ontology.generate guilda-kernel/tests/retail_fixt
 
 O teste de snapshot e o CI (`--check`) falham se o gerado divergir do LinkML.
 
-No CI, a memória de contexto é o adaptador falso. A execução real é opt-in e local, com o
-Hindsight sobre o Postgres do Compose e o modelo no Vertex (gasta tokens no projeto
-indicado):
+Em desenvolvimento, o serviço de usuário `hindsight.service` atende em
+`127.0.0.1:8888`. O plugin de desenvolvimento seleciona um banco lógico por
+repositório. A memória da aplicação e os testes que gravam dados usam um banco próprio.
+O CI usa o adaptador falso. O teste com o servidor real é opt-in e consome inferência.
 
 ```sh
-cp .env.example .env  # e preencha a rota de modelos
-GOOGLE_APPLICATION_CREDENTIALS=... scripts/hindsight-local.sh
-GUILDA_HINDSIGHT_URL=http://127.0.0.1:18888 uv run pytest -k hindsight
+scripts/hindsight-local.sh
+GUILDA_HINDSIGHT_URL=http://127.0.0.1:8888 GUILDA_HINDSIGHT_BANK=guilda-test uv run pytest -k hindsight
 ```
 
 Provedor, modelos e regiões são decisão de deploy: o FDE os define por cliente no ambiente
@@ -96,8 +96,7 @@ Provedor, modelos e regiões são decisão de deploy: o FDE os define por client
 `GUILDA_EMBEDDING_*`; modelo em [.env.example](.env.example)), e nada disso é fixo no código. O
 bootstrap grava a rota recebida (`route=Route.from_environment()`), um novo deploy a
 substitui, e sem rota a instalação não recebe modelo. O gateway entrega ao agente ADK um
-modelo preso a essa rota, e o script do Hindsight tira da mesma rota o modelo, os embeddings e
-as regiões. A validação da rota configurada no Vertex é opt-in e gera cobrança; os resultados
+modelo preso a essa rota, e o Hindsight do deploy de produção usa a rota de memória configurada. A validação da rota configurada no Vertex é opt-in e gera cobrança; os resultados
 estão em [docs/validacoes](docs/validacoes/2026-11-14-rotas-vertex.md):
 
 ```sh

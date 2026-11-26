@@ -1,4 +1,4 @@
-# Identidades sintéticas da fatia 1. Identidades reais chegam com OIDC (PXOS-29).
+# Identidades sintéticas da fatia 1. Identidades reais chegam com OIDC (K29).
 actors:
   - id: ana
     kind: internal_person
@@ -25,7 +25,7 @@ actors:
     kind: agent
     name: Assistente do projeto
     roles: [agent]
-  # Contato do cliente: identidade própria, sem acesso ao contexto interno (PXOS-61).
+  # Contato do cliente: identidade própria, sem acesso ao contexto interno (K61).
   - id: dora
     kind: external_person
     name: Dora (cliente)

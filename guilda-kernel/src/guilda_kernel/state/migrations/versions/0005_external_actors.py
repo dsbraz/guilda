@@ -1,9 +1,9 @@
-"""External actors reach no internal context (PXOS-61).
+"""External actors reach no internal context (K61).
 
 Customers and suppliers have their own identity (``external_person``). Every read and
 write of the canonical tables goes through ``current_actor()``, so refusing there a
 session whose actor or principal is external refuses it everywhere, whatever roles the
-external actor holds. External actors will come in through channels (PXOS-23).
+external actor holds. External actors will come in through channels (K23).
 """
 
 from alembic import op
@@ -12,15 +12,15 @@ revision = "0005"
 down_revision = "0004"
 
 STATEMENTS = [
-    "ALTER TABLE pxos.actors DROP CONSTRAINT actors_kind_check",
-    "ALTER TABLE pxos.actors ADD CONSTRAINT actors_kind_check "
+    "ALTER TABLE guilda.actors DROP CONSTRAINT actors_kind_check",
+    "ALTER TABLE guilda.actors ADD CONSTRAINT actors_kind_check "
     "CHECK (kind IN ('internal_person', 'external_person', 'agent'))",
     """
-    CREATE OR REPLACE FUNCTION pxos.current_actor() RETURNS text
-    LANGUAGE plpgsql STABLE SET search_path = pxos, pg_temp AS $$
+    CREATE OR REPLACE FUNCTION guilda.current_actor() RETURNS text
+    LANGUAGE plpgsql STABLE SET search_path = guilda, pg_temp AS $$
     DECLARE
-        actor text := nullif(current_setting('pxos.actor', true), '');
-        principal text := nullif(current_setting('pxos.on_behalf_of', true), '');
+        actor text := nullif(current_setting('guilda.actor', true), '');
+        principal text := nullif(current_setting('guilda.on_behalf_of', true), '');
         external text;
     BEGIN
         IF actor IS NULL THEN

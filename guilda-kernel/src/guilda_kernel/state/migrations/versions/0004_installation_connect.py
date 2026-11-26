@@ -1,6 +1,6 @@
-"""Only the installation's own logins connect to its database (PXOS-63).
+"""Only the installation's own logins connect to its database (K63).
 
-Postgres roles are cluster-wide, and pxos_app is a group role shared by every database
+Postgres roles are cluster-wide, and guilda_app is a group role shared by every database
 of the cluster. CONNECT is what keeps a login of one installation out of another's
 database, so it is revoked from PUBLIC here and granted to each login by
 ``grant_connect``.

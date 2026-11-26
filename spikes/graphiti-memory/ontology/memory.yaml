@@ -1,11 +1,11 @@
-id: https://pxos.example/spike/memory
-name: pxos_memory_spike
+id: https://guilda.example/spike/memory
+name: guilda_memory_spike
 prefixes:
   linkml: https://w3id.org/linkml/
-  pxos: https://pxos.example/spike/
+  guilda: https://guilda.example/spike/
 imports:
   - linkml:types
-default_prefix: pxos
+default_prefix: guilda
 default_range: string
 classes:
   Pessoa:

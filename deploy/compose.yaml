@@ -2,7 +2,7 @@
 # Configuração e segredos vêm de deploy/.env (modelo em .env.example, nunca commitado).
 # Só o Caddy publica portas (80 e 443, com TLS automático); o resto fica na rede interna.
 # A UI do Temporal é opcional (--profile ui) e só escuta em loopback: use um túnel SSH.
-name: pxos
+name: guilda
 
 x-restart: &restart
   restart: unless-stopped
@@ -12,9 +12,9 @@ services:
     <<: *restart
     image: pgvector/pgvector:0.8.1-pg16
     environment:
-      POSTGRES_USER: pxos
+      POSTGRES_USER: guilda
       POSTGRES_PASSWORD: ${GUILDA_DB_OWNER_PASSWORD:?defina GUILDA_DB_OWNER_PASSWORD}
-      POSTGRES_DB: pxos
+      POSTGRES_DB: guilda
       GUILDA_DB_APP_PASSWORD: ${GUILDA_DB_APP_PASSWORD:?defina GUILDA_DB_APP_PASSWORD}
       GUILDA_DB_PUBLISHER_PASSWORD: ${GUILDA_DB_PUBLISHER_PASSWORD:?defina GUILDA_DB_PUBLISHER_PASSWORD}
       TEMPORAL_DB_PASSWORD: ${TEMPORAL_DB_PASSWORD:?defina TEMPORAL_DB_PASSWORD}
@@ -23,7 +23,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pxos -d pxos"]
+      test: ["CMD-SHELL", "pg_isready -U guilda -d guilda"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -135,7 +135,7 @@ services:
     <<: *restart
     build:
       context: ..
-    image: pxos-app
+    image: guilda-app
     depends_on:
       postgres: { condition: service_healthy }
       temporal-namespace: { condition: service_completed_successfully }
@@ -144,18 +144,18 @@ services:
     # alguma delas o app não sobe e o log nomeia a que falta.
     env_file: .env
     environment:
-      GUILDA_OWNER_DATABASE_URL: postgresql://pxos:${GUILDA_DB_OWNER_PASSWORD}@postgres:5432/pxos
-      GUILDA_DATABASE_URL: postgresql://pxos_app_login:${GUILDA_DB_APP_PASSWORD}@postgres:5432/pxos
-      GUILDA_PUBLISHER_DATABASE_URL: postgresql://pxos_publisher_login:${GUILDA_DB_PUBLISHER_PASSWORD}@postgres:5432/pxos
+      GUILDA_OWNER_DATABASE_URL: postgresql://guilda:${GUILDA_DB_OWNER_PASSWORD}@postgres:5432/guilda
+      GUILDA_DATABASE_URL: postgresql://guilda_app_login:${GUILDA_DB_APP_PASSWORD}@postgres:5432/guilda
+      GUILDA_PUBLISHER_DATABASE_URL: postgresql://guilda_publisher_login:${GUILDA_DB_PUBLISHER_PASSWORD}@postgres:5432/guilda
       GUILDA_TEMPORAL_ADDRESS: temporal:7233
       GUILDA_TASK_QUEUE: ${GUILDA_TASK_QUEUE:?defina GUILDA_TASK_QUEUE}
       GUILDA_HINDSIGHT_BANK: ${GUILDA_HINDSIGHT_BANK:?defina GUILDA_HINDSIGHT_BANK}
       GUILDA_HINDSIGHT_URL: http://hindsight:8888
       GUILDA_HTTP_PORT: "8000"
-      GUILDA_TEAMS_CARDS_PATH: /var/lib/pxos/teams-cards
+      GUILDA_TEAMS_CARDS_PATH: /var/lib/guilda/teams-cards
     volumes:
       # Mensagem de cada card de revisão no Teams, para substituí-la depois de um restart.
-      - app-state:/var/lib/pxos
+      - app-state:/var/lib/guilda
     stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/healthz')"]

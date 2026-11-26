@@ -55,18 +55,18 @@ Os processos são encerrados ao terminar; os arquivos ficam para inspeção.
 ## Modelo real: Vertex no projeto isolado de spikes
 
 Envie apenas as fixtures sintéticas; esta execução consome tokens. O projeto existente
-é `pxos-spikes`, com impersonação de `spike-runner@pxos-spikes.iam.gserviceaccount.com`.
+está em `cloud.json` e usa a conta de serviço `spike-runner`.
 É necessário acesso à conta e Vertex. O helper abaixo lê o ADC de usuário e grava uma
 configuração de impersonação em `.secrets/adc.json` com permissão 0600, sem chave de
 conta de serviço. Não altera o login padrão do gcloud.
 
 ```sh
-CLOUDSDK_CONFIG=/tmp/pxos-spikes-auth gcloud auth application-default login
+CLOUDSDK_CONFIG=/tmp/guilda-spikes-auth gcloud auth application-default login
 uv run --frozen python -m spike.auth \
-  --source /tmp/pxos-spikes-auth/application_default_credentials.json
+  --source /tmp/guilda-spikes-auth/application_default_credentials.json
 export GOOGLE_APPLICATION_CREDENTIALS="$PWD/.secrets/adc.json"
 export GOOGLE_GENAI_USE_ENTERPRISE=true
-export GOOGLE_CLOUD_PROJECT=pxos-spikes
+export GOOGLE_CLOUD_PROJECT=$(python3 -c 'import json; print(json.load(open("cloud.json"))["project"])')
 export GOOGLE_CLOUD_LOCATION=global
 export SPIKE_LIVE_MODEL=gemini-3.8-flash
 uv run --frozen pytest -q tests/test_live.py --junitxml=.runtime/live-validation.xml

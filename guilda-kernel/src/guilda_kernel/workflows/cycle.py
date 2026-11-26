@@ -149,8 +149,8 @@ async def _cycle_of(pool: asyncpg.Pool, agent: str, proposal: UUID) -> str | Non
     async with session(pool, agent) as connection:
         cycle: str | None = await connection.fetchval(
             """
-            SELECT a.cycle FROM pxos.proposals p
-            JOIN pxos.agent_runs a ON p.evidence->>'source' = 'agent-run:' || a.id
+            SELECT a.cycle FROM guilda.proposals p
+            JOIN guilda.agent_runs a ON p.evidence->>'source' = 'agent-run:' || a.id
             WHERE p.id = $1
             """,
             proposal,

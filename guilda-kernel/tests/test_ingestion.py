@@ -1,4 +1,4 @@
-"""Ingestion into the context memory (PXOS-52, PXOS-79).
+"""Ingestion into the context memory (K52, K79).
 
 A source version is ingested once, as the agent and from its approved version: the
 context memory retains it under the source, with the version's memory instructions and
@@ -53,7 +53,7 @@ class BrokenStore(FakeContextStore):
 
 @pytest.fixture
 def unpublished(registry: Registry) -> Database:
-    return installation("pxos_test_unpublished", registry, ROUTE)
+    return installation("guilda_test_unpublished", registry, ROUTE)
 
 
 @pytest.fixture
@@ -66,7 +66,7 @@ async def unpublished_pool(unpublished: Database) -> AsyncIterator[asyncpg.Pool]
 async def proposals(database: Database) -> int:
     owner = await asyncpg.connect(database.owner_dsn)
     try:
-        return int(await owner.fetchval("SELECT count(*) FROM pxos.proposals"))
+        return int(await owner.fetchval("SELECT count(*) FROM guilda.proposals"))
     finally:
         await owner.close()
 
@@ -98,7 +98,7 @@ async def test_replay_of_a_source_version_retains_nothing(
     owner = await asyncpg.connect(database.owner_dsn)
     try:
         rows = await owner.fetch(
-            "SELECT ingested_by FROM pxos.sources WHERE source = $1", doc.source
+            "SELECT ingested_by FROM guilda.sources WHERE source = $1", doc.source
         )
     finally:
         await owner.close()
@@ -114,7 +114,7 @@ async def test_without_an_approved_version_nothing_is_ingested(
     assert store.retained == []
     owner = await asyncpg.connect(unpublished.owner_dsn)
     try:
-        assert await owner.fetchval("SELECT count(*) FROM pxos.sources") == 0
+        assert await owner.fetchval("SELECT count(*) FROM guilda.sources") == 0
     finally:
         await owner.close()
 
@@ -133,7 +133,7 @@ async def test_each_run_records_the_version_it_ran(pool: asyncpg.Pool, registry:
     async with session(pool, AGENT) as connection:
         ran = [
             await connection.fetchrow(
-                "SELECT definition, revision FROM pxos.agent_runs WHERE context_ref = $1", doc.key
+                "SELECT definition, revision FROM guilda.agent_runs WHERE context_ref = $1", doc.key
             )
             for doc in (first, second)
         ]
@@ -155,7 +155,9 @@ class CommittedOnly(FakeContextStore):
     ) -> None:
         owner = await asyncpg.connect(self.database.owner_dsn)
         try:
-            assert await owner.fetchval("SELECT count(*) FROM pxos.sources WHERE source = $1", key)
+            assert await owner.fetchval(
+                "SELECT count(*) FROM guilda.sources WHERE source = $1", key
+            )
         finally:
             await owner.close()
         await super().retain(key, text, instructions, tags=tags)
@@ -174,7 +176,7 @@ async def runs(database: Database, context_ref: str) -> int:
     try:
         return int(
             await owner.fetchval(
-                "SELECT count(*) FROM pxos.agent_runs WHERE context_ref = $1", context_ref
+                "SELECT count(*) FROM guilda.agent_runs WHERE context_ref = $1", context_ref
             )
         )
     finally:
@@ -189,7 +191,8 @@ async def test_a_failure_to_retain_leaves_the_source_pending_until_it_comes_agai
         await ingest_as_agent(BrokenStore(), pool, doc)
     async with pool.acquire() as connection:
         pending = await connection.fetchrow(
-            "SELECT connector, version, state, retained FROM pxos.source_states WHERE source = $1",
+            "SELECT connector, version, state, retained FROM guilda.source_states "
+            "WHERE source = $1",
             doc.source,
         )
     assert dict(pending or {}) == {
@@ -223,7 +226,7 @@ async def test_the_database_refuses_an_unknown_source_state(pool: asyncpg.Pool) 
     async with pool.acquire() as connection:
         with pytest.raises(asyncpg.CheckViolationError):
             await connection.execute(
-                "INSERT INTO pxos.source_states (source, connector, state)"
+                "INSERT INTO guilda.source_states (source, connector, state)"
                 " VALUES ('fixture:x', 'fixture', 'forgotten')"
             )
 
@@ -234,7 +237,7 @@ async def test_application_cannot_delete_source_states_or_cursors(
 ) -> None:
     async with pool.acquire() as connection:
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
-            await connection.execute(f"DELETE FROM pxos.{table}")
+            await connection.execute(f"DELETE FROM guilda.{table}")
 
 
 async def test_the_source_ledger_keeps_no_content(database: Database) -> None:
@@ -244,7 +247,7 @@ async def test_the_source_ledger_keeps_no_content(database: Database) -> None:
     try:
         columns = await owner.fetch(
             "SELECT column_name FROM information_schema.columns"
-            " WHERE table_schema = 'pxos' AND table_name = 'sources'"
+            " WHERE table_schema = 'guilda' AND table_name = 'sources'"
         )
     finally:
         await owner.close()
@@ -259,4 +262,4 @@ async def test_the_source_ledger_keeps_no_content(database: Database) -> None:
 async def test_application_cannot_read_the_source_ledger(pool: asyncpg.Pool) -> None:
     async with pool.acquire() as connection:
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
-            await connection.fetch("SELECT source FROM pxos.sources")
+            await connection.fetch("SELECT source FROM guilda.sources")

@@ -1,8 +1,8 @@
-"""Fixed identities loaded from configuration (PXOS-51).
+"""Fixed identities loaded from configuration (K51).
 
 People, external actors (customers, suppliers) and agents are actors with roles; a
 delegation lets an agent act on behalf of an internal person with only that person's
-roles. The database refuses any session of an external actor (PXOS-61). An actor may be
+roles. The database refuses any session of an external actor (K61). An actor may be
 bound to its identities on a channel, so a message or a click there names the actor. The
 owner connection writes them at bootstrap; the application role can only read them.
 """
@@ -65,24 +65,24 @@ async def install_identities(owner: asyncpg.Connection, identities: Identities) 
     async with owner.transaction():
         await owner.executemany(
             """
-            INSERT INTO pxos.actors (id, kind, name) VALUES ($1, $2, $3)
+            INSERT INTO guilda.actors (id, kind, name) VALUES ($1, $2, $3)
             ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, name = EXCLUDED.name
             """,
             [(actor.id, actor.kind, actor.name) for actor in identities.actors],
         )
-        await owner.execute("DELETE FROM pxos.actor_roles")
+        await owner.execute("DELETE FROM guilda.actor_roles")
         await owner.executemany(
-            "INSERT INTO pxos.actor_roles (actor_id, role) VALUES ($1, $2)",
+            "INSERT INTO guilda.actor_roles (actor_id, role) VALUES ($1, $2)",
             [(actor.id, role) for actor in identities.actors for role in actor.roles],
         )
-        await owner.execute("DELETE FROM pxos.delegations")
+        await owner.execute("DELETE FROM guilda.delegations")
         await owner.executemany(
-            "INSERT INTO pxos.delegations (agent_id, person_id) VALUES ($1, $2)",
+            "INSERT INTO guilda.delegations (agent_id, person_id) VALUES ($1, $2)",
             [(item.agent, item.person) for item in identities.delegations],
         )
-        await owner.execute("DELETE FROM pxos.channel_identities")
+        await owner.execute("DELETE FROM guilda.channel_identities")
         await owner.executemany(
-            "INSERT INTO pxos.channel_identities (channel_id, actor_id) VALUES ($1, $2)",
+            "INSERT INTO guilda.channel_identities (channel_id, actor_id) VALUES ($1, $2)",
             [
                 (channel_id, actor.id)
                 for actor in identities.actors
@@ -94,7 +94,7 @@ async def install_identities(owner: asyncpg.Connection, identities: Identities) 
 async def bound_actor(connection: Connection, channel_id: str) -> str:
     """The actor bound to ``channel_id``; NotAuthorized when it is bound to nobody."""
     actor = await connection.fetchval(
-        "SELECT actor_id FROM pxos.channel_identities WHERE channel_id = $1", channel_id
+        "SELECT actor_id FROM guilda.channel_identities WHERE channel_id = $1", channel_id
     )
     if actor is None:
         raise NotAuthorized(f"{channel_id} is bound to no actor")

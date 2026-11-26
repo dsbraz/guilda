@@ -23,9 +23,9 @@ Modelos e regiões são explícitos; falha do modelo configurado não aciona fal
 
 ## Ambiente
 
-Projeto GCP compartilhado pelos experimentos: **`pxos-spikes`**, organização `getbud.co`,
+Projeto GCP compartilhado pelos experimentos: campo `project_id` de `cloud.json`, organização `getbud.co`,
 faturamento da Bud. O projeto `bud2-saas-homolog` não é usado. Não é alterado o projeto ativo
-do gcloud e não são lidas credenciais ADC. `spike-runner@pxos-spikes.iam.gserviceaccount.com`
+do gcloud e não são lidas credenciais ADC. A conta de serviço indicada em `cloud.json`
 é impersonada com tokens temporários. Não há chave de conta de serviço gravada em arquivo.
 As permissões da conta de serviço são `roles/aiplatform.user` e
 `roles/serviceusage.serviceUsageConsumer` no projeto dos spikes.
@@ -35,7 +35,7 @@ Execute nesta pasta, com Python 3.12, uv, Docker Compose e gcloud:
 ```sh
 uv sync --frozen
 cp .env.example .env
-# Preencha SPIKE_GCP_PROJECT=pxos-spikes e SPIKE_GCP_ACCOUNT com a conta autorizada.
+# Preencha SPIKE_GCP_PROJECT com o project_id de cloud.json e SPIKE_GCP_ACCOUNT com a conta autorizada.
 gcloud auth login
 # A conta autorizada precisa de roles/iam.serviceAccountTokenCreator na spike-runner.
 docker compose up -d --wait

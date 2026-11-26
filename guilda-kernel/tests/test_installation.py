@@ -1,4 +1,4 @@
-"""Own credentials per installation (PXOS-63).
+"""Own credentials per installation (K63).
 
 Each installation has its own database and logins. Postgres roles are cluster-wide, so
 what keeps one installation's login out of another's database is CONNECT: the kernel

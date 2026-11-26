@@ -1,12 +1,12 @@
 # Metamodelo de ação: como um pacote declara seus action_types (PRD §7).
-id: https://pxos.example/ontology/metamodel
-name: pxos_metamodel
+id: https://guilda.example/ontology/metamodel
+name: guilda_metamodel
 title: Metamodelo de ação da Guilda
 version: 0.1.0
 prefixes:
   linkml: https://w3id.org/linkml/
-  pxosmeta: https://pxos.example/ontology/metamodel/
-default_prefix: pxosmeta
+  guildameta: https://guilda.example/ontology/metamodel/
+default_prefix: guildameta
 default_range: string
 imports:
   - linkml:types

@@ -1,4 +1,4 @@
-"""An agent's definition is a version approved through the proposal cycle (PXOS-78, K34).
+"""An agent's definition is a version approved through the proposal cycle (K78, K34).
 
 ADR 0004 §3: every definition is a published, immutable version with a digest, approved
 by a role. The kernel carries it as a canonical type of its own package, so a draft is a
@@ -58,7 +58,7 @@ def definition(instructions: str = "Read each restock promise.") -> dict[str, An
 
 @pytest.fixture
 def fresh(registry: Registry) -> Iterator[Database]:
-    yield installation("pxos_test_agent_versions", registry, ROUTE)
+    yield installation("guilda_test_agent_versions", registry, ROUTE)
 
 
 @pytest.fixture
@@ -211,7 +211,7 @@ async def test_only_platform_admins_and_agents_read_definitions(
 ) -> None:
     draft = await proposed(agents_pool, registry, definition())
     await decided(agents_pool, registry, draft)
-    count = "SELECT count(*) FROM pxos.facts WHERE package = 'pxos_agents'"
+    count = "SELECT count(*) FROM guilda.facts WHERE package = 'guilda_agents'"
     for actor, visible in (("erin", 0), ("carla", 0), ("paula", 1), (AGENT, 1)):
         async with session(agents_pool, actor) as connection:
             assert await connection.fetchval(count) == visible, actor

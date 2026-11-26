@@ -1,4 +1,4 @@
-"""Ingestion into the context memory (PXOS-52, PXOS-79).
+"""Ingestion into the context memory (K52, K79).
 
 A connector delivers the changes to its sources since a cursor, and a sync pass applies
 them (ADR 0006 §1). Each source version is ingested once, by an agent from its approved
@@ -83,7 +83,7 @@ async def ingest(
     async with session(pool, agent) as connection:
         await connection.execute(
             """
-            UPDATE pxos.source_states SET retained = true, state = 'available'
+            UPDATE guilda.source_states SET retained = true, state = 'available'
             WHERE source = $1 AND version = $2
             """,
             document.source,
@@ -96,7 +96,7 @@ async def _pending(
     connection: Connection, version: AgentVersion, document: SourceDocument, connector: str
 ) -> bool:
     status = await connection.execute(
-        "INSERT INTO pxos.sources (source, version) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        "INSERT INTO guilda.sources (source, version) VALUES ($1, $2) ON CONFLICT DO NOTHING",
         document.source,
         document.version,
     )
@@ -104,7 +104,7 @@ async def _pending(
         await record_run(connection, version, document.key)
         await connection.execute(
             """
-            INSERT INTO pxos.source_states (source, connector, version, state)
+            INSERT INTO guilda.source_states (source, connector, version, state)
             VALUES ($1, $2, $3, 'available')
             ON CONFLICT (source) DO UPDATE SET connector = EXCLUDED.connector,
                 version = EXCLUDED.version, state = 'available', retained = false
@@ -115,7 +115,7 @@ async def _pending(
         )
         return True
     pending = await connection.fetchval(
-        "SELECT NOT retained FROM pxos.source_states WHERE source = $1 AND version = $2",
+        "SELECT NOT retained FROM guilda.source_states WHERE source = $1 AND version = $2",
         document.source,
         document.version,
     )
@@ -135,7 +135,7 @@ async def sync(
     """
     async with session(pool, agent) as connection:
         cursor = await connection.fetchval(
-            "SELECT cursor FROM pxos.connector_cursors WHERE connector = $1", connector.name
+            "SELECT cursor FROM guilda.connector_cursors WHERE connector = $1", connector.name
         )
     try:
         changes = await connector.changes(cursor)
@@ -152,7 +152,7 @@ async def sync(
     async with session(pool, agent) as connection:
         await connection.execute(
             """
-            INSERT INTO pxos.connector_cursors (connector, cursor) VALUES ($1, $2)
+            INSERT INTO guilda.connector_cursors (connector, cursor) VALUES ($1, $2)
             ON CONFLICT (connector) DO UPDATE SET cursor = EXCLUDED.cursor
             """,
             connector.name,
@@ -165,7 +165,7 @@ async def _forget(pool: asyncpg.Pool, agent: str, connector: str, source: str, s
     async with session(pool, agent) as connection:
         await connection.execute(
             """
-            INSERT INTO pxos.source_states (source, connector, state) VALUES ($1, $2, $3)
+            INSERT INTO guilda.source_states (source, connector, state) VALUES ($1, $2, $3)
             ON CONFLICT (source) DO UPDATE SET state = EXCLUDED.state, retained = false
             """,
             source,
@@ -177,7 +177,7 @@ async def _forget(pool: asyncpg.Pool, agent: str, connector: str, source: str, s
 async def _mark(pool: asyncpg.Pool, agent: str, connector: str, old: str, new: str) -> None:
     async with session(pool, agent) as connection:
         await connection.execute(
-            "UPDATE pxos.source_states SET state = $3 WHERE connector = $1 AND state = $2",
+            "UPDATE guilda.source_states SET state = $3 WHERE connector = $1 AND state = $2",
             connector,
             old,
             new,

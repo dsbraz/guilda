@@ -47,7 +47,7 @@ class SpikePolicy(OperationValidatorExtension):
         return ValidationResult.accept()
 
     async def filter_retain_facts(self, ctx):
-        if ctx.bank_id.startswith("pxos-hs-review-"):
+        if ctx.bank_id.startswith("guilda-hs-review-"):
             path = ROOT / "runs" / "hook-events.jsonl"
             path.parent.mkdir(exist_ok=True)
             with path.open("a") as stream:

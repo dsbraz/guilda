@@ -5,6 +5,7 @@ import json
 import secrets
 from pathlib import Path
 
+from spike.cloud import ACCOUNT, PROJECT
 from spike.settings import ROOT
 
 
@@ -12,16 +13,16 @@ def prepare(source):
     credentials = json.loads(source.read_text())
     if credentials.get("type") != "authorized_user":
         raise ValueError("Use o ADC de usuário criado pelo login isolado do spike")
-    credentials["quota_project_id"] = "pxos-spikes"
+    credentials["quota_project_id"] = PROJECT
     directory = ROOT / ".secrets"
     directory.mkdir(mode=0o700, exist_ok=True)
     directory.chmod(0o700)
     adc = {
         "type": "impersonated_service_account",
-        "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/spike-runner@pxos-spikes.iam.gserviceaccount.com:generateAccessToken",
+        "service_account_impersonation_url": f"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{ACCOUNT}:generateAccessToken",
         "source_credentials": credentials,
         "delegates": [],
-        "quota_project_id": "pxos-spikes",
+        "quota_project_id": PROJECT,
     }
     path = directory / "adc.json"
     # Restrict permissions before writing the credential, including on first creation.
@@ -34,7 +35,7 @@ def prepare(source):
         path.write_text(
             json.dumps({"admin": secrets.token_urlsafe(32), "public": secrets.token_urlsafe(32)})
         )
-    print("ADC isolado preparado; conta alvo spike-runner em pxos-spikes.")
+    print(f"ADC isolado preparado para {ACCOUNT}.")
 
 
 if __name__ == "__main__":

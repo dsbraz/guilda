@@ -1,17 +1,17 @@
-name: pxos  # Identifica os volumes existentes independentemente da pasta do checkout.
+name: guilda  # Identifica os volumes existentes independentemente da pasta do checkout.
 # Base local de desenvolvimento. Portas só em loopback; credenciais apenas locais.
 services:
   postgres:
     image: pgvector/pgvector:0.8.1-pg16
     environment:
-      POSTGRES_USER: pxos
-      POSTGRES_PASSWORD: pxos-local
-      POSTGRES_DB: pxos
+      POSTGRES_USER: guilda
+      POSTGRES_PASSWORD: guilda-local
+      POSTGRES_DB: guilda
     ports: ["127.0.0.1:${GUILDA_DB_PORT:-25432}:5432"]
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pxos -d pxos"]
+      test: ["CMD-SHELL", "pg_isready -U guilda -d guilda"]
       interval: 2s
       timeout: 3s
       retries: 30

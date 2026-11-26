@@ -24,7 +24,7 @@ def test_plugin_records_strict_pending_requirements(
         skipped=True,
         failed=False,
         nodeid="test_pending",
-        wasxfail="PXOS-1",
+        wasxfail="K1",
         longrepr="pending",
     )
     hook = outcomes.pytest_runtest_makereport(item, None)

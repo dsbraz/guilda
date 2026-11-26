@@ -124,7 +124,7 @@ async def installed_route(database: Database) -> Route:
     try:
         row = await owner.fetchrow(
             "SELECT provider, model, region, memory_model, memory_region, embedding_model,"
-            " embedding_region, input_price, output_price FROM pxos.installation"
+            " embedding_region, input_price, output_price FROM guilda.installation"
         )
     finally:
         await owner.close()

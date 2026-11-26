@@ -1,4 +1,4 @@
-"""Hindsight's own model calls follow the installation's route (PXOS-74, PRD §6.4).
+"""Hindsight's own model calls follow the installation's route (K74, PRD §6.4).
 
 Hindsight calls Vertex itself, for extraction and for embeddings, so the gateway cannot
 sit in front of it. What keeps it on the route is its configuration, derived from the
@@ -24,10 +24,9 @@ def test_the_settings_come_from_the_route(route: Route) -> None:
     assert settings["HINDSIGHT_API_EMBEDDINGS_VERTEXAI_PROJECT_ID"] == "p"
 
 
-def test_the_local_script_takes_the_route_from_the_environment(
+def test_shell_exports_take_the_route_from_the_environment(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """scripts/hindsight-local.sh evaluates these exports."""
     environment = {
         "GUILDA_VERTEX_PROJECT": "p",
         "GUILDA_MODEL_PROVIDER": ROUTE.provider,

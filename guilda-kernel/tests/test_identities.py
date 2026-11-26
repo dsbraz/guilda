@@ -1,4 +1,4 @@
-"""Identity configuration (PXOS-51, PXOS-61): people, agents and external actors.
+"""Identity configuration (K51, K61): people, agents and external actors.
 
 An actor may be bound to identities on a channel; a channel identity names one actor, and
 one bound to nobody (a guest, a stranger) names none.

@@ -1,4 +1,4 @@
-"""Review cards on a channel (PXOS-55).
+"""Review cards on a channel (K55).
 
 A created proposal becomes a card for whoever holds the action's approver role and can
 read the type, never for its author or whoever the author acts for, and never for an
@@ -89,11 +89,11 @@ async def test_card_goes_to_approvers_other_than_the_author(
 async def test_an_agent_holding_the_approver_role_gets_no_card(
     pool: asyncpg.Pool, registry: Registry, database: Database
 ) -> None:
-    """Approving is always a person's act (PXOS-88), whatever roles an agent holds."""
+    """Approving is always a person's act (K88), whatever roles an agent holds."""
     owner = await asyncpg.connect(database.owner_dsn)
     try:
         await owner.execute(
-            "INSERT INTO pxos.actor_roles (actor_id, role)"
+            "INSERT INTO guilda.actor_roles (actor_id, role)"
             " VALUES ('restock-agent', 'store-manager')"
         )
         proposal = await proposed(pool, registry, "erin")
@@ -102,7 +102,7 @@ async def test_an_agent_holding_the_approver_role_gets_no_card(
         assert set(channel.cards) == {"carla", "diego"}
     finally:
         await owner.execute(
-            "DELETE FROM pxos.actor_roles"
+            "DELETE FROM guilda.actor_roles"
             " WHERE actor_id = 'restock-agent' AND role = 'store-manager'"
         )
         await owner.close()

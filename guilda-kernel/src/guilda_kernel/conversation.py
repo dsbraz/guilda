@@ -73,7 +73,7 @@ async def post(
     """
     async with session(pool, agent) as connection:
         if run is not None:
-            row = await connection.fetchrow("SELECT * FROM pxos.messages WHERE run = $1", run)
+            row = await connection.fetchrow("SELECT * FROM guilda.messages WHERE run = $1", run)
             if row is not None:
                 return Message(**dict(row))
         channel_message = await channel.post(thread, text)
@@ -87,7 +87,7 @@ async def receive(pool: asyncpg.Pool, inbound: Inbound) -> Message:
     async with session(pool, actor) as connection:
         cycle = await connection.fetchval(
             """
-            SELECT m.cycle FROM pxos.messages m JOIN pxos.actors a ON a.id = m.author
+            SELECT m.cycle FROM guilda.messages m JOIN guilda.actors a ON a.id = m.author
             WHERE m.thread = $1 AND a.kind = 'agent'
             ORDER BY m.received_at DESC LIMIT 1
             """,
@@ -103,7 +103,7 @@ async def receive(pool: asyncpg.Pool, inbound: Inbound) -> Message:
 async def conversation(connection: Connection, cycle: str) -> list[Message]:
     """The messages of ``cycle``, oldest first, as the session can read them."""
     rows = await connection.fetch(
-        "SELECT * FROM pxos.messages WHERE cycle = $1 ORDER BY received_at, id", cycle
+        "SELECT * FROM guilda.messages WHERE cycle = $1 ORDER BY received_at, id", cycle
     )
     return [Message(**dict(row)) for row in rows]
 
@@ -121,9 +121,9 @@ async def answers(connection: Connection, cycle: str) -> list[Answer]:
     before it, as the session can read them."""
     rows = await connection.fetch(
         """
-        SELECT q.text AS question, a.* FROM pxos.messages a
+        SELECT q.text AS question, a.* FROM guilda.messages a
         CROSS JOIN LATERAL (
-            SELECT text FROM pxos.messages
+            SELECT text FROM guilda.messages
             WHERE cycle = a.cycle AND sender IS NULL AND received_at <= a.received_at
             ORDER BY received_at DESC, id DESC LIMIT 1
         ) q
@@ -152,7 +152,7 @@ async def retain_message(
 ) -> None:
     """Retain the message ``message_id`` with its author, read as ``agent``, under ``tags``."""
     async with session(pool, agent) as connection:
-        row = await connection.fetchrow("SELECT * FROM pxos.messages WHERE id = $1", message_id)
+        row = await connection.fetchrow("SELECT * FROM guilda.messages WHERE id = $1", message_id)
     assert row is not None
     message = Message(**dict(row))
     await store.retain(
@@ -200,7 +200,7 @@ async def _insert(
     try:
         row = await connection.fetchrow(
             """
-            INSERT INTO pxos.messages (thread, channel_message, cycle, sender, text, run)
+            INSERT INTO guilda.messages (thread, channel_message, cycle, sender, text, run)
             VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (thread, channel_message) DO NOTHING RETURNING *
             """,
@@ -217,7 +217,7 @@ async def _insert(
         raise
     if row is None:
         row = await connection.fetchrow(
-            "SELECT * FROM pxos.messages WHERE thread = $1 AND channel_message = $2",
+            "SELECT * FROM guilda.messages WHERE thread = $1 AND channel_message = $2",
             thread,
             channel_message,
         )

@@ -1,4 +1,4 @@
-"""The configured route exists on Vertex AI (PXOS-75). Opt-in: real calls, billed to the
+"""The configured route exists on Vertex AI (K75). Opt-in: real calls, billed to the
 project.
 
 Run with GUILDA_VERTEX_PROJECT, application default credentials for that project and the
@@ -36,7 +36,7 @@ def route() -> Route:
 
 @pytest.fixture(scope="module")
 def deployed(registry: Registry, route: Route) -> Database:
-    return installation("pxos_test_vertex", registry, route)
+    return installation("guilda_test_vertex", registry, route)
 
 
 @pytest.fixture
@@ -49,8 +49,8 @@ async def gateway(deployed: Database) -> AsyncIterator[ModelGateway]:
 async def test_an_agent_answers_through_the_gateway(gateway: ModelGateway) -> None:
     agent = LlmAgent(name="probe", model=await gateway.adk_model(), instruction="Responda: ok")
     sessions = InMemorySessionService()
-    session = await sessions.create_session(app_name="pxos-probe", user_id="probe")
-    runner = Runner(agent=agent, app_name="pxos-probe", session_service=sessions)
+    session = await sessions.create_session(app_name="guilda-probe", user_id="probe")
+    runner = Runner(agent=agent, app_name="guilda-probe", session_service=sessions)
     answer = ""
     try:
         async for event in runner.run_async(

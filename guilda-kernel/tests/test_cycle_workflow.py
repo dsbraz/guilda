@@ -116,7 +116,7 @@ async def until[T](probe: Callable[[], Awaitable[T | None]]) -> T:
 async def proposals(pool: asyncpg.Pool, cycle: str) -> list[Proposal]:
     async with session(pool, AGENT) as connection:
         rows = await connection.fetch(
-            "SELECT p.* FROM pxos.proposals p JOIN pxos.agent_runs a"
+            "SELECT p.* FROM guilda.proposals p JOIN guilda.agent_runs a"
             " ON p.evidence->>'source' = 'agent-run:' || a.id WHERE a.cycle = $1"
             " ORDER BY p.created_at",
             cycle,
@@ -181,7 +181,7 @@ async def test_the_cycle_asks_waits_for_the_answer_and_delivers_it(
     assert delivered.payload["sku"] == SKU
     async with session(pool, AGENT) as connection:
         cursor = await connection.fetchval(
-            "SELECT cursor FROM pxos.connector_cursors WHERE connector = $1", connector.name
+            "SELECT cursor FROM guilda.connector_cursors WHERE connector = $1", connector.name
         )
     assert cursor == "1"  # the cycle synced its connectors
     raw = await history_bytes(temporal, handle.id)

@@ -20,7 +20,7 @@ An attempt cut short keeps what it committed, so the retry carries on from there
 
 def sync_workflow_id(connector: str) -> str:
     """One pass per connector at a time: starting it again while it runs is refused."""
-    return f"pxos-sync-{connector}"
+    return f"guilda-sync-{connector}"
 
 
 @workflow.defn
@@ -47,7 +47,7 @@ KERNEL_CALL_TIMEOUT = timedelta(minutes=1)
 def schedule_id(agent: str) -> str:
     """The schedule of ``agent``'s cycles; each run it starts gets this id followed by the
     scheduled time, so a scheduled cycle has the id ``cycle_workflow_id`` gives it."""
-    return f"pxos-cycle-{agent}"
+    return f"guilda-cycle-{agent}"
 
 
 def cycle_workflow_id(agent: str, cycle: str) -> str:

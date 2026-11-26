@@ -2,8 +2,8 @@
 
 Integration tests need the Compose Postgres (or GUILDA_TEST_DATABASE_URL). They fail, not
 skip, when it is absent. The schema is migrated by the owner; tests connect as logins
-of that database only, members of pxos_app, so RLS and grants are what production sees.
-Each database stands for an installation and has its own logins (PXOS-63).
+of that database only, members of guilda_app, so RLS and grants are what production sees.
+Each database stands for an installation and has its own logins (K63).
 """
 
 import asyncio
@@ -18,9 +18,9 @@ from guilda_kernel.identity import Connection
 from guilda_kernel.state import Fact, Handler, grant_connect, publish, upgrade
 
 ADMIN_DSN = os.environ.get(
-    "GUILDA_TEST_DATABASE_URL", "postgresql://pxos:pxos-local@127.0.0.1:25432/postgres"
+    "GUILDA_TEST_DATABASE_URL", "postgresql://guilda:guilda-local@127.0.0.1:25432/postgres"
 )
-PASSWORD = "pxos-test"
+PASSWORD = "guilda-test"
 SUFFIX = os.environ.get("GUILDA_TEST_DB_SUFFIX", "")
 """Appended to every test database name, so suites in separate worktrees share one
 Postgres without recreating each other's databases."""
@@ -60,8 +60,8 @@ def create_test_database(name: str) -> Database:
         owner = await asyncpg.connect(owner_dsn)
         try:
             for login, role in [
-                (app_login(name), "pxos_app"),
-                (publisher_login(name), "pxos_publisher"),
+                (app_login(name), "guilda_app"),
+                (publisher_login(name), "guilda_publisher"),
             ]:
                 await owner.execute(
                     f"""
@@ -119,6 +119,6 @@ async def drain(publisher: asyncpg.Pool, handlers: Mapping[str, Handler]) -> int
 async def history(connection: Connection, entity_id: object) -> list[Fact]:
     """Every revision of an entity the session can read, oldest first."""
     rows = await connection.fetch(
-        "SELECT * FROM pxos.facts WHERE entity_id = $1 ORDER BY revision", entity_id
+        "SELECT * FROM guilda.facts WHERE entity_id = $1 ORDER BY revision", entity_id
     )
     return [Fact(**dict(row)) for row in rows]

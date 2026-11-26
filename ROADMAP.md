@@ -65,7 +65,7 @@ As [dependências e seus critérios de resolução](guilda-brq-work-prd.html#mvp
 - **Abrir já as frentes externas** (prazo longo, bloqueiam as respectivas entregas do piloto): permissões no Entra ID e contas de serviço, API do portal de alocação e horas, modelo de acesso ao Granola, política de transcrições com cliente e residência de dados (jurídico).
 - **Saída:** `docker compose up` sobe a base, o CI roda, os ADRs 0001–0003 estão aceitos e as frentes externas têm dono e status.
 
-**Fatia 1 (atravessa F0–F2):** PXOS-1 (K01), as sub-issues PXOS-47 a 51 (partes de K04, K05, K06, K08 e K09), PXOS-7 (K07) e, na BRQ@work, o pacote de contexto de trabalho (PXOS-46). **Saída:** um compromisso é proposto com evidência, aprovado pelo papel declarado, lido em duas datas e corrigido sem perder histórico; o pacote fixture de outro domínio faz o mesmo ciclo; nenhum tipo de domínio aparece em `guilda-kernel/`.
+**Fatia 1 (atravessa F0–F2):** #1 (K01), as sub-issues #47 a 51 (partes de K04, K05, K06, K08 e K09), #7 (K07) e, na BRQ@work, o pacote de contexto de trabalho (#46). **Saída:** um compromisso é proposto com evidência, aprovado pelo papel declarado, lido em duas datas e corrigido sem perder histórico; o pacote fixture de outro domínio faz o mesmo ciclo; nenhum tipo de domínio aparece em `guilda-kernel/`.
 
 ### Fase 1: Ontologia e geração de código
 - Ontologia base em LinkML (Organização, Contrato, Ator, Papel, Evento, Evidência, Métrica, Resultado e suas ações), mais o pacote de contexto de trabalho (na distribuição BRQ@work) e um pacote fixture de outro domínio.
@@ -216,39 +216,39 @@ Os recortes de fontes, Teams e status semanal entram na sequência prioritária 
 
 ## Próximo passo
 
-A fatia 1 foi concluída em 13/11/2026: PXOS-1, PXOS-47 a 51, PXOS-7 e PXOS-46, com o teste de
+A fatia 1 foi concluída em 13/11/2026: #1, #47 a 51, #7 e #46, com o teste de
 saída verde no CI contra Postgres. A suíte de aceitação (`guilda-kernel/tests/acceptance/`) tem
 um teste por requisito do §4; o req. 3 está verde e os demais são falhas esperadas que nomeiam
 a issue que os entrega.
 
 A fatia 2 foi concluída em 13/11/2026: o escriba pós-reunião leva um transcrito sintético, por conector
 falso, até um compromisso aprovado pelo card em um canal falso, com o trecho literal como
-evidência (PXOS-52 a 56). A extração é do Hindsight; o gateway de modelo fica fora. O teste de
+evidência (#52 a 56). A extração é do Hindsight; o gateway de modelo fica fora. O teste de
 saída também passou contra o Hindsight real com o modelo no Vertex, em execução local opt-in.
 A fatia 3 foi concluída em 14/11/2026: pessoas e agentes leem e propõem pelo mesmo MCP, com
-token OIDC e as permissões do banco (PXOS-57 a 60). O req. 1 saiu de `xfail`; o PXOS-30
+token OIDC e as permissões do banco (#57 a 60). O req. 1 saiu de `xfail`; o #30
 continua aberto (busca, páginas, API, política e gateway). A proposta pelo MCP tem como fonte
 quem chamou, e o dono de um compromisso precisa ser um ator conhecido. A conferência da frente
 de trabalho foi para o K27.
 A fatia 4 foi concluída em 14/11/2026: ator externo sem acesso ao contexto interno, token
-recusado no MCP quando o banco recusa o ator, e logins próprios por instalação (PXOS-61 a 64).
-Os reqs. 4 e 5 saíram de `xfail`; PXOS-8, 9 e 29 continuam abertos. O externo não recebe card,
+recusado no MCP quando o banco recusa o ator, e logins próprios por instalação (#61 a 64).
+Os reqs. 4 e 5 saíram de `xfail`; #8, 9 e 29 continuam abertos. O externo não recebe card,
 porque o card mostra contexto interno.
 A fatia 5 foi concluída em 14/11/2026: o escriba roda como workflow no Temporal, só com
-referências, e sobrevive ao desligamento do worker enquanto espera a decisão no card (PXOS-69 a
+referências, e sobrevive ao desligamento do worker enquanto espera a decisão no card (#69 a
 71). A decisão é lida no kernel; o sinal da outbox só avisa. Ficaram fora o ADK, que exige o
-gateway de modelos (PXOS-11), a delegação, a expiração e a revogação de aprovação, o teste de
+gateway de modelos (#11), a delegação, a expiração e a revogação de aprovação, o teste de
 isolamento entre namespaces e a retomada após morte do processo do worker (testou-se o
-desligamento ordenado); o PXOS-36 continua aberto.
-A fatia 6 entregou o gateway de modelos em 14/11/2026 (PXOS-72 a 74 e 76): cada instalação
+desligamento ordenado); o #36 continua aberto.
+A fatia 6 entregou o gateway de modelos em 14/11/2026 (#72 a 74 e 76): cada instalação
 grava a residência (`br` ou `global`) no bootstrap, o kernel deriva dela uma única rota, o
 gateway só monta cliente para essa rota e o agente ADK recebe um modelo preso a ela; o
-Hindsight usa a mesma rota. K12, K13 e K14 ficaram fora. A validação real no Vertex (PXOS-75)
+Hindsight usa a mesma rota. K12, K13 e K14 ficaram fora. A validação real no Vertex (#75)
 segue aberta: embeddings funcionam em São Paulo, mas nenhum modelo de geração respondeu em
 `southamerica-east1`, e o Claude não respondeu no endpoint global do projeto de teste. Um
 `LlmAgent` ainda pode ser montado com o nome de um modelo, sem o gateway; isso fecha na fatia 7
-(PXOS-77).
-A fatia 7 foi concluída em 14/11/2026 (PXOS-78 a 80): a definição do escriba é uma versão
+(#77).
+A fatia 7 foi concluída em 14/11/2026 (#78 a 80): a definição do escriba é uma versão
 publicada no banco, aprovada pelo papel `platform-admin` pelo mesmo ciclo de proposta, e o
 escriba só roda a partir da versão vigente. Na ingestão, um agente ADK montado pelo kernel,
 com o modelo do gateway, lê cada fato extraído, e cada execução registra a versão que rodou.
@@ -257,20 +257,20 @@ Ainda em 14/11/2026, a rota de modelos deixou de ser fixa no código: provedor, 
 regiões vêm da configuração de deploy de cada instalação (`.env.example`), o bootstrap os
 grava e um novo deploy os substitui. As rotas `br` e `global` e o padrão `br` da BRQ@work
 saíram; qual região atende a residência de cada cliente é decisão do deploy (K44), com os
-achados do PXOS-75 como insumo. Com isso o PXOS-75 foi fechado (PXOS-81) e a fatia 6
+achados do #75 como insumo. Com isso o #75 foi fechado (#81) e a fatia 6
 está concluída.
-A fatia 8 foi concluída em 14/11/2026 (PXOS-82 a 88): a chamada de um agente a uma tool de
+A fatia 8 foi concluída em 14/11/2026 (#82 a 88): a chamada de um agente a uma tool de
 ação passa pela política, que permite (o fato é gravado na mesma chamada), encaminha para
 aprovação ou nega, a partir da ação, dos papéis de quem o agente representa, dos parâmetros,
 da fase de autonomia do agente (na instalação, padrão 1) e das regras da política. O kernel
 dá os tipos de regra (`max`, `within_days`, `roles`, com efeito `approval` ou `deny`); a
-distro declara as regras por ação e o deploy pode substituí-las (PXOS-87); o pacote só diz
+distro declara as regras por ação e o deploy pode substituí-las (#87); o pacote só diz
 o que pode ser limitado (`rule_parameters`). A fase 2 só age direto em ação com regras; a
 fase 3 também nas demais; as regras sempre limitam. Revisar é sempre de uma pessoa agindo
-por si, nunca de agente com delegação (PXOS-88). O banco recusa a execução direta fora
+por si, nunca de agente com delegação (#88). O banco recusa a execução direta fora
 disso e a revisão de proposta já executada. Toda chamada fica na auditoria; pessoas
 continuam propondo. O req. 6 saiu de `xfail`. Ficaram fora o executor em sistemas externos, cofre de
-credenciais e Agent Gateway (PXOS-32), o caminho síncrono com meta de latência (PXOS-33,
+credenciais e Agent Gateway (#32), o caminho síncrono com meta de latência (#33,
 req. 7) e expiração e delegação de aprovação.
 A fatia 9 (15/11/2026) podou o que o MVP não usa ([ADR 0005](docs/adr/0005-poda-para-o-mvp.md)):
 saíram o MCP e o OIDC (fatias 3 e 8), a política de ação e a autonomia (fatia 8), o escriba

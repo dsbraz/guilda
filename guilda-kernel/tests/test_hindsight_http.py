@@ -1,4 +1,4 @@
-"""The Hindsight adapter speaks Hindsight's HTTP API (PXOS-53).
+"""The Hindsight adapter speaks Hindsight's HTTP API (K53).
 
 A fake server stands in for Hindsight, so CI checks the requests the adapter makes; the
 real server is the opt-in contract test (test_context_contract).
@@ -150,5 +150,5 @@ def test_the_store_comes_from_the_environment(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv("GUILDA_HINDSIGHT_API_KEY", "secret")
     store = HindsightContextStore.from_environment()
     assert str(store._client.base_url) == "http://hindsight.test"
-    assert store._bank == "/v1/default/banks/pxos-local"
+    assert store._bank == "/v1/default/banks/guilda-local"
     assert store._client.headers["Authorization"] == "Bearer secret"

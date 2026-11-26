@@ -1,6 +1,6 @@
 # ADR 0001 — Memória de contexto e estado canônico
 
-**Status:** aceito em 13/11/2026. Fecha o PXOS-3.
+**Status:** aceito em 13/11/2026. Fecha o K3.
 
 > **Refinamento do MVP (15/11/2026):** o [ADR 0006](0006-arquitetura-do-agente-especialista.md)
 > mantém ADK, Temporal e LinkML, amplia o uso do Hindsight com `recall` e distingue
@@ -40,22 +40,22 @@ rascunho nunca pareça fato confirmado.
 - **Segundo extrator, resolvedor ou reconciliador ao lado do Hindsight.** A Guilda não
   reconstrói o que o Hindsight já faz para contexto.
 
-## Critérios do PXOS-3, por camada
+## Critérios do K3, por camada
 
 | Critério | Contexto (Hindsight) | Estado canônico (próprio) |
 |---|---|---|
 | Duas datas por fato | Interpretação temporal correta nas respostas; sem contrato `valid_at` + `known_at` | Validado em spike: `valid_from` + instante de registro, consulta "válido em / sabido em" |
-| Invalidação sem apagar | Consolidação nativa | Versões só acrescentadas; **intervalos finitos e invalidação ainda a construir (PXOS-7)** |
+| Invalidação sem apagar | Consolidação nativa | Versões só acrescentadas; **intervalos finitos e invalidação ainda a construir (K7)** |
 | Isolamento | **Tabelas sem RLS**; escopo por tags no servidor. Isolamento entre clientes vem da instalação dedicada | RLS validado em spike para permissões internas |
-| Expurgo real | Limpo só com `HINDSIGHT_API_LLM_TRACE_ENABLED=false`; com traces ligados sobram resíduos | **A construir (PXOS-10)** |
+| Expurgo real | Limpo só com `HINDSIGHT_API_LLM_TRACE_ENABLED=false`; com traces ligados sobram resíduos | **A construir (K10)** |
 | Portabilidade | PostgreSQL + pgvector; Hindsight é open source | PostgreSQL puro |
 
 ## Consequências
 
-- O PXOS-7 constrói o estado canônico sobre o contrato do spike de governança.
-- O PXOS-16 deixa de ser um índice pgvector próprio e vira busca autorizada sobre o Hindsight.
-- PXOS-25 a 28 deixam de reconstruir a extração: tratam da proposta canônica, da evidência
+- O K7 constrói o estado canônico sobre o contrato do spike de governança.
+- O K16 deixa de ser um índice pgvector próprio e vira busca autorizada sobre o Hindsight.
+- K25 a 28 deixam de reconstruir a extração: tratam da proposta canônica, da evidência
   literal, das chaves de identidade e da revisão.
-- O PXOS-10 cobre as duas camadas; os traces de modelo do Hindsight ficam desligados.
+- O K10 cobre as duas camadas; os traces de modelo do Hindsight ficam desligados.
 - Ainda não validado: o ciclo canônico rodando no AlloyDB real, evidência literal, meta de
   99% de junção, residência de inferência. São critérios de aceite das issues, não novos spikes.

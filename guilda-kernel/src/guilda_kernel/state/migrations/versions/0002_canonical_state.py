@@ -1,4 +1,4 @@
-"""Governed canonical state: proposal -> review -> fact, with outbox and RLS (PXOS-7, PXOS-50).
+"""Governed canonical state: proposal -> review -> fact, with outbox and RLS (K7, K50).
 
 The database is the guardian (ADR 0003 §2):
 - the application role may only INSERT proposals and reviews and SELECT what RLS allows;
@@ -16,14 +16,14 @@ down_revision = "0001"
 STATEMENTS = [
     # Registered packages, written by the owner when the composition root installs them.
     """
-    CREATE TABLE pxos.packages (
+    CREATE TABLE guilda.packages (
         name text PRIMARY KEY,
         version text NOT NULL,
         digest text NOT NULL
     )
     """,
     """
-    CREATE TABLE pxos.package_actions (
+    CREATE TABLE guilda.package_actions (
         package text NOT NULL,
         digest text NOT NULL,
         action text NOT NULL,
@@ -33,7 +33,7 @@ STATEMENTS = [
     )
     """,
     """
-    CREATE TABLE pxos.type_readers (
+    CREATE TABLE guilda.type_readers (
         package text NOT NULL,
         type_name text NOT NULL,
         role text NOT NULL,
@@ -41,7 +41,7 @@ STATEMENTS = [
     )
     """,
     """
-    CREATE TABLE pxos.proposals (
+    CREATE TABLE guilda.proposals (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         package text NOT NULL,
         package_version text NOT NULL,
@@ -58,24 +58,24 @@ STATEMENTS = [
             AND evidence->>'context_ref' <> ''
         ),
         digest text NOT NULL,
-        author text NOT NULL REFERENCES pxos.actors,
-        author_principal text NOT NULL REFERENCES pxos.actors,
+        author text NOT NULL REFERENCES guilda.actors,
+        author_principal text NOT NULL REFERENCES guilda.actors,
         created_at timestamptz NOT NULL DEFAULT now()
     )
     """,
     """
-    CREATE TABLE pxos.reviews (
-        proposal_id uuid PRIMARY KEY REFERENCES pxos.proposals,
+    CREATE TABLE guilda.reviews (
+        proposal_id uuid PRIMARY KEY REFERENCES guilda.proposals,
         decision text NOT NULL CHECK (decision IN ('approved', 'rejected')),
         reason text CHECK (decision = 'approved' OR coalesce(reason, '') <> ''),
         proposal_digest text NOT NULL,
-        reviewer text NOT NULL REFERENCES pxos.actors,
-        reviewer_principal text NOT NULL REFERENCES pxos.actors,
+        reviewer text NOT NULL REFERENCES guilda.actors,
+        reviewer_principal text NOT NULL REFERENCES guilda.actors,
         decided_at timestamptz NOT NULL DEFAULT now()
     )
     """,
     """
-    CREATE TABLE pxos.facts (
+    CREATE TABLE guilda.facts (
         entity_id uuid NOT NULL,
         revision integer NOT NULL CHECK (revision > 0),
         package text NOT NULL,
@@ -83,13 +83,13 @@ STATEMENTS = [
         payload jsonb NOT NULL,
         evidence jsonb NOT NULL,
         valid_from timestamptz NOT NULL,
-        proposal_id uuid NOT NULL UNIQUE REFERENCES pxos.proposals,
+        proposal_id uuid NOT NULL UNIQUE REFERENCES guilda.proposals,
         known_at timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (entity_id, revision)
     )
     """,
     """
-    CREATE TABLE pxos.outbox (
+    CREATE TABLE guilda.outbox (
         id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         event_type text NOT NULL,
         entity_id uuid NOT NULL,
@@ -100,8 +100,8 @@ STATEMENTS = [
     """,
     # Author is always the session actor, whatever the application sends.
     """
-    CREATE FUNCTION pxos.proposal_guard() RETURNS trigger
-    LANGUAGE plpgsql SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.proposal_guard() RETURNS trigger
+    LANGUAGE plpgsql SET search_path = guilda, pg_temp AS $$
     BEGIN
         NEW.author := current_actor();
         NEW.author_principal := current_principal();
@@ -124,13 +124,13 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TRIGGER proposal_guard BEFORE INSERT ON pxos.proposals
-    FOR EACH ROW EXECUTE FUNCTION pxos.proposal_guard()
+    CREATE TRIGGER proposal_guard BEFORE INSERT ON guilda.proposals
+    FOR EACH ROW EXECUTE FUNCTION guilda.proposal_guard()
     """,
     # Reviewer is the session actor; the approver role comes from the registered package.
     """
-    CREATE FUNCTION pxos.review_guard() RETURNS trigger
-    LANGUAGE plpgsql SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.review_guard() RETURNS trigger
+    LANGUAGE plpgsql SET search_path = guilda, pg_temp AS $$
     DECLARE
         proposal proposals%ROWTYPE;
         approver text;
@@ -173,13 +173,13 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TRIGGER review_guard BEFORE INSERT ON pxos.reviews
-    FOR EACH ROW EXECUTE FUNCTION pxos.review_guard()
+    CREATE TRIGGER review_guard BEFORE INSERT ON guilda.reviews
+    FOR EACH ROW EXECUTE FUNCTION guilda.review_guard()
     """,
     # Owner function: the application has no INSERT on facts or outbox.
     """
-    CREATE FUNCTION pxos.review_record() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.review_record() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = guilda, pg_temp AS $$
     DECLARE
         proposal proposals%ROWTYPE;
     BEGIN
@@ -210,12 +210,12 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TRIGGER review_record AFTER INSERT ON pxos.reviews
-    FOR EACH ROW EXECUTE FUNCTION pxos.review_record()
+    CREATE TRIGGER review_record AFTER INSERT ON guilda.reviews
+    FOR EACH ROW EXECUTE FUNCTION guilda.review_record()
     """,
     """
-    CREATE FUNCTION pxos.proposal_record() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.proposal_record() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = guilda, pg_temp AS $$
     BEGIN
         INSERT INTO outbox (event_type, entity_id, payload) VALUES (
             'proposal.created', NEW.entity_id,
@@ -227,52 +227,52 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TRIGGER proposal_record AFTER INSERT ON pxos.proposals
-    FOR EACH ROW EXECUTE FUNCTION pxos.proposal_record()
+    CREATE TRIGGER proposal_record AFTER INSERT ON guilda.proposals
+    FOR EACH ROW EXECUTE FUNCTION guilda.proposal_record()
     """,
-    "REVOKE ALL ON FUNCTION pxos.proposal_guard(), pxos.review_guard(), "
-    "pxos.review_record(), pxos.proposal_record() FROM PUBLIC",
+    "REVOKE ALL ON FUNCTION guilda.proposal_guard(), guilda.review_guard(), "
+    "guilda.review_record(), guilda.proposal_record() FROM PUBLIC",
     # Grants: append-only for the application, nothing destructive anywhere.
-    "GRANT SELECT ON pxos.packages, pxos.package_actions, pxos.type_readers TO pxos_app",
-    "GRANT SELECT, INSERT ON pxos.proposals, pxos.reviews TO pxos_app",
-    "GRANT SELECT ON pxos.facts TO pxos_app",
+    "GRANT SELECT ON guilda.packages, guilda.package_actions, guilda.type_readers TO guilda_app",
+    "GRANT SELECT, INSERT ON guilda.proposals, guilda.reviews TO guilda_app",
+    "GRANT SELECT ON guilda.facts TO guilda_app",
     # Row-level security on the canonical tables, forced also for the table owner.
-    "ALTER TABLE pxos.proposals ENABLE ROW LEVEL SECURITY",
-    "ALTER TABLE pxos.proposals FORCE ROW LEVEL SECURITY",
-    "ALTER TABLE pxos.reviews ENABLE ROW LEVEL SECURITY",
-    "ALTER TABLE pxos.reviews FORCE ROW LEVEL SECURITY",
-    "ALTER TABLE pxos.facts ENABLE ROW LEVEL SECURITY",
-    "ALTER TABLE pxos.facts FORCE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.proposals ENABLE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.proposals FORCE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.reviews ENABLE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.reviews FORCE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.facts ENABLE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.facts FORCE ROW LEVEL SECURITY",
     """
-    CREATE FUNCTION pxos.can_read(package_name text, type text) RETURNS boolean
-    LANGUAGE sql STABLE SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.can_read(package_name text, type text) RETURNS boolean
+    LANGUAGE sql STABLE SET search_path = guilda, pg_temp AS $$
         SELECT EXISTS (
             SELECT FROM type_readers
             WHERE package = package_name AND type_name = type AND has_role(role)
         )
     $$
     """,
-    "REVOKE ALL ON FUNCTION pxos.can_read(text, text) FROM PUBLIC",
-    "GRANT EXECUTE ON FUNCTION pxos.can_read(text, text) TO pxos_app",
+    "REVOKE ALL ON FUNCTION guilda.can_read(text, text) FROM PUBLIC",
+    "GRANT EXECUTE ON FUNCTION guilda.can_read(text, text) TO guilda_app",
     """
-    CREATE POLICY proposals_read ON pxos.proposals FOR SELECT USING (
-        pxos.can_read(package, type_name)
-        OR pxos.current_principal() IN (author, author_principal)
+    CREATE POLICY proposals_read ON guilda.proposals FOR SELECT USING (
+        guilda.can_read(package, type_name)
+        OR guilda.current_principal() IN (author, author_principal)
     )
     """,
-    "CREATE POLICY proposals_insert ON pxos.proposals FOR INSERT WITH CHECK (true)",
+    "CREATE POLICY proposals_insert ON guilda.proposals FOR INSERT WITH CHECK (true)",
     """
-    CREATE POLICY reviews_read ON pxos.reviews FOR SELECT USING (
-        EXISTS (SELECT FROM pxos.proposals p WHERE p.id = proposal_id)
+    CREATE POLICY reviews_read ON guilda.reviews FOR SELECT USING (
+        EXISTS (SELECT FROM guilda.proposals p WHERE p.id = proposal_id)
     )
     """,
-    "CREATE POLICY reviews_insert ON pxos.reviews FOR INSERT WITH CHECK (true)",
+    "CREATE POLICY reviews_insert ON guilda.reviews FOR INSERT WITH CHECK (true)",
     """
-    CREATE POLICY facts_read ON pxos.facts FOR SELECT USING (
-        pxos.can_read(package, type_name)
+    CREATE POLICY facts_read ON guilda.facts FOR SELECT USING (
+        guilda.can_read(package, type_name)
     )
     """,
-    "CREATE POLICY facts_insert ON pxos.facts FOR INSERT WITH CHECK (true)",
+    "CREATE POLICY facts_insert ON guilda.facts FOR INSERT WITH CHECK (true)",
 ]
 
 

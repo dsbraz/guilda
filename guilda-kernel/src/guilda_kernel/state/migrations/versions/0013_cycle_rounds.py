@@ -16,7 +16,7 @@ down_revision = "0012"
 
 STATEMENTS = [
     """
-    ALTER TABLE pxos.agent_runs
+    ALTER TABLE guilda.agent_runs
         ADD COLUMN cycle text CHECK (cycle <> ''),
         ADD COLUMN round integer CHECK (round >= 1),
         ADD COLUMN output jsonb,
@@ -28,11 +28,11 @@ STATEMENTS = [
         ADD UNIQUE (agent, cycle, round)
     """,
     """
-    CREATE UNIQUE INDEX proposals_one_per_run ON pxos.proposals ((evidence->>'source'))
+    CREATE UNIQUE INDEX proposals_one_per_run ON guilda.proposals ((evidence->>'source'))
     WHERE evidence->>'source' LIKE 'agent-run:%'
     """,
-    "ALTER TABLE pxos.messages ADD COLUMN run uuid UNIQUE REFERENCES pxos.agent_runs",
-    "GRANT INSERT (run) ON pxos.messages TO pxos_app",
+    "ALTER TABLE guilda.messages ADD COLUMN run uuid UNIQUE REFERENCES guilda.agent_runs",
+    "GRANT INSERT (run) ON guilda.messages TO guilda_app",
 ]
 
 

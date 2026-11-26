@@ -86,9 +86,9 @@ class _Server(uvicorn.Server):
         yield  # the service owns the signals and stops the server by cancelling it
 
 
-async def serve_http(app: App, port: int) -> None:
+async def serve_http(app: App, port: int, *, host: str = "0.0.0.0") -> None:
     """Serve ``app`` on ``port`` until cancelled, then finish the requests in flight."""
-    server = _Server(uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning"))
+    server = _Server(uvicorn.Config(app, host=host, port=port, log_level="warning"))
     serving = asyncio.ensure_future(server.serve())
     try:
         await asyncio.shield(serving)
@@ -111,6 +111,7 @@ async def serve(
     channel: Channel,
     namespace: str = "default",
     app: App | None = None,
+    host: str = "0.0.0.0",
     port: int = 8000,
     poll_interval: float = 1.0,
 ) -> None:
@@ -133,7 +134,7 @@ async def serve(
     async with asyncio.TaskGroup() as parts:
         parts.create_task(worker.run())
         parts.create_task(publish_forever(publisher, handlers, interval=poll_interval))
-        parts.create_task(serve_http(with_health(app), port))
+        parts.create_task(serve_http(with_health(app), port, host=host))
 
 
 def run(main: Coroutine[Any, Any, None]) -> None:

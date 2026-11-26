@@ -127,8 +127,8 @@ async def test_a_round_reads_the_cycle_so_far_and_the_cycle_its_effort(
     async with session(pool, AGENT) as connection:
         effort = await cycle_effort(connection, cycle)
         decided = await connection.fetchval(
-            "SELECT r.decided_at - p.created_at FROM pxos.reviews r"
-            " JOIN pxos.proposals p ON p.id = r.proposal_id WHERE p.id = $1",
+            "SELECT r.decided_at - p.created_at FROM guilda.reviews r"
+            " JOIN guilda.proposals p ON p.id = r.proposal_id WHERE p.id = $1",
             proposal.id,
         )
     assert (effort.rounds, effort.questions, effort.answers, effort.rejections) == (2, 2, 1, 1)
@@ -146,7 +146,7 @@ async def test_a_cycle_that_did_not_run_took_no_effort(pool: asyncpg.Pool) -> No
 
 async def test_a_round_runs_the_version_the_cycle_pinned(registry: Registry) -> None:
     """A version approved mid-cycle waits for the next cycle: the round runs the pinned one."""
-    database = await asyncio.to_thread(installation, "pxos_test_pinned", registry, ROUTE)
+    database = await asyncio.to_thread(installation, "guilda_test_pinned", registry, ROUTE)
     pool = await create_pool(database.app_dsn)
     try:
         await publish(pool, registry, RESTOCK_AGENT, author="gina", approver="paula")
@@ -174,7 +174,7 @@ async def test_a_round_runs_the_version_the_cycle_pinned(registry: Registry) -> 
 
         async with session(pool, AGENT) as connection:
             ran = await connection.fetchval(
-                "SELECT revision FROM pxos.agent_runs WHERE cycle = $1", cycle
+                "SELECT revision FROM guilda.agent_runs WHERE cycle = $1", cycle
             )
         assert ran == pinned.revision
         assert (await version_in_force(pool)).revision == pinned.revision + 1

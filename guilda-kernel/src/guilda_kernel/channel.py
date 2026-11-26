@@ -1,9 +1,9 @@
-"""Channel port and review cards (PXOS-55).
+"""Channel port and review cards (K55).
 
 A created proposal becomes a card for each actor who holds the action's approver role,
 except its author and whoever the author acts for. The card is read in the recipient's
 session, so the database decides whether they see it at all: RLS hides it, and an
-external actor gets no session, since a card shows internal context (PXOS-61). Delivery
+external actor gets no session, since a card shows internal context (K61). Delivery
 is keyed by proposal: a redelivered event replaces the same card. Deciding on a card is a
 review, on exactly the digest the card showed, by the actor bound to the channel identity
 that clicked; the database decides whether that actor may review.
@@ -59,7 +59,8 @@ def route_cards(pool: asyncpg.Pool, registry: Registry, channel: Channel) -> Han
             approver = registered.package.action(event.payload["action"]).approver
             candidates = await connection.fetch(
                 """
-                SELECT r.actor_id FROM pxos.actor_roles r JOIN pxos.actors a ON a.id = r.actor_id
+                SELECT r.actor_id FROM guilda.actor_roles r
+                JOIN guilda.actors a ON a.id = r.actor_id
                 WHERE r.role = $1 AND a.kind = 'internal_person' ORDER BY r.actor_id
                 """,
                 approver,

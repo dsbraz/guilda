@@ -38,7 +38,7 @@ def test_base_has_minimal_types_with_kind_and_portuguese_labels() -> None:
     assert set(base.all_classes()) == {"Actor"}
     assert base.schema.version
     for name in base.all_classes():
-        assert class_kind(base, name, "pxos_base") in Kind
+        assert class_kind(base, name, "guilda_base") in Kind
         assert base.get_class(name).title
 
 
@@ -78,20 +78,20 @@ def test_digest_covers_manifest_and_ontology(tmp_path: Path) -> None:
 def test_package_must_import_base(tmp_path: Path) -> None:
     schema, manifest = retail()
     schema["imports"] = ["linkml:types"]
-    with pytest.raises(InvalidPackage, match="must import pxos_base"):
+    with pytest.raises(InvalidPackage, match="must import guilda_base"):
         load_package(write_package(tmp_path, schema, manifest))
 
 
 def test_package_must_declare_kind_for_every_type(tmp_path: Path) -> None:
     schema, manifest = retail()
     del schema["classes"]["RestockOrder"]["annotations"]
-    with pytest.raises(InvalidPackage, match="retail: RestockOrder must declare pxos.kind"):
+    with pytest.raises(InvalidPackage, match="retail: RestockOrder must declare guilda.kind"):
         load_package(write_package(tmp_path, schema, manifest))
 
 
 def test_package_cannot_redefine_base_type(tmp_path: Path) -> None:
     schema, manifest = retail()
-    schema["classes"]["Actor"] = {"annotations": {"pxos.kind": "canonical"}}
+    schema["classes"]["Actor"] = {"annotations": {"guilda.kind": "canonical"}}
     manifest["types"].append({"name": "Actor", "readers": ["store-staff"]})
     with pytest.raises(InvalidPackage, match="redefines base types"):
         load_package(write_package(tmp_path, schema, manifest))
@@ -99,7 +99,7 @@ def test_package_cannot_redefine_base_type(tmp_path: Path) -> None:
 
 def test_package_built_for_other_base_version_is_rejected(tmp_path: Path) -> None:
     schema, manifest = retail()
-    schema["annotations"]["pxos.base_version"] = "0.2.0"
+    schema["annotations"]["guilda.base_version"] = "0.2.0"
     with pytest.raises(InvalidPackage, match="built for base 0.2.0"):
         load_package(write_package(tmp_path, schema, manifest))
 
@@ -179,7 +179,7 @@ def test_action_type_names_are_unique(tmp_path: Path) -> None:
 def test_a_reference_can_only_point_to_an_actor(tmp_path: Path) -> None:
     schema, manifest = retail()
     assignee = schema["classes"]["RestockOrder"]["attributes"]["assignee"]
-    assignee["annotations"]["pxos.refers_to"] = "Shelf"
+    assignee["annotations"]["guilda.refers_to"] = "Shelf"
     with pytest.raises(
         InvalidPackage, match="retail: RestockOrder.assignee can only refer to Actor"
     ):
@@ -188,8 +188,8 @@ def test_a_reference_can_only_point_to_an_actor(tmp_path: Path) -> None:
 
 def test_package_must_declare_the_base_version_it_was_built_for(tmp_path: Path) -> None:
     schema, manifest = retail()
-    del schema["annotations"]["pxos.base_version"]
-    with pytest.raises(InvalidPackage, match="must declare pxos.base_version"):
+    del schema["annotations"]["guilda.base_version"]
+    with pytest.raises(InvalidPackage, match="must declare guilda.base_version"):
         load_package(write_package(tmp_path, schema, manifest))
 
 
@@ -220,5 +220,5 @@ def test_a_manifest_error_says_what_is_wrong(tmp_path: Path) -> None:
 def test_a_class_with_other_annotations_still_needs_a_kind(tmp_path: Path) -> None:
     schema, manifest = retail()
     schema["classes"]["RestockOrder"]["annotations"] = {"note": "sem tipo"}
-    with pytest.raises(InvalidPackage, match="retail: RestockOrder must declare pxos.kind"):
+    with pytest.raises(InvalidPackage, match="retail: RestockOrder must declare guilda.kind"):
         load_package(write_package(tmp_path, schema, manifest))

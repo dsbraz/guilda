@@ -6,13 +6,14 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PROJECT = "pxos-spikes"
-REGION = "us-central1"
-CLUSTER = "hindsight-spike"
-NETWORK = "pxos-hindsight-net"
-IP_RANGE = "pxos-hindsight-range"
-INSTANCE = "primary"
-ACCOUNT = "spike-runner@pxos-spikes.iam.gserviceaccount.com"
+resources = json.loads((ROOT / "cloud.json").read_text())
+PROJECT = resources["project"]
+REGION = resources["region"]
+CLUSTER = resources["cluster"]
+NETWORK = resources["network"]
+IP_RANGE = resources["ip_range"]
+INSTANCE = resources["instance"]
+ACCOUNT = resources["service_account"]
 
 
 def gcloud(*args, allow_missing=False):

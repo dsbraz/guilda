@@ -39,7 +39,7 @@ async def sync_as_agent(pool: asyncpg.Pool, store: FakeContextStore, fake: FakeC
 async def states(pool: asyncpg.Pool, fake: FakeConnector) -> dict[str, str]:
     async with pool.acquire() as connection:
         rows = await connection.fetch(
-            "SELECT source, state FROM pxos.source_states WHERE connector = $1", fake.name
+            "SELECT source, state FROM guilda.source_states WHERE connector = $1", fake.name
         )
     return {row["source"]: row["state"] for row in rows}
 
@@ -47,7 +47,7 @@ async def states(pool: asyncpg.Pool, fake: FakeConnector) -> dict[str, str]:
 async def cursor(pool: asyncpg.Pool, fake: FakeConnector) -> str | None:
     async with pool.acquire() as connection:
         value = await connection.fetchval(
-            "SELECT cursor FROM pxos.connector_cursors WHERE connector = $1", fake.name
+            "SELECT cursor FROM guilda.connector_cursors WHERE connector = $1", fake.name
         )
     return None if value is None else str(value)
 

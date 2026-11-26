@@ -1,4 +1,4 @@
-"""Governed canonical state with the retail fixture package (PXOS-7)."""
+"""Governed canonical state with the retail fixture package (K7)."""
 
 import asyncio
 import hashlib
@@ -88,7 +88,7 @@ async def events(database: Database, entity_id: UUID) -> list[str]:
     owner = await asyncpg.connect(database.owner_dsn)
     try:
         rows = await owner.fetch(
-            "SELECT event_type FROM pxos.outbox WHERE entity_id = $1 ORDER BY id", entity_id
+            "SELECT event_type FROM guilda.outbox WHERE entity_id = $1 ORDER BY id", entity_id
         )
     finally:
         await owner.close()
@@ -264,12 +264,12 @@ async def test_database_refuses_review_after_installed_package_changed(
     transaction = owner.transaction()
     await transaction.start()
     try:
-        await owner.execute("UPDATE pxos.packages SET digest = 'changed' WHERE name = 'retail'")
-        await owner.execute("SELECT set_config('pxos.actor', 'carla', true)")
+        await owner.execute("UPDATE guilda.packages SET digest = 'changed' WHERE name = 'retail'")
+        await owner.execute("SELECT set_config('guilda.actor', 'carla', true)")
         with pytest.raises(asyncpg.PostgresError) as error:
             await owner.execute(
                 """
-                INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest,
+                INSERT INTO guilda.reviews (proposal_id, decision, proposal_digest,
                                           reviewer, reviewer_principal)
                 VALUES ($1, 'approved', $2, '', '')
                 """,

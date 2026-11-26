@@ -122,6 +122,7 @@ async def serve(registry: Registry) -> None:
                 registry=registry,
                 channel=wired.channel,
                 app=wired.app,
+                host=os.environ.get("GUILDA_HTTP_HOST", "0.0.0.0"),
                 port=int(os.environ.get("GUILDA_HTTP_PORT", "8000")),
             )
     finally:

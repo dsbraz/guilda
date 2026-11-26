@@ -1,25 +1,25 @@
 # Report semanal ao cliente (ADR 0006 §3). Cada versão é uma proposta revisada pelo PM;
 # riscos, decisões e progresso citados continuam contexto, não fatos canônicos.
-id: https://pxos.example/brq-at-work/weekly_report
+id: https://guilda.example/brq-at-work/weekly_report
 name: brq_weekly_report
 title: Report semanal
 version: 0.1.0
 annotations:
-  pxos.base_version: 0.1.0
+  guilda.base_version: 0.1.0
 prefixes:
   linkml: https://w3id.org/linkml/
-  report: https://pxos.example/brq-at-work/weekly_report/
+  report: https://guilda.example/brq-at-work/weekly_report/
 default_prefix: report
 default_range: string
 imports:
   - linkml:types
-  - pxos_base
+  - guilda_base
 
 classes:
   WeeklyReport:
     title: Report semanal
     annotations:
-      pxos.kind: canonical
+      guilda.kind: canonical
     attributes:
       summary:
         title: resumo
@@ -44,7 +44,7 @@ classes:
   ReportItem:
     title: Item do report
     annotations:
-      pxos.kind: canonical
+      guilda.kind: canonical
     attributes:
       category:
         title: categoria

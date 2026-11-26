@@ -7,28 +7,40 @@
 # legível por ele; .secrets/ é ignorado pelo git e pelo build. As identidades
 # com os ids reais dos canais também ficam em .secrets/, fora do arquivo versionado.
 # Nome persistente do projeto local, com volumes próprios para esta instalação.
-name: pxos-local
+name: guilda-local
 
 x-adc: &adc
   GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/adc.json
 
 services:
+  postgres:
+    ports: ["127.0.0.1:25433:5432"]
+  temporal:
+    ports: ["127.0.0.1:27233:7233"]
   hindsight:
-    environment: *adc
-    volumes:
-      - ../.secrets/adc.json:/run/secrets/adc.json:ro
+    profiles: [bundled-memory]
 
   app:
+    # O Hindsight do usuário só escuta no loopback do host Linux.
+    network_mode: host
+    depends_on: !override
+      postgres: { condition: service_healthy }
+      temporal-namespace: { condition: service_completed_successfully }
     environment:
+      GUILDA_HTTP_HOST: 127.0.0.1
+      GUILDA_HINDSIGHT_URL: http://127.0.0.1:8888
+      GUILDA_TEMPORAL_ADDRESS: 127.0.0.1:27233
+      GUILDA_OWNER_DATABASE_URL: postgresql://guilda:${GUILDA_DB_OWNER_PASSWORD}@127.0.0.1:25433/guilda
+      GUILDA_DATABASE_URL: postgresql://guilda_app_login:${GUILDA_DB_APP_PASSWORD}@127.0.0.1:25433/guilda
+      GUILDA_PUBLISHER_DATABASE_URL: postgresql://guilda_publisher_login:${GUILDA_DB_PUBLISHER_PASSWORD}@127.0.0.1:25433/guilda
       <<: *adc
       GUILDA_IDENTITIES_PATH: /run/secrets/identities.yaml
       # A mensagem de cada card do Telegram, no volume do app. O token do login delegado
       # do SharePoint, quando usado, vai no .env: aqui ele venceria um segredo do .env.
-      GUILDA_TELEGRAM_CARDS_PATH: /var/lib/pxos/telegram-cards
+      GUILDA_TELEGRAM_CARDS_PATH: /var/lib/guilda/telegram-cards
     volumes:
       - ../.secrets/adc.json:/run/secrets/adc.json:ro
       - ../.secrets/identities.yaml:/run/secrets/identities.yaml:ro
-    ports: ["127.0.0.1:8000:8000"]
 
   caddy:
     profiles: [public]

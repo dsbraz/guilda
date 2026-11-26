@@ -1,6 +1,6 @@
-"""Application role, identities and the session actor (PXOS-50, PXOS-51).
+"""Application role, identities and the session actor (K50, K51).
 
-The application connects with a login that is a member of ``pxos_app``: no ownership,
+The application connects with a login that is a member of ``guilda_app``: no ownership,
 no superuser, no BYPASSRLS. Identity tables are written only by the owner at bootstrap.
 """
 
@@ -12,44 +12,44 @@ down_revision = None
 STATEMENTS = [
     """
     DO $$ BEGIN
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'pxos_app') THEN
-            CREATE ROLE pxos_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'guilda_app') THEN
+            CREATE ROLE guilda_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
         END IF;
     END $$
     """,
-    "CREATE SCHEMA pxos",
-    "REVOKE ALL ON SCHEMA pxos FROM PUBLIC",
-    "GRANT USAGE ON SCHEMA pxos TO pxos_app",
+    "CREATE SCHEMA guilda",
+    "REVOKE ALL ON SCHEMA guilda FROM PUBLIC",
+    "GRANT USAGE ON SCHEMA guilda TO guilda_app",
     """
-    CREATE TABLE pxos.actors (
+    CREATE TABLE guilda.actors (
         id text PRIMARY KEY CHECK (id ~ '^[a-z][a-z0-9.-]*$'),
         kind text NOT NULL CHECK (kind IN ('internal_person', 'agent')),
         name text NOT NULL
     )
     """,
     """
-    CREATE TABLE pxos.actor_roles (
-        actor_id text NOT NULL REFERENCES pxos.actors,
+    CREATE TABLE guilda.actor_roles (
+        actor_id text NOT NULL REFERENCES guilda.actors,
         role text NOT NULL CHECK (role ~ '^[a-z][a-z0-9-]*$'),
         PRIMARY KEY (actor_id, role)
     )
     """,
     """
-    CREATE TABLE pxos.delegations (
-        agent_id text NOT NULL REFERENCES pxos.actors,
-        person_id text NOT NULL REFERENCES pxos.actors,
+    CREATE TABLE guilda.delegations (
+        agent_id text NOT NULL REFERENCES guilda.actors,
+        person_id text NOT NULL REFERENCES guilda.actors,
         PRIMARY KEY (agent_id, person_id)
     )
     """,
-    "GRANT SELECT ON pxos.actors, pxos.actor_roles, pxos.delegations TO pxos_app",
+    "GRANT SELECT ON guilda.actors, guilda.actor_roles, guilda.delegations TO guilda_app",
     # The actor of the transaction, set by the kernel session with set_config(..., true).
     # A pooled connection returns '' after a previous transaction, so empty means none.
     """
-    CREATE FUNCTION pxos.current_actor() RETURNS text
-    LANGUAGE plpgsql STABLE SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.current_actor() RETURNS text
+    LANGUAGE plpgsql STABLE SET search_path = guilda, pg_temp AS $$
     DECLARE
-        actor text := nullif(current_setting('pxos.actor', true), '');
-        principal text := nullif(current_setting('pxos.on_behalf_of', true), '');
+        actor text := nullif(current_setting('guilda.actor', true), '');
+        principal text := nullif(current_setting('guilda.on_behalf_of', true), '');
     BEGIN
         IF actor IS NULL THEN
             RAISE EXCEPTION 'no actor in session' USING ERRCODE = 'PX001';
@@ -68,24 +68,24 @@ STATEMENTS = [
     """,
     # Whose permissions apply: the delegating person for an agent acting on their behalf.
     """
-    CREATE FUNCTION pxos.current_principal() RETURNS text
-    LANGUAGE sql STABLE SET search_path = pxos, pg_temp AS $$
-        SELECT coalesce(nullif(current_setting('pxos.on_behalf_of', true), ''), current_actor())
+    CREATE FUNCTION guilda.current_principal() RETURNS text
+    LANGUAGE sql STABLE SET search_path = guilda, pg_temp AS $$
+        SELECT coalesce(nullif(current_setting('guilda.on_behalf_of', true), ''), current_actor())
         FROM (SELECT current_actor()) AS checked
     $$
     """,
     """
-    CREATE FUNCTION pxos.has_role(wanted text) RETURNS boolean
-    LANGUAGE sql STABLE SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.has_role(wanted text) RETURNS boolean
+    LANGUAGE sql STABLE SET search_path = guilda, pg_temp AS $$
         SELECT EXISTS (
             SELECT FROM actor_roles WHERE actor_id = current_principal() AND role = wanted
         )
     $$
     """,
-    "REVOKE ALL ON FUNCTION pxos.current_actor(), pxos.current_principal(), "
-    "pxos.has_role(text) FROM PUBLIC",
-    "GRANT EXECUTE ON FUNCTION pxos.current_actor(), pxos.current_principal(), "
-    "pxos.has_role(text) TO pxos_app",
+    "REVOKE ALL ON FUNCTION guilda.current_actor(), guilda.current_principal(), "
+    "guilda.has_role(text) FROM PUBLIC",
+    "GRANT EXECUTE ON FUNCTION guilda.current_actor(), guilda.current_principal(), "
+    "guilda.has_role(text) TO guilda_app",
 ]
 
 

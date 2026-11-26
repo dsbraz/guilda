@@ -10,8 +10,8 @@ revision = "0012"
 down_revision = "0011"
 
 STATEMENTS = [
-    "DELETE FROM pxos.installation",
-    "ALTER TABLE pxos.installation"
+    "DELETE FROM guilda.installation",
+    "ALTER TABLE guilda.installation"
     " ADD COLUMN input_price numeric NOT NULL CHECK (input_price >= 0),"
     " ADD COLUMN output_price numeric NOT NULL CHECK (output_price >= 0)",
 ]

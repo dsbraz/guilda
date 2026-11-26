@@ -9,7 +9,7 @@ from linkml.generators.pydanticgen import PydanticGenerator
 from pydantic import BaseModel
 
 from spike.clients import GcloudCredentials, MeasuredModels
-from spike.config import ROOT, Settings
+from spike.config import ROOT, SPIKE_PROJECT, Settings
 from spike.evaluate import structural_checks
 from spike.generate import generate
 from spike.ontology import EDGE_TYPE_MAP, EDGE_TYPES, ENTITY_TYPES, ontology_arguments
@@ -53,13 +53,16 @@ def test_project_never_inherits_product_configuration(monkeypatch):
     monkeypatch.setenv("SPIKE_GCP_PROJECT", "bud2-saas-homolog")
     with pytest.raises(ValueError, match="exclusivo"):
         Settings.load()
-    monkeypatch.setenv("SPIKE_GCP_PROJECT", "pxos-spikes")
-    assert Settings.load().service_account == "spike-runner@pxos-spikes.iam.gserviceaccount.com"
+    monkeypatch.setenv("SPIKE_GCP_PROJECT", SPIKE_PROJECT)
+    assert (
+        Settings.load().service_account
+        == json.loads((ROOT / "cloud.json").read_text())["service_account"]
+    )
 
 
 def test_credentials_request_explicit_project_account_and_impersonation(monkeypatch):
     settings = Settings(
-        "pxos-spikes", "test@example.org", "model", "global", "embed", "us-central1", 768
+        "guilda-test", "test@example.org", "model", "global", "embed", "us-central1", 768
     )
     calls = []
 
@@ -70,10 +73,10 @@ def test_credentials_request_explicit_project_account_and_impersonation(monkeypa
     monkeypatch.setattr("spike.clients.subprocess.run", fake_run)
     credentials = GcloudCredentials(settings)
     credentials.refresh(None)
-    assert "--project=pxos-spikes" in calls[0]
+    assert "--project=guilda-test" in calls[0]
     assert "--account=test@example.org" in calls[0]
     assert (
-        "--impersonate-service-account=spike-runner@pxos-spikes.iam.gserviceaccount.com" in calls[0]
+        "--impersonate-service-account=spike-runner@guilda-test.iam.gserviceaccount.com" in calls[0]
     )
     assert credentials.valid
 

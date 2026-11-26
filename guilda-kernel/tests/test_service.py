@@ -138,7 +138,7 @@ async def test_the_service_runs_the_workflows_the_publisher_and_the_endpoint(
 async def test_without_an_endpoint_only_the_health_check_answers() -> None:
     port = free_port()
     app = service.with_health(None)
-    serving = asyncio.create_task(service.serve_http(app, port))
+    serving = asyncio.create_task(service.serve_http(app, port, host="127.0.0.1"))
     try:
         async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}") as http:
 

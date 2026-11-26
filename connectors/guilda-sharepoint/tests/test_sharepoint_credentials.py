@@ -24,7 +24,7 @@ AUDIENCE = "https://login.microsoftonline.com/tenant-a/oauth2/v2.0/token"
 
 def certificate() -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "pxos-test")])
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "guilda-test")])
     now = datetime.datetime.now(datetime.UTC)
     cert = (
         x509.CertificateBuilder()

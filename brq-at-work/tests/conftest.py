@@ -18,7 +18,7 @@ def registry() -> Registry:
 
 @pytest.fixture(scope="session")
 def database(registry: Registry) -> Database:
-    database = create_test_database("pxos_test_brq")
+    database = create_test_database("guilda_test_brq")
     bootstrap(database.owner_dsn, registry, route=ROUTE)
     return database
 

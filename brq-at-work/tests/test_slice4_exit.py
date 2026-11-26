@@ -1,4 +1,4 @@
-"""Exit criterion of slice 4 (PXOS-64): a client's contact and another installation stay out.
+"""Exit criterion of slice 4 (K64): a client's contact and another installation stay out.
 
 Two BRQ@work installations run side by side, each with its own database logins. Dora is
 the client's contact, an external actor of this installation: she reaches no internal
@@ -16,7 +16,7 @@ from guilda_kernel.ontology import Registry
 
 @pytest.fixture(scope="module")
 def other_installation(registry: Registry) -> Database:
-    database = create_test_database("pxos_test_brq_other")
+    database = create_test_database("guilda_test_brq_other")
     bootstrap(database.owner_dsn, registry)
     return database
 
@@ -33,9 +33,9 @@ async def test_a_client_contact_and_another_installation_stay_out(
     # canonical tables goes through current_actor(), so this is the refusal any read or
     # write of hers meets (the kernel tests read the tables themselves).
     async with pool.acquire() as connection, connection.transaction():
-        await connection.execute("SELECT set_config('pxos.actor', 'dora', true)")
+        await connection.execute("SELECT set_config('guilda.actor', 'dora', true)")
         with pytest.raises(asyncpg.PostgresError, match="dora is external"):
-            await connection.fetchval("SELECT pxos.current_actor()")
+            await connection.fetchval("SELECT guilda.current_actor()")
 
     # 3: the other installation's database logins do not open this database.
     for dsn in [other_installation.app_dsn, other_installation.publisher_dsn]:
@@ -44,4 +44,4 @@ async def test_a_client_contact_and_another_installation_stay_out(
 
     # 4: Ana still works in her own installation.
     async with session(pool, "ana") as ana:
-        assert await ana.fetchval("SELECT pxos.current_actor()") == "ana"
+        assert await ana.fetchval("SELECT guilda.current_actor()") == "ana"

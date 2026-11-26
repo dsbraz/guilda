@@ -110,7 +110,7 @@
             "type": "object"
         }
     },
-    "$id": "https://pxos.example/brq-at-work/weekly_report",
+    "$id": "https://guilda.example/brq-at-work/weekly_report",
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "additionalProperties": true,
     "metamodel_version": "1.12.0",

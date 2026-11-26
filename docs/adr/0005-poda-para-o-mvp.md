@@ -33,7 +33,7 @@ o que já tinha sido entregue.
      um único valor), a leitura de uma entidade em duas datas, o histórico de uma entidade,
      a busca de propostas por contexto e a leitura de revisão;
    - na ontologia base: `Organization`, `Role`, `Event` e `Evidence`. Fica só `Actor`, e o
-     tipo de contexto (`pxos.kind: context`) sai;
+     tipo de contexto (`guilda.kind: context`) sai;
    - os atores e as delegações sem uso nas identidades da distro e do fixture.
 2. **Fica:** o ciclo proposta → revisão por pessoa → fato, o registro e a publicação de
    versões de agente, o registro da versão em cada execução, a ingestão idempotente por
@@ -68,9 +68,9 @@ o que já tinha sido entregue.
   já estão cobertos nos testes do kernel. A Dora continua nas identidades, porque o teste
   de isolamento da fatia 4 a usa.
 - Fatia 9b (15/11/2026, depois do ADR 0006): saíram o conteúdo guardado em
-  `pxos.sources`, que ninguém lia e dobrava o que a exclusão de uma fonte precisa expurgar,
+  `guilda.sources`, que ninguém lia e dobrava o que a exclusão de uma fonte precisa expurgar,
   e o fim de vigência (`valid_to`) de propostas e fatos, que nem a versão de agente nem o
-  report semanal usam. A anotação `pxos.refers_to` fica: o campo `agent` da versão de
+  report semanal usam. A anotação `guilda.refers_to` fica: o campo `agent` da versão de
   agente a usa para exigir um ator existente.
 - O MCP, a política e as ações externas voltam depois do MVP, junto de K30–K33, com testes
   novos. A história das fatias continua no backlog e no Git.

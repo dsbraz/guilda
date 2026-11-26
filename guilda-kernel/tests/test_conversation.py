@@ -75,7 +75,7 @@ async def a_run(pool: asyncpg.Pool) -> UUID:
     async with session(pool, AGENT) as connection:
         version = await approved_version(connection, AGENT)
         run: UUID = await connection.fetchval(
-            "INSERT INTO pxos.agent_runs (definition, revision, context_ref)"
+            "INSERT INTO guilda.agent_runs (definition, revision, context_ref)"
             " VALUES ($1, $2, 'raw') RETURNING id",
             version.entity_id,
             version.revision,
@@ -97,7 +97,7 @@ async def test_the_post_of_a_run_is_posted_once(pool: asyncpg.Pool) -> None:
 async def test_the_database_takes_one_post_per_run(pool: asyncpg.Pool) -> None:
     run = await a_run(pool)
     insert = (
-        "INSERT INTO pxos.messages (thread, channel_message, cycle, text, run)"
+        "INSERT INTO guilda.messages (thread, channel_message, cycle, text, run)"
         " VALUES ('thread', $1, 'cycle', 'Quantas?', $2)"
     )
     async with session(pool, AGENT) as connection:
@@ -137,7 +137,7 @@ async def test_a_redelivered_message_is_kept_once_with_one_event_of_ids_only(
     owner = await asyncpg.connect(database.owner_dsn)
     try:
         events = await owner.fetch(
-            "SELECT event_type, entity_id, payload FROM pxos.outbox WHERE entity_id = ANY($1)",
+            "SELECT event_type, entity_id, payload FROM guilda.outbox WHERE entity_id = ANY($1)",
             [question.id, first.id],
         )
     finally:
@@ -176,13 +176,14 @@ async def insert_as(pool: asyncpg.Pool, actor: str, on_behalf_of: str, sender: s
     """Raw SQL: what a buggy application could send for a message."""
     async with pool.acquire() as connection, connection.transaction():
         await connection.execute(
-            "SELECT set_config('pxos.actor', $1, true), set_config('pxos.on_behalf_of', $2, true)",
+            "SELECT set_config('guilda.actor', $1, true), "
+            "set_config('guilda.on_behalf_of', $2, true)",
             actor,
             on_behalf_of,
         )
         message_id: UUID = await connection.fetchval(
             """
-            INSERT INTO pxos.messages (thread, channel_message, cycle, sender, text)
+            INSERT INTO guilda.messages (thread, channel_message, cycle, sender, text)
             VALUES ($1, $2, 'cycle', $3, 'texto') RETURNING id
             """,
             fresh("thread"),
@@ -227,13 +228,13 @@ async def test_the_author_comes_from_the_session(pool: asyncpg.Pool) -> None:
     message_id = await insert_as(pool, "erin", "", "chat:erin")
     async with session(pool, AGENT) as connection:
         author = await connection.fetchval(
-            "SELECT author FROM pxos.messages WHERE id = $1", message_id
+            "SELECT author FROM guilda.messages WHERE id = $1", message_id
         )
     assert author == "erin"
 
     async with pool.acquire() as connection:
         with pytest.raises(asyncpg.PostgresError) as error:
-            await connection.fetch("SELECT * FROM pxos.messages")
+            await connection.fetch("SELECT * FROM guilda.messages")
     assert error.value.sqlstate == "PX001"
 
 

@@ -1,5 +1,5 @@
 """The installation records the route its deploy configured, not a residency label
-(PXOS-72, PRD §6.4).
+(K72, PRD §6.4).
 
 Provider, model and regions are deploy decisions: the bootstrap writes them as the owner,
 and a new deploy replaces them. The application reads them to route model calls and still
@@ -21,9 +21,9 @@ ROUTE = [
 ]
 
 STATEMENTS = [
-    "DELETE FROM pxos.installation",
-    "ALTER TABLE pxos.installation DROP COLUMN residency",
-    "ALTER TABLE pxos.installation"
+    "DELETE FROM guilda.installation",
+    "ALTER TABLE guilda.installation DROP COLUMN residency",
+    "ALTER TABLE guilda.installation"
     " ADD COLUMN provider text NOT NULL CHECK (provider IN ('gemini', 'claude')),"
     + ",".join(f" ADD COLUMN {c} text NOT NULL CHECK (btrim({c}) <> '')" for c in ROUTE),
 ]

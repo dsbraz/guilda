@@ -1,4 +1,4 @@
-"""Hindsight adapter for the context port (PXOS-53), over its HTTP API.
+"""Hindsight adapter for the context port (K53), over its HTTP API.
 
 The bank is configured for custom extraction with the distribution's instructions, without
 observations (consolidated summaries). Retaining is synchronous and keyed by document id:
@@ -53,7 +53,7 @@ class HindsightContextStore:
     def from_environment(cls) -> Self:
         return cls(
             os.environ["GUILDA_HINDSIGHT_URL"],
-            os.environ.get("GUILDA_HINDSIGHT_BANK", "pxos-local"),
+            os.environ.get("GUILDA_HINDSIGHT_BANK", "guilda-local"),
             os.environ.get("GUILDA_HINDSIGHT_API_KEY"),
         )
 
@@ -114,7 +114,7 @@ class HindsightContextStore:
 
 
 def main() -> None:
-    """Shell exports for scripts/hindsight-local.sh, from the route the environment configures."""
+    """Print shell exports for the configured Hindsight model route."""
     settings = server_settings(
         Route.from_environment(), project=os.environ["GUILDA_VERTEX_PROJECT"]
     )

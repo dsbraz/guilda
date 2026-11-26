@@ -1,4 +1,4 @@
-"""A sync pass runs as a workflow that carries references only (PXOS-70, ADR 0004 §2).
+"""A sync pass runs as a workflow that carries references only (K70, ADR 0004 §2).
 
 The workflow receives a connector's name and an id derived from it. The Activity runs one
 sync pass of that connector as the agent; what it hands back to the workflow is a flag. A

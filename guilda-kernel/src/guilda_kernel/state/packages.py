@@ -1,4 +1,4 @@
-"""Registered packages in the database (PXOS-49): approvers and readers."""
+"""Registered packages in the database (K49): approvers and readers."""
 
 import asyncpg
 
@@ -12,7 +12,7 @@ async def install_packages(owner: asyncpg.Connection, registry: Registry) -> Non
             package = registered.package
             await owner.execute(
                 """
-                INSERT INTO pxos.packages (name, version, digest) VALUES ($1, $2, $3)
+                INSERT INTO guilda.packages (name, version, digest) VALUES ($1, $2, $3)
                 ON CONFLICT (name) DO UPDATE
                 SET version = EXCLUDED.version, digest = EXCLUDED.digest
                 """,
@@ -22,7 +22,7 @@ async def install_packages(owner: asyncpg.Connection, registry: Registry) -> Non
             )
             await owner.executemany(
                 """
-                INSERT INTO pxos.package_actions (package, digest, action, creates, approver_role)
+                INSERT INTO guilda.package_actions (package, digest, action, creates, approver_role)
                 VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT DO NOTHING
                 """,
@@ -31,9 +31,9 @@ async def install_packages(owner: asyncpg.Connection, registry: Registry) -> Non
                     for a in package.actions
                 ],
             )
-            await owner.execute("DELETE FROM pxos.type_readers WHERE package = $1", package.name)
+            await owner.execute("DELETE FROM guilda.type_readers WHERE package = $1", package.name)
             await owner.executemany(
-                "INSERT INTO pxos.type_readers (package, type_name, role) VALUES ($1, $2, $3)",
+                "INSERT INTO guilda.type_readers (package, type_name, role) VALUES ($1, $2, $3)",
                 [
                     (package.name, type_name, role)
                     for type_name, roles in package.readers.items()

@@ -1,4 +1,4 @@
-"""Governed canonical state (PXOS-7): proposal -> review -> versioned fact.
+"""Governed canonical state (K7): proposal -> review -> versioned fact.
 
 Pure rules (digest, evidence) live here as functions; the database enforces the
 invariants that protect data (reviewer, approver role, self-approval, append-only).
@@ -49,7 +49,7 @@ class DecisionFinal(GuildaError):
 
 
 class PersonRequired(NotAuthorized):
-    """Only a person acting for themselves reviews; never an agent (PXOS-88)."""
+    """Only a person acting for themselves reviews; never an agent (K88)."""
 
 
 @dataclass(frozen=True)
@@ -151,7 +151,7 @@ async def review(
         async with connection.transaction():
             row = await connection.fetchrow(
                 """
-                INSERT INTO pxos.reviews (proposal_id, decision, reason, proposal_digest,
+                INSERT INTO guilda.reviews (proposal_id, decision, reason, proposal_digest,
                                           reviewer, reviewer_principal)
                 VALUES ($1, $2, $3, $4, '', '')
                 RETURNING *
@@ -175,7 +175,7 @@ async def review(
 
 
 async def get_proposal(connection: Connection, proposal_id: UUID) -> Proposal:
-    row = await connection.fetchrow("SELECT * FROM pxos.proposals WHERE id = $1", proposal_id)
+    row = await connection.fetchrow("SELECT * FROM guilda.proposals WHERE id = $1", proposal_id)
     if row is None:
         raise InvalidProposal(f"proposal {proposal_id} not found")
     return Proposal(**dict(row))
@@ -209,7 +209,7 @@ async def _insert(
     try:
         row = await connection.fetchrow(
             """
-            INSERT INTO pxos.proposals (
+            INSERT INTO guilda.proposals (
                 package, package_version, package_digest, action, type_name, entity_id,
                 base_revision, valid_from, payload, evidence, digest,
                 author, author_principal
@@ -243,7 +243,7 @@ async def _check_references(
         if value is None:
             continue
         known = await connection.fetchval(
-            "SELECT EXISTS (SELECT 1 FROM pxos.actors WHERE id = $1)", value
+            "SELECT EXISTS (SELECT 1 FROM guilda.actors WHERE id = $1)", value
         )
         if not known:
             raise InvalidProposal(f"{type_name}.{slot}: unknown actor {value}")
@@ -251,7 +251,7 @@ async def _check_references(
 
 async def get_review(connection: Connection, proposal_id: UUID) -> Review:
     row = await connection.fetchrow(
-        "SELECT * FROM pxos.reviews WHERE proposal_id = $1", proposal_id
+        "SELECT * FROM guilda.reviews WHERE proposal_id = $1", proposal_id
     )
     if row is None:
         raise InvalidProposal(f"proposal {proposal_id} has no review")

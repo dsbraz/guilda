@@ -33,7 +33,7 @@ def round_ref(cycle: str, round: int) -> str:
 async def recorded_round(connection: Connection, cycle: str, round: int) -> AgentRun | None:
     """The session agent's run of ``round`` in ``cycle``, or None."""
     row = await connection.fetchrow(
-        "SELECT * FROM pxos.agent_runs WHERE cycle = $1 AND round = $2", cycle, round
+        "SELECT * FROM guilda.agent_runs WHERE cycle = $1 AND round = $2", cycle, round
     )
     return None if row is None else AgentRun(**dict(row))
 
@@ -67,7 +67,7 @@ async def run_round(
     async with session(pool, version.agent) as connection:
         await connection.execute(
             """
-            INSERT INTO pxos.agent_runs (agent, definition, revision, context_ref, cycle, round,
+            INSERT INTO guilda.agent_runs (agent, definition, revision, context_ref, cycle, round,
                 output, model, input_tokens, output_tokens, cost)
             VALUES ('', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             """,
@@ -119,7 +119,7 @@ async def propose_deliverable(
             raise NoRecordedRun(f"no run of {version.agent} delivered {round_ref(cycle, round)}")
         source = f"agent-run:{run.id}"
         row = await connection.fetchrow(
-            "SELECT * FROM pxos.proposals WHERE evidence->>'source' = $1", source
+            "SELECT * FROM guilda.proposals WHERE evidence->>'source' = $1", source
         )
         if row is not None:
             return Proposal(**dict(row))

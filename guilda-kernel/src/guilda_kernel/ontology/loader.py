@@ -1,6 +1,6 @@
 """Load a domain package on top of the base ontology and check its rules.
 
-A package directory holds ``ontology.yaml`` (LinkML, importing ``pxos_base``) and
+A package directory holds ``ontology.yaml`` (LinkML, importing ``guilda_base``) and
 ``manifest.yaml`` (validated against the metamodel). The kernel only knows what the
 package declares.
 """
@@ -22,10 +22,10 @@ ONTOLOGY_DIR = Path(__file__).resolve().parent
 BASE_DIR = ONTOLOGY_DIR / "base"
 BASE_SCHEMA = BASE_DIR / "ontology.yaml"
 METAMODEL_SCHEMA = ONTOLOGY_DIR / "metamodel.yaml"
-BASE_IMPORT = "pxos_base"
-KIND_ANNOTATION = "pxos.kind"
-BASE_VERSION_ANNOTATION = "pxos.base_version"
-REFERS_TO_ANNOTATION = "pxos.refers_to"
+BASE_IMPORT = "guilda_base"
+KIND_ANNOTATION = "guilda.kind"
+BASE_VERSION_ANNOTATION = "guilda.base_version"
+REFERS_TO_ANNOTATION = "guilda.refers_to"
 
 
 class InvalidPackage(GuildaError):

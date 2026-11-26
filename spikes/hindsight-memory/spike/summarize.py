@@ -130,7 +130,7 @@ def usage():
 
 
 def main():
-    runs = [summarize(p.parent) for p in sorted((ROOT / "runs").glob("pxos-hs-*/complete.json"))]
+    runs = [summarize(p.parent) for p in sorted((ROOT / "runs").glob("guilda-hs-*/complete.json"))]
     data = {
         "date": "2026-11-13",
         "python": platform.python_version(),
@@ -156,7 +156,7 @@ def main():
                 "after": read(p.parent / "storage-after.json"),
                 "public_traces_status": read(p.parent / "public-traces.json")["status"],
             }
-            for p in sorted((ROOT / "runs").glob("pxos-hs-purge-*/probe-complete.json"))
+            for p in sorted((ROOT / "runs").glob("guilda-hs-purge-*/probe-complete.json"))
         ],
     }
     target = ROOT / "reports"

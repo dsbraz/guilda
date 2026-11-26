@@ -1,4 +1,4 @@
-"""A session refuses an actor the database refuses, and nothing else (PXOS-50).
+"""A session refuses an actor the database refuses, and nothing else (K50).
 
 Refusals of the actor, its delegation or its role become NotAuthorized; any other database
 failure is not an authorization decision and reaches the caller as it is.
@@ -35,7 +35,7 @@ class Failing:
 
 
 async def test_a_database_failure_is_not_an_authorization_refusal() -> None:
-    pool = Failing(asyncpg.UndefinedFunctionError("pxos.current_actor() does not exist"))
+    pool = Failing(asyncpg.UndefinedFunctionError("guilda.current_actor() does not exist"))
     with pytest.raises(asyncpg.UndefinedFunctionError):
         async with session(pool, "erin"):  # type: ignore[arg-type]
             pass

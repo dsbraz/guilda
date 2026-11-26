@@ -1,4 +1,4 @@
-"""Exit criterion of slice 6 (PXOS-76): each BRQ@work installation uses the route its deploy
+"""Exit criterion of slice 6 (K76): each BRQ@work installation uses the route its deploy
 configured, and models obey.
 
 Which provider, model and regions a client's installation uses is decided at deploy, from
@@ -31,7 +31,7 @@ SOURCE = Path(__file__).resolve().parents[1] / "src"
 
 @pytest.fixture(scope="module")
 def other_installation(registry: Registry) -> Database:
-    database = create_test_database("pxos_test_brq_other_route")
+    database = create_test_database("guilda_test_brq_other_route")
     bootstrap(database.owner_dsn, registry, route=OTHER_ROUTE)
     return database
 

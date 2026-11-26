@@ -57,7 +57,7 @@ PILOT = Path(__file__).with_name("pilot.py")
 @pytest.fixture(scope="module")
 def installation(registry: Registry) -> Database:
     """A BRQ@work installation whose weekly agent is published from the distro's file."""
-    database = create_test_database("pxos_test_brq_context")
+    database = create_test_database("guilda_test_brq_context")
     bootstrap(database.owner_dsn, registry, route=ROUTE)
 
     async def published() -> None:
@@ -105,7 +105,7 @@ def source(name: str, access: str, version: str = "1") -> SourceDocument:
 async def states(pool: asyncpg.Pool, connector: str) -> dict[str, str]:
     async with pool.acquire() as connection:
         rows = await connection.fetch(
-            "SELECT source, state FROM pxos.source_states WHERE connector = $1", connector
+            "SELECT source, state FROM guilda.source_states WHERE connector = $1", connector
         )
     return {row["source"]: row["state"] for row in rows}
 
@@ -201,7 +201,7 @@ async def until[T](probe: Callable[[], Awaitable[T | None]], timeout: float = 30
 async def proposals(pool: asyncpg.Pool, cycle: str) -> list[Proposal]:
     async with session(pool, AGENT) as connection:
         rows = await connection.fetch(
-            "SELECT p.* FROM pxos.proposals p JOIN pxos.agent_runs a"
+            "SELECT p.* FROM guilda.proposals p JOIN guilda.agent_runs a"
             " ON p.evidence->>'source' = 'agent-run:' || a.id WHERE a.cycle = $1"
             " ORDER BY p.created_at",
             cycle,

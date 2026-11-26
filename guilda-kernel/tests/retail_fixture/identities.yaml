@@ -26,7 +26,7 @@ actors:
     name: Paula (administradora da plataforma)
     roles: [platform-admin]
   # A supplier's contact. The store-manager role is deliberate: an external actor reaches
-  # no internal context whatever roles it holds (PXOS-61).
+  # no internal context whatever roles it holds (K61).
   - id: vera
     kind: external_person
     name: Vera (fornecedora)

@@ -61,12 +61,13 @@ def test_wrong_project_is_rejected_before_loading_credentials(monkeypatch):
     from spike.settings import configure
 
     monkeypatch.setenv("SPIKE_GCP_PROJECT", "bud2-saas-homolog")
-    with pytest.raises(ValueError, match="só pode usar pxos-spikes"):
+    with pytest.raises(ValueError, match="só pode usar"):
         configure()
 
 
 def test_isolated_auth_preserves_source_and_existing_api_keys(tmp_path, monkeypatch):
     from spike import auth
+    from spike.cloud import ACCOUNT, PROJECT
 
     monkeypatch.setattr(auth, "ROOT", tmp_path / "spike")
     auth.ROOT.mkdir()
@@ -89,10 +90,7 @@ def test_isolated_auth_preserves_source_and_existing_api_keys(tmp_path, monkeypa
     assert api_path.read_bytes() == keys_before
     adc_path = auth.ROOT / ".secrets/adc.json"
     adc = json.loads(adc_path.read_text())
-    assert adc["quota_project_id"] == adc["source_credentials"]["quota_project_id"] == "pxos-spikes"
-    assert (
-        "spike-runner@pxos-spikes.iam.gserviceaccount.com"
-        in adc["service_account_impersonation_url"]
-    )
+    assert adc["quota_project_id"] == adc["source_credentials"]["quota_project_id"] == PROJECT
+    assert ACCOUNT in adc["service_account_impersonation_url"]
     assert adc_path.stat().st_mode & 0o777 == 0o600
     assert api_path.stat().st_mode & 0o777 == 0o600

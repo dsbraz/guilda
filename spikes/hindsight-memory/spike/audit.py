@@ -10,7 +10,7 @@ from spike.settings import ROOT, configure
 
 
 async def inspect(bank):
-    if not bank.startswith("pxos-hs-"):
+    if not bank.startswith("guilda-hs-"):
         raise ValueError("Banco fora do spike")
     connection = await asyncpg.connect(configure())
     try:

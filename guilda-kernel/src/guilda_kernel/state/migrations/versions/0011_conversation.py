@@ -1,8 +1,8 @@
 """Conversation on a channel (ADR 0006, slice 11).
 
-- pxos.channel_identities binds an identity on a channel (a user id there) to one actor;
+- guilda.channel_identities binds an identity on a channel (a user id there) to one actor;
   the owner writes it at bootstrap and the application only reads it;
-- pxos.messages keeps the messages of a thread, each with the cycle of work it belongs
+- guilda.messages keeps the messages of a thread, each with the cycle of work it belongs
   to, an opaque reference. The author is the session actor. An agent writes its own
   posts, with no sender; any other message must be written by the internal person bound
   to its sender identity, acting for themselves (PX019). External actors are refused by
@@ -18,28 +18,28 @@ down_revision = "0010"
 
 STATEMENTS = [
     """
-    CREATE TABLE pxos.channel_identities (
+    CREATE TABLE guilda.channel_identities (
         channel_id text PRIMARY KEY CHECK (channel_id <> ''),
-        actor_id text NOT NULL REFERENCES pxos.actors
+        actor_id text NOT NULL REFERENCES guilda.actors
     )
     """,
-    "GRANT SELECT ON pxos.channel_identities TO pxos_app",
+    "GRANT SELECT ON guilda.channel_identities TO guilda_app",
     """
-    CREATE TABLE pxos.messages (
+    CREATE TABLE guilda.messages (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         thread text NOT NULL CHECK (thread <> ''),
         channel_message text NOT NULL CHECK (channel_message <> ''),
         cycle text NOT NULL CHECK (cycle <> ''),
         sender text,
-        author text NOT NULL REFERENCES pxos.actors,
+        author text NOT NULL REFERENCES guilda.actors,
         text text NOT NULL,
         received_at timestamptz NOT NULL DEFAULT now(),
         UNIQUE (thread, channel_message)
     )
     """,
     """
-    CREATE FUNCTION pxos.message_guard() RETURNS trigger
-    LANGUAGE plpgsql SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.message_guard() RETURNS trigger
+    LANGUAGE plpgsql SET search_path = guilda, pg_temp AS $$
     DECLARE
         author_kind text;
     BEGIN
@@ -59,12 +59,12 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TRIGGER message_guard BEFORE INSERT ON pxos.messages
-    FOR EACH ROW EXECUTE FUNCTION pxos.message_guard()
+    CREATE TRIGGER message_guard BEFORE INSERT ON guilda.messages
+    FOR EACH ROW EXECUTE FUNCTION guilda.message_guard()
     """,
     """
-    CREATE FUNCTION pxos.message_record() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.message_record() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = guilda, pg_temp AS $$
     BEGIN
         IF NEW.sender IS NOT NULL THEN
             INSERT INTO outbox (event_type, entity_id, payload) VALUES (
@@ -76,21 +76,21 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TRIGGER message_record AFTER INSERT ON pxos.messages
-    FOR EACH ROW EXECUTE FUNCTION pxos.message_record()
+    CREATE TRIGGER message_record AFTER INSERT ON guilda.messages
+    FOR EACH ROW EXECUTE FUNCTION guilda.message_record()
     """,
-    "REVOKE ALL ON FUNCTION pxos.message_guard(), pxos.message_record() FROM PUBLIC",
-    "GRANT SELECT, INSERT (thread, channel_message, cycle, sender, text) ON pxos.messages"
-    " TO pxos_app",
-    "ALTER TABLE pxos.messages ENABLE ROW LEVEL SECURITY",
-    "ALTER TABLE pxos.messages FORCE ROW LEVEL SECURITY",
+    "REVOKE ALL ON FUNCTION guilda.message_guard(), guilda.message_record() FROM PUBLIC",
+    "GRANT SELECT, INSERT (thread, channel_message, cycle, sender, text) ON guilda.messages"
+    " TO guilda_app",
+    "ALTER TABLE guilda.messages ENABLE ROW LEVEL SECURITY",
+    "ALTER TABLE guilda.messages FORCE ROW LEVEL SECURITY",
     # Any session reads the conversation; without an actor, or as an external, none.
     """
-    CREATE POLICY messages_read ON pxos.messages FOR SELECT USING (
-        pxos.current_actor() IS NOT NULL
+    CREATE POLICY messages_read ON guilda.messages FOR SELECT USING (
+        guilda.current_actor() IS NOT NULL
     )
     """,
-    "CREATE POLICY messages_insert ON pxos.messages FOR INSERT WITH CHECK (true)",
+    "CREATE POLICY messages_insert ON guilda.messages FOR INSERT WITH CHECK (true)",
 ]
 
 

@@ -26,7 +26,7 @@ from guilda_kernel.identity import Connection
 from guilda_kernel.model_access import GatewayModel, ModelNotAllowed, Usage, issued_by_gateway
 from guilda_kernel.ontology import Registry
 
-APP = "pxos"
+APP = "guilda"
 
 Recall = Callable[[str], Awaitable[Sequence[tuple[str, str]]]]
 """Searches the context memory, in a scope the kernel bound, for (text, source) pairs."""
@@ -141,7 +141,7 @@ async def build_agent(
     """The agent of ``version``, on ``model``, which a gateway must have issued."""
     if not issued_by_gateway(model):
         raise ModelNotAllowed("an agent gets its model from the gateway, and only from it")
-    kind = await connection.fetchval("SELECT kind FROM pxos.actors WHERE id = $1", version.agent)
+    kind = await connection.fetchval("SELECT kind FROM guilda.actors WHERE id = $1", version.agent)
     if kind != "agent":
         raise NotAnAgent(f"{version.agent} is not an agent")
     tools: list[Any] = []

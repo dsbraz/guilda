@@ -29,11 +29,11 @@
             "type": "string"
         }
     },
-    "$id": "https://pxos.example/ontology/base",
+    "$id": "https://guilda.example/ontology/base",
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "additionalProperties": true,
     "metamodel_version": "1.12.0",
-    "title": "pxos_base",
+    "title": "guilda_base",
     "type": "object",
     "version": "0.1.0"
 }

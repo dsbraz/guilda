@@ -1,4 +1,4 @@
-"""Model access by the installation's route (PXOS-72, K11; PRD §6.4; ADR 0004 §2, rule 1).
+"""Model access by the installation's route (K72, K11; PRD §6.4; ADR 0004 §2, rule 1).
 
 Which provider, model and regions an installation uses is decided at deploy: the FDE sets
 them per client in the environment (see .env.example), and the bootstrap records them as
@@ -111,7 +111,7 @@ async def install_route(owner: asyncpg.Connection, route: Route) -> None:
     """Record the installation's route, as the owner. A new deploy replaces it."""
     updates = ", ".join(f"{f.name} = EXCLUDED.{f.name}" for f in fields(Route))
     await owner.execute(
-        f"INSERT INTO pxos.installation ({_COLUMNS}) VALUES ({_PLACEHOLDERS})"
+        f"INSERT INTO guilda.installation ({_COLUMNS}) VALUES ({_PLACEHOLDERS})"
         f" ON CONFLICT (singleton) DO UPDATE SET {updates}",
         *astuple(route),
     )
@@ -182,7 +182,7 @@ class ModelGateway:
 
     async def route(self) -> Route:
         async with self._pool.acquire() as connection:
-            row = await connection.fetchrow(f"SELECT {_COLUMNS} FROM pxos.installation")
+            row = await connection.fetchrow(f"SELECT {_COLUMNS} FROM guilda.installation")
         if row is None:
             raise NoRoute("the installation has no route; it gets no model")
         return Route(**dict(row))

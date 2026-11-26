@@ -6,10 +6,13 @@ from pathlib import Path
 
 
 def prepare(source: Path):
+    project = json.loads((Path(__file__).resolve().parents[1] / "cloud.json").read_text())[
+        "project"
+    ]
     credentials = json.loads(source.read_text())
     if credentials.get("type") != "authorized_user":
         raise ValueError("a origem deve ser o ADC de usuário do projeto de spikes")
-    credentials["quota_project_id"] = "pxos-spikes"
+    credentials["quota_project_id"] = project
     target = Path(__file__).resolve().parents[1] / ".secrets"
     target.mkdir(mode=0o700, exist_ok=True)
     target.chmod(0o700)
@@ -21,10 +24,10 @@ def prepare(source: Path):
             {
                 "type": "impersonated_service_account",
                 "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/"
-                "spike-runner@pxos-spikes.iam.gserviceaccount.com:generateAccessToken",
+                f"spike-runner@{project}.iam.gserviceaccount.com:generateAccessToken",
                 "source_credentials": credentials,
                 "delegates": [],
-                "quota_project_id": "pxos-spikes",
+                "quota_project_id": project,
             }
         )
     )

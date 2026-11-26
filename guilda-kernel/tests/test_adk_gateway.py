@@ -1,4 +1,4 @@
-"""An ADK agent reaches a model only through the gateway (PXOS-73, ADR 0004 §2, rule 1).
+"""An ADK agent reaches a model only through the gateway (K73, ADR 0004 §2, rule 1).
 
 The gateway hands out an ADK model bound to the installation's route. The agent runs on
 the real ADK runner; only the provider behind the route is a fake, which records the
@@ -32,8 +32,8 @@ async def other_pool(other_database: Database) -> AsyncIterator[asyncpg.Pool]:
 
 async def ask(agent: LlmAgent, text: str) -> str:
     sessions = InMemorySessionService()
-    session = await sessions.create_session(app_name="pxos-test", user_id="erin")
-    runner = Runner(agent=agent, app_name="pxos-test", session_service=sessions)
+    session = await sessions.create_session(app_name="guilda-test", user_id="erin")
+    runner = Runner(agent=agent, app_name="guilda-test", session_service=sessions)
     answer = ""
     try:
         async for event in runner.run_async(

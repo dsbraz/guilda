@@ -1,9 +1,11 @@
+import json
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+SPIKE_PROJECT = json.loads((ROOT / "cloud.json").read_text())["project_id"]
 NEO4J_URI = "bolt://127.0.0.1:17687"
 
 
@@ -21,8 +23,10 @@ class Settings:
     def load(cls):
         project = os.environ.get("SPIKE_GCP_PROJECT", "")
         account = os.environ.get("SPIKE_GCP_ACCOUNT", "")
-        if not re.fullmatch(r"pxos-spikes(?:-[a-z0-9-]+)?", project):
-            raise ValueError("SPIKE_GCP_PROJECT deve ser o projeto exclusivo pxos-spikes[-sufixo]")
+        if not re.fullmatch(rf"{re.escape(SPIKE_PROJECT)}(?:-[a-z0-9-]+)?", project):
+            raise ValueError(
+                f"SPIKE_GCP_PROJECT deve ser o projeto exclusivo {SPIKE_PROJECT}[-sufixo]"
+            )
         if not account:
             raise ValueError("Defina SPIKE_GCP_ACCOUNT explicitamente")
         dim = int(os.environ.get("SPIKE_EMBEDDING_DIM", "768"))
@@ -44,4 +48,4 @@ class Settings:
 
 
 def neo4j_password():
-    return os.getenv("SPIKE_NEO4J_PASSWORD", "pxos-spike-local")
+    return os.getenv("SPIKE_NEO4J_PASSWORD", "guilda-spike-local")

@@ -82,7 +82,7 @@ não mudaria se o cliente fosse outro.
 
 - O K34 deixa de prever definições no Git e Agent Engine como padrão; o K36 deixa de
   decidir o motor. Itens novos cobrem a área web, a publicação governada, a composição de
-  workflows e a configuração da instalação (K65–K68 no backlog, PXOS-65 a 68).
+  workflows e a configuração da instalação (K65–K68 no backlog, K65 a 68).
 - Hospedagem do Temporal e dos workers, disponibilidade, residência, custo, retenção do
   histórico e atualização compatível com processos em andamento são gates de produção
   (K44, Fase 10). A escolha dos motores não define o provedor de hospedagem.

@@ -66,7 +66,7 @@ def save(path, value):
 
 class Experiment:
     def __init__(self, bank, directory, resume=False):
-        if not bank.startswith("pxos-hs-"):
+        if not bank.startswith("guilda-hs-"):
             raise ValueError("Banco fora do spike")
         self.bank = bank
         self.directory = Path(directory)
@@ -339,7 +339,7 @@ def main():
         finally:
             experiment.client.close()
         return
-    bank = f"pxos-hs-{args.variant}-" + uuid.uuid4().hex[:12]
+    bank = f"guilda-hs-{args.variant}-" + uuid.uuid4().hex[:12]
     experiment = Experiment(bank, args.output / bank)
     try:
         if args.variant == "purge":

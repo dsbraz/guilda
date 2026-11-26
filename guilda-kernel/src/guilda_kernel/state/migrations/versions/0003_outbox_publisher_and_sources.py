@@ -1,8 +1,8 @@
-"""Outbox publisher role and ingested sources (PXOS-52, PXOS-54).
+"""Outbox publisher role and ingested sources (K52, K54).
 
-- pxos_publisher reads the outbox and marks events published; it sees nothing else;
+- guilda_publisher reads the outbox and marks events published; it sees nothing else;
 - event payloads carry identifiers only, so the rejection reason leaves the outbox;
-- pxos.sources records each ingested source version once, without its content (the
+- guilda.sources records each ingested source version once, without its content (the
   text lives in the context memory alone); the application may only insert, so
   replaying a source is a no-op.
 """
@@ -15,16 +15,16 @@ down_revision = "0002"
 STATEMENTS = [
     """
     DO $$ BEGIN
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'pxos_publisher') THEN
-            CREATE ROLE pxos_publisher NOLOGIN NOSUPERUSER NOBYPASSRLS;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'guilda_publisher') THEN
+            CREATE ROLE guilda_publisher NOLOGIN NOSUPERUSER NOBYPASSRLS;
         END IF;
     END $$
     """,
-    "GRANT USAGE ON SCHEMA pxos TO pxos_publisher",
-    "GRANT SELECT, UPDATE (published_at) ON pxos.outbox TO pxos_publisher",
+    "GRANT USAGE ON SCHEMA guilda TO guilda_publisher",
+    "GRANT SELECT, UPDATE (published_at) ON guilda.outbox TO guilda_publisher",
     """
-    CREATE OR REPLACE FUNCTION pxos.review_record() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER SET search_path = pxos, pg_temp AS $$
+    CREATE OR REPLACE FUNCTION guilda.review_record() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = guilda, pg_temp AS $$
     DECLARE
         proposal proposals%ROWTYPE;
     BEGIN
@@ -55,15 +55,15 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TABLE pxos.sources (
+    CREATE TABLE guilda.sources (
         source text NOT NULL CHECK (source <> ''),
         version text NOT NULL CHECK (version <> ''),
-        ingested_by text NOT NULL DEFAULT pxos.current_actor(),
+        ingested_by text NOT NULL DEFAULT guilda.current_actor(),
         ingested_at timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (source, version)
     )
     """,
-    "GRANT INSERT (source, version) ON pxos.sources TO pxos_app",
+    "GRANT INSERT (source, version) ON guilda.sources TO guilda_app",
 ]
 
 

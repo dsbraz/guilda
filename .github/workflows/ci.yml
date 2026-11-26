@@ -18,12 +18,12 @@ jobs:
       postgres:
         image: pgvector/pgvector:0.8.1-pg16
         env:
-          POSTGRES_USER: pxos
-          POSTGRES_PASSWORD: pxos-local
-          POSTGRES_DB: pxos
+          POSTGRES_USER: guilda
+          POSTGRES_PASSWORD: guilda-local
+          POSTGRES_DB: guilda
         ports: ["25432:5432"]
         options: >-
-          --health-cmd "pg_isready -U pxos -d pxos"
+          --health-cmd "pg_isready -U guilda -d guilda"
           --health-interval 2s --health-timeout 3s --health-retries 30
     steps:
       - uses: actions/checkout@v7.0.1

@@ -1,4 +1,4 @@
-"""Approving is always a person's act (PXOS-88).
+"""Approving is always a person's act (K88).
 
 Delegation lets an agent read and propose with a person's roles, never review: the
 database refuses any review whose session actor is not an internal person acting for
@@ -12,8 +12,8 @@ down_revision = "0008"
 
 STATEMENTS = [
     """
-    CREATE FUNCTION pxos.review_policy() RETURNS trigger
-    LANGUAGE plpgsql SET search_path = pxos, pg_temp AS $$
+    CREATE FUNCTION guilda.review_policy() RETURNS trigger
+    LANGUAGE plpgsql SET search_path = guilda, pg_temp AS $$
     BEGIN
         IF NOT EXISTS (
             SELECT FROM actors WHERE id = current_actor() AND kind = 'internal_person'
@@ -26,10 +26,10 @@ STATEMENTS = [
     END $$
     """,
     """
-    CREATE TRIGGER review_policy BEFORE INSERT ON pxos.reviews
-    FOR EACH ROW EXECUTE FUNCTION pxos.review_policy()
+    CREATE TRIGGER review_policy BEFORE INSERT ON guilda.reviews
+    FOR EACH ROW EXECUTE FUNCTION guilda.review_policy()
     """,
-    "REVOKE ALL ON FUNCTION pxos.review_policy() FROM PUBLIC",
+    "REVOKE ALL ON FUNCTION guilda.review_policy() FROM PUBLIC",
 ]
 
 

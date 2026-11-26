@@ -1,4 +1,4 @@
-"""Outbox publisher (PXOS-52): deliver canonical events at least once.
+"""Outbox publisher (K52): deliver canonical events at least once.
 
 An event is marked published only after its handler returns, in the same transaction that
 locked it, so a failing handler gets the event again on the next run. Consumers must be
@@ -42,7 +42,7 @@ async def _deliver_next(connection: Connection, handlers: Mapping[str, Handler])
     async with connection.transaction():
         row = await connection.fetchrow(
             """
-            SELECT id, event_type, entity_id, payload, created_at FROM pxos.outbox
+            SELECT id, event_type, entity_id, payload, created_at FROM guilda.outbox
             WHERE published_at IS NULL
             ORDER BY id LIMIT 1
             FOR UPDATE SKIP LOCKED
@@ -55,6 +55,6 @@ async def _deliver_next(connection: Connection, handlers: Mapping[str, Handler])
         if handler is not None:
             await handler(event)
         await connection.execute(
-            "UPDATE pxos.outbox SET published_at = now() WHERE id = $1", event.id
+            "UPDATE guilda.outbox SET published_at = now() WHERE id = $1", event.id
         )
         return 0 if handler is None else 1

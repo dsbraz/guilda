@@ -72,7 +72,7 @@ def card() -> Card:
 
 def pem_pair() -> tuple[str, str]:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "pxos")])
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "guilda")])
     start = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
     certificate = (
         x509.CertificateBuilder()

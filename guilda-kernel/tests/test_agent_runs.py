@@ -1,4 +1,4 @@
-"""Agent runs are records the application cannot forge or change (PXOS-79, K34).
+"""Agent runs are records the application cannot forge or change (K79, K34).
 
 The run's agent comes from the session, and the revision must be one of that agent's
 approved versions. Only the agent runtime builds ADK agents, so every agent gets its model
@@ -31,13 +31,13 @@ async def test_the_application_cannot_forge_or_change_a_run(pool: asyncpg.Pool) 
     async with session(pool, AGENT) as connection:
         version = await approved_version(connection, AGENT)
     for statement in (
-        "UPDATE pxos.agent_runs SET revision = 1",
-        "DELETE FROM pxos.agent_runs",
+        "UPDATE guilda.agent_runs SET revision = 1",
+        "DELETE FROM guilda.agent_runs",
     ):
         async with session(pool, AGENT) as connection:
             with pytest.raises(asyncpg.InsufficientPrivilegeError):
                 await connection.execute(statement)
-    forge = "INSERT INTO pxos.agent_runs (definition, revision, context_ref) VALUES ($1, $2, $3)"
+    forge = "INSERT INTO guilda.agent_runs (definition, revision, context_ref) VALUES ($1, $2, $3)"
     for actor, revision in ((AGENT, version.revision + 100), ("paula", version.revision)):
         async with session(pool, actor) as connection:
             with pytest.raises(asyncpg.PostgresError) as refused:

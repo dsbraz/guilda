@@ -64,7 +64,7 @@ async def sync_meetings(
 async def state(pool: asyncpg.Pool, of: Meeting) -> str | None:
     async with pool.acquire() as connection:
         value = await connection.fetchval(
-            "SELECT state FROM pxos.source_states WHERE source = $1", f"meeting:{of.key}"
+            "SELECT state FROM guilda.source_states WHERE source = $1", f"meeting:{of.key}"
         )
     return None if value is None else str(value)
 
@@ -72,7 +72,7 @@ async def state(pool: asyncpg.Pool, of: Meeting) -> str | None:
 async def cursor(pool: asyncpg.Pool, source: FakeTranscriptSource) -> str | None:
     async with pool.acquire() as connection:
         value = await connection.fetchval(
-            "SELECT cursor FROM pxos.connector_cursors WHERE connector = $1", source.name
+            "SELECT cursor FROM guilda.connector_cursors WHERE connector = $1", source.name
         )
     return None if value is None else str(value)
 
@@ -358,17 +358,17 @@ async def test_no_transcript_text_is_stored_in_postgres(
     assert secret in store.memories[f"meeting:{weekly.key}"][0]
     owner = await asyncpg.connect(database.owner_dsn)
     try:
-        tables = await owner.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'pxos'")
+        tables = await owner.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'guilda'")
         found = [
             row["tablename"]
             for row in tables
             if await owner.fetchval(
-                f'SELECT count(*) FROM pxos."{row["tablename"]}" t WHERE t::text LIKE $1',
+                f'SELECT count(*) FROM guilda."{row["tablename"]}" t WHERE t::text LIKE $1',
                 f"%{secret}%",
             )
         ]
         kept = await owner.fetchval(
-            "SELECT count(*) FROM pxos.meeting_recordings WHERE recording = $1", only.id
+            "SELECT count(*) FROM guilda.meeting_recordings WHERE recording = $1", only.id
         )
     finally:
         await owner.close()
@@ -381,22 +381,22 @@ async def test_recordings_are_reached_by_agents_only(pool: asyncpg.Pool) -> None
     put(source, recording(meeting(), 1800))
     await sync_meetings(pool, store, source)
     insert = """
-        INSERT INTO pxos.meeting_recordings
+        INSERT INTO guilda.meeting_recordings
             (source, recording, meeting, organizer, start, title, version, seconds, access)
         VALUES ($1, 'rec-x', 'k', 'o', now(), 't', '1', 1, '{}')
     """
 
     async with session(pool, AGENT) as connection:
         assert await connection.fetchval(
-            "SELECT count(*) FROM pxos.meeting_recordings WHERE source = $1", source.name
+            "SELECT count(*) FROM guilda.meeting_recordings WHERE source = $1", source.name
         )
     async with session(pool, "carla") as connection:
-        assert await connection.fetchval("SELECT count(*) FROM pxos.meeting_recordings") == 0
+        assert await connection.fetchval("SELECT count(*) FROM guilda.meeting_recordings") == 0
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             await connection.execute(insert, source.name)
     async with pool.acquire() as connection:
         with pytest.raises(asyncpg.PostgresError, match="no actor"):
-            await connection.fetchval("SELECT count(*) FROM pxos.meeting_recordings")
+            await connection.fetchval("SELECT count(*) FROM guilda.meeting_recordings")
     async with session(pool, AGENT) as connection:
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
-            await connection.execute("TRUNCATE pxos.meeting_recordings")
+            await connection.execute("TRUNCATE guilda.meeting_recordings")

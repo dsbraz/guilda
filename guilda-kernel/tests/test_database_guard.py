@@ -1,4 +1,4 @@
-"""The database is the guardian (ADR 0003 §2; PXOS-50, PXOS-51).
+"""The database is the guardian (ADR 0003 §2; K50, K51).
 
 These tests send raw SQL as the application login, as a buggy application would, so a
 pass means the database refused, not the Python code.
@@ -43,15 +43,16 @@ async def test_application_login_has_no_owner_powers(database: Database) -> None
         )
         assert role is not None
         assert role["rolsuper"] is False and role["rolbypassrls"] is False
-        assert await connection.fetchval("SELECT pg_has_role(current_user, 'pxos_app', 'member')")
+        assert await connection.fetchval("SELECT pg_has_role(current_user, 'guilda_app', 'member')")
         owned = await connection.fetchval(
-            "SELECT count(*) FROM pg_tables WHERE schemaname = 'pxos' AND tableowner = current_user"
+            "SELECT count(*) FROM pg_tables "
+            "WHERE schemaname = 'guilda' AND tableowner = current_user"
         )
         assert owned == 0
         forced = await connection.fetch(
             """
             SELECT relname FROM pg_class
-            WHERE relnamespace = 'pxos'::regnamespace AND relforcerowsecurity
+            WHERE relnamespace = 'guilda'::regnamespace AND relforcerowsecurity
             """
         )
         assert {row["relname"] for row in forced} == {
@@ -69,26 +70,26 @@ async def test_application_login_has_no_owner_powers(database: Database) -> None
 @pytest.mark.parametrize(
     "statement",
     [
-        "UPDATE pxos.facts SET payload = '{}'",
-        "DELETE FROM pxos.facts",
-        "TRUNCATE pxos.facts",
-        "UPDATE pxos.proposals SET payload = '{}'",
-        "DELETE FROM pxos.proposals",
-        "UPDATE pxos.reviews SET decision = 'rejected'",
-        "DELETE FROM pxos.reviews",
-        "INSERT INTO pxos.facts (entity_id, revision, package, type_name, payload,"
+        "UPDATE guilda.facts SET payload = '{}'",
+        "DELETE FROM guilda.facts",
+        "TRUNCATE guilda.facts",
+        "UPDATE guilda.proposals SET payload = '{}'",
+        "DELETE FROM guilda.proposals",
+        "UPDATE guilda.reviews SET decision = 'rejected'",
+        "DELETE FROM guilda.reviews",
+        "INSERT INTO guilda.facts (entity_id, revision, package, type_name, payload,"
         " evidence, valid_from, proposal_id) VALUES (gen_random_uuid(), 1, 'retail',"
         " 'RestockOrder', '{}', '{}', now(), gen_random_uuid())",
-        "INSERT INTO pxos.outbox (event_type, entity_id, payload)"
+        "INSERT INTO guilda.outbox (event_type, entity_id, payload)"
         " VALUES ('x', gen_random_uuid(), '{}')",
-        "SELECT * FROM pxos.outbox",
-        "INSERT INTO pxos.actor_roles (actor_id, role) VALUES ('frank', 'store-manager')",
-        "UPDATE pxos.packages SET digest = 'x'",
-        "INSERT INTO pxos.channel_identities (channel_id, actor_id) VALUES ('chat:x', 'frank')",
-        "UPDATE pxos.channel_identities SET actor_id = 'frank'",
-        "UPDATE pxos.messages SET text = ''",
-        "DELETE FROM pxos.messages",
-        "INSERT INTO pxos.messages (thread, channel_message, cycle, sender, text, author)"
+        "SELECT * FROM guilda.outbox",
+        "INSERT INTO guilda.actor_roles (actor_id, role) VALUES ('frank', 'store-manager')",
+        "UPDATE guilda.packages SET digest = 'x'",
+        "INSERT INTO guilda.channel_identities (channel_id, actor_id) VALUES ('chat:x', 'frank')",
+        "UPDATE guilda.channel_identities SET actor_id = 'frank'",
+        "UPDATE guilda.messages SET text = ''",
+        "DELETE FROM guilda.messages",
+        "INSERT INTO guilda.messages (thread, channel_message, cycle, sender, text, author)"
         " VALUES ('t', 'm', 'c', 'chat:erin', 'x', 'carla')",
     ],
 )
@@ -104,7 +105,7 @@ async def test_reading_without_an_actor_is_refused(pool: asyncpg.Pool, registry:
     await approved_fact(pool, registry)
     async with pool.acquire() as connection:
         with pytest.raises(asyncpg.PostgresError) as error:
-            await connection.fetch("SELECT * FROM pxos.facts")
+            await connection.fetch("SELECT * FROM guilda.facts")
     assert error.value.sqlstate == "PX001"
 
 
@@ -115,10 +116,10 @@ async def test_pooled_connection_does_not_keep_the_previous_actor(
     single = await asyncpg.create_pool(database.app_dsn, min_size=1, max_size=1)
     try:
         async with session(single, "erin") as connection:
-            await connection.fetch("SELECT * FROM pxos.facts")
+            await connection.fetch("SELECT * FROM guilda.facts")
         async with single.acquire() as connection:
             with pytest.raises(asyncpg.PostgresError) as error:
-                await connection.fetch("SELECT * FROM pxos.facts")
+                await connection.fetch("SELECT * FROM guilda.facts")
         assert error.value.sqlstate == "PX001"
     finally:
         await single.close()
@@ -140,7 +141,7 @@ async def test_restricted_read_is_denied_by_the_database(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
     entity_id = await approved_fact(pool, registry)
-    unfiltered = "SELECT entity_id FROM pxos.facts WHERE entity_id = $1"
+    unfiltered = "SELECT entity_id FROM guilda.facts WHERE entity_id = $1"
 
     visible = {}
     for actor, on_behalf_of in [
@@ -180,7 +181,7 @@ async def test_author_and_reviewer_come_from_the_session(
     async with session(pool, "diego") as connection:
         row = await connection.fetchrow(
             """
-            INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest,
+            INSERT INTO guilda.reviews (proposal_id, decision, proposal_digest,
                                       reviewer, reviewer_principal)
             VALUES ($1, 'approved', $2, 'carla', 'carla') RETURNING reviewer
             """,
@@ -221,7 +222,7 @@ async def test_database_refuses_self_approval_and_missing_role(
         with pytest.raises(asyncpg.PostgresError) as error:
             await connection.execute(
                 """
-                INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest,
+                INSERT INTO guilda.reviews (proposal_id, decision, proposal_digest,
                                           reviewer, reviewer_principal)
                 VALUES ($1, 'approved', $2, '', '')
                 """,
@@ -232,14 +233,14 @@ async def test_database_refuses_self_approval_and_missing_role(
 
 
 EXTERNAL_STATEMENTS = [
-    "SELECT * FROM pxos.facts",
-    "SELECT * FROM pxos.proposals",
-    "SELECT * FROM pxos.reviews",
-    "INSERT INTO pxos.proposals (package, package_version, package_digest, action, type_name,"
+    "SELECT * FROM guilda.facts",
+    "SELECT * FROM guilda.proposals",
+    "SELECT * FROM guilda.reviews",
+    "INSERT INTO guilda.proposals (package, package_version, package_digest, action, type_name,"
     " entity_id, base_revision, valid_from, payload, evidence, digest) VALUES"
     " ('retail', '1', 'x', 'create_restock_order', 'RestockOrder', gen_random_uuid(), 0,"
     " now(), '{}', '{}', 'x')",
-    "INSERT INTO pxos.reviews (proposal_id, decision, proposal_digest)"
+    "INSERT INTO guilda.reviews (proposal_id, decision, proposal_digest)"
     " VALUES (gen_random_uuid(), 'approved', 'x')",
 ]
 
@@ -251,7 +252,7 @@ async def test_an_external_actor_reaches_no_internal_context(
     """Vera is external and holds store-manager; the database refuses her all the same."""
     await approved_fact(pool, registry)
     async with pool.acquire() as connection, connection.transaction():
-        await connection.execute("SELECT set_config('pxos.actor', 'vera', true)")
+        await connection.execute("SELECT set_config('guilda.actor', 'vera', true)")
         with pytest.raises(asyncpg.PostgresError) as error:
             await connection.execute(statement)
     assert error.value.sqlstate == "PX003"
@@ -267,11 +268,11 @@ async def test_a_session_for_or_on_behalf_of_an_external_actor_is_refused(
     owner = await asyncpg.connect(database.owner_dsn)
     try:
         await owner.execute(
-            "INSERT INTO pxos.delegations (agent_id, person_id) VALUES ('restock-agent', 'vera')"
+            "INSERT INTO guilda.delegations (agent_id, person_id) VALUES ('restock-agent', 'vera')"
         )
         with pytest.raises(NotAuthorized, match="vera is external"):
             async with session(pool, "restock-agent", "vera"):
                 pass
     finally:
-        await owner.execute("DELETE FROM pxos.delegations WHERE person_id = 'vera'")
+        await owner.execute("DELETE FROM guilda.delegations WHERE person_id = 'vera'")
         await owner.close()

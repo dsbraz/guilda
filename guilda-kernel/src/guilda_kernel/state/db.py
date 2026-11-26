@@ -18,7 +18,7 @@ async def create_pool(dsn: str) -> asyncpg.Pool:
 
 
 async def grant_connect(owner: asyncpg.Connection, *logins: str) -> None:
-    """Let ``logins`` connect to this installation's database, and nobody else (PXOS-63)."""
+    """Let ``logins`` connect to this installation's database, and nobody else (K63)."""
     for login in logins:
         statement = await owner.fetchval(
             "SELECT format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), $1::text)",

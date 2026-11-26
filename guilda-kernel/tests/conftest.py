@@ -63,7 +63,7 @@ RESTOCK_AGENT = {
 @pytest.fixture(scope="session")
 def database(registry: Registry) -> Database:
     """The kernel's installation, where the restock agent has an approved version."""
-    database = installation("pxos_test_kernel", registry, ROUTE)
+    database = installation("guilda_test_kernel", registry, ROUTE)
 
     async def published() -> None:
         pool = await create_pool(database.app_dsn)
@@ -78,8 +78,8 @@ def database(registry: Registry) -> Database:
 
 @pytest.fixture(scope="session")
 def other_database(registry: Registry) -> Database:
-    """A second installation with the same actors, to show they share nothing (PXOS-63)."""
-    return installation("pxos_test_other", registry, OTHER_ROUTE)
+    """A second installation with the same actors, to show they share nothing (K63)."""
+    return installation("guilda_test_other", registry, OTHER_ROUTE)
 
 
 @pytest.fixture

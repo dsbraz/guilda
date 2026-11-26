@@ -122,7 +122,8 @@ class MeetingConnector:
             except RecordingGone:
                 async with session(self._pool, self._agent) as connection:
                     await connection.execute(
-                        "DELETE FROM pxos.meeting_recordings WHERE source = $1 AND recording = $2",
+                        "DELETE FROM guilda.meeting_recordings "
+                        "WHERE source = $1 AND recording = $2",
                         self.name,
                         row["recording"],
                     )
@@ -146,7 +147,7 @@ class MeetingConnector:
 async def _record(connection: Connection, source: str, delta: RecordingChanges) -> None:
     await connection.executemany(
         """
-        INSERT INTO pxos.meeting_recordings
+        INSERT INTO guilda.meeting_recordings
             (source, recording, meeting, organizer, start, title, version, seconds, access)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (source, recording) DO UPDATE SET meeting = EXCLUDED.meeting,
@@ -160,7 +161,7 @@ async def _record(connection: Connection, source: str, delta: RecordingChanges) 
         ],
     )
     await connection.execute(
-        "DELETE FROM pxos.meeting_recordings WHERE source = $1 AND recording = ANY($2::text[])",
+        "DELETE FROM guilda.meeting_recordings WHERE source = $1 AND recording = ANY($2::text[])",
         source,
         list(delta.removed),
     )
@@ -169,18 +170,18 @@ async def _record(connection: Connection, source: str, delta: RecordingChanges) 
 _CHOSEN = """
     SELECT c.*, s.version AS ingested, s.retained
     FROM (
-        SELECT DISTINCT ON (meeting) * FROM pxos.meeting_recordings WHERE source = $1
+        SELECT DISTINCT ON (meeting) * FROM guilda.meeting_recordings WHERE source = $1
         ORDER BY meeting, seconds DESC, recording COLLATE "C"
     ) c
-    LEFT JOIN pxos.source_states s ON s.source = 'meeting:' || c.meeting
+    LEFT JOIN guilda.source_states s ON s.source = 'meeting:' || c.meeting
 """
 """Each meeting's chosen recording, with what was ingested for the meeting."""
 
 _ORPHANS = """
-    SELECT s.source FROM pxos.source_states s
+    SELECT s.source FROM guilda.source_states s
     WHERE s.connector = $1 AND s.state NOT IN ('deleted', 'no_access')
     AND NOT EXISTS (
-        SELECT FROM pxos.meeting_recordings r
+        SELECT FROM guilda.meeting_recordings r
         WHERE r.source = $1 AND 'meeting:' || r.meeting = s.source
     )
 """

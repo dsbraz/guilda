@@ -1,4 +1,4 @@
-"""Model access follows the route the installation was deployed with (PXOS-72, PRD §6.4,
+"""Model access follows the route the installation was deployed with (K72, PRD §6.4,
 ADR 0004 §2).
 
 Which provider, model and regions an installation uses is a deploy decision: the FDE sets
@@ -240,7 +240,7 @@ async def test_only_a_model_the_gateway_issued_counts_as_issued(pool: asyncpg.Po
 
 @pytest.fixture(scope="module")
 def unconfigured() -> Database:
-    return create_test_database("pxos_test_no_route")
+    return create_test_database("guilda_test_no_route")
 
 
 async def test_an_installation_without_a_route_gets_no_model(unconfigured: Database) -> None:
@@ -254,11 +254,11 @@ async def test_an_installation_without_a_route_gets_no_model(unconfigured: Datab
 
 async def test_the_application_reads_the_route_but_cannot_change_it(pool: asyncpg.Pool) -> None:
     async with pool.acquire() as connection:
-        assert await connection.fetchval("SELECT region FROM pxos.installation") == ROUTE.region
+        assert await connection.fetchval("SELECT region FROM guilda.installation") == ROUTE.region
         for statement in (
-            "UPDATE pxos.installation SET region = 'elsewhere'",
-            "DELETE FROM pxos.installation",
-            "INSERT INTO pxos.installation (provider, model, region, memory_model, memory_region,"
+            "UPDATE guilda.installation SET region = 'elsewhere'",
+            "DELETE FROM guilda.installation",
+            "INSERT INTO guilda.installation (provider, model, region, memory_model, memory_region,"
             " embedding_model, embedding_region) VALUES ('gemini', 'm', 'r', 'm', 'r', 'm', 'r')",
         ):
             with pytest.raises(asyncpg.InsufficientPrivilegeError):
@@ -270,17 +270,17 @@ async def test_a_new_deploy_replaces_the_route(unconfigured: Database) -> None:
     try:
         await install_route(owner, ROUTE)
         await install_route(owner, OTHER_ROUTE)
-        assert await owner.fetchval("SELECT count(*) FROM pxos.installation") == 1
-        assert await owner.fetchval("SELECT model FROM pxos.installation") == OTHER_ROUTE.model
+        assert await owner.fetchval("SELECT count(*) FROM guilda.installation") == 1
+        assert await owner.fetchval("SELECT model FROM guilda.installation") == OTHER_ROUTE.model
         with pytest.raises(asyncpg.CheckViolationError):
             await install_route(owner, replace(ROUTE, provider="other"))  # type: ignore[arg-type]
         with pytest.raises(asyncpg.CheckViolationError):
             await install_route(owner, replace(ROUTE, region=""))
         with pytest.raises(asyncpg.CheckViolationError):
             await install_route(owner, replace(ROUTE, output_price=Decimal(-1)))
-        assert await owner.fetchval("SELECT input_price FROM pxos.installation") == (
+        assert await owner.fetchval("SELECT input_price FROM guilda.installation") == (
             OTHER_ROUTE.input_price
         )
     finally:
-        await owner.execute("DELETE FROM pxos.installation")
+        await owner.execute("DELETE FROM guilda.installation")
         await owner.close()

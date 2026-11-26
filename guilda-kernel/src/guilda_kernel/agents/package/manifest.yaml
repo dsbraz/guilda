@@ -1,4 +1,4 @@
-name: pxos_agents
+name: guilda_agents
 version: 0.1.0
 types:
   - name: AgentVersion

@@ -20,12 +20,12 @@ def pending(issue: str, scope: str) -> pytest.MarkDecorator:
     return pytest.mark.xfail(raises=NotImplementedError, strict=True, reason=f"{issue}: {scope}")
 
 
-@pending("PXOS-30", "o mesmo MCP serve pessoas e agentes")
+@pending("K30", "o mesmo MCP serve pessoas e agentes")
 def test_req_01_same_context_for_people_and_agents() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-20", "ingestão automática por eventos")
+@pending("K20", "ingestão automática por eventos")
 def test_req_02_capture_without_discipline() -> None:
     raise NotImplementedError
 
@@ -55,7 +55,7 @@ async def test_req_03_every_fact_has_a_source(pool: asyncpg.Pool, registry: Regi
         with pytest.raises(asyncpg.CheckViolationError):
             await connection.execute(
                 """
-                INSERT INTO pxos.proposals (
+                INSERT INTO guilda.proposals (
                     package, package_version, package_digest, action, type_name, entity_id,
                     base_revision, valid_from, payload, evidence, digest,
                     author, author_principal
@@ -73,15 +73,15 @@ async def test_req_04_full_isolation_per_client(
     database: Database, other_database: Database, pool: asyncpg.Pool, registry: Registry
 ) -> None:
     """Each installation has its own database logins; inside one, the database denies a
-    restricted read even when the code forgets to filter (PXOS-63; the installation policy
-    is still PXOS-8)."""
+    restricted read even when the code forgets to filter (K63; the installation policy
+    is still K8)."""
     with pytest.raises(asyncpg.InsufficientPrivilegeError):
         await asyncpg.connect(on_database(other_database.app_dsn, database.name))
 
     async def raw_count(actor: str, table: str) -> int:
         async with pool.acquire() as connection, connection.transaction():
-            await connection.execute("SELECT set_config('pxos.actor', $1, true)", actor)
-            return int(await connection.fetchval(f"SELECT count(*) FROM pxos.{table}"))
+            await connection.execute("SELECT set_config('guilda.actor', $1, true)", actor)
+            return int(await connection.fetchval(f"SELECT count(*) FROM guilda.{table}"))
 
     async with session(pool, "erin") as connection:
         proposal = await propose(
@@ -103,7 +103,7 @@ async def test_req_05_identity_for_people_agents_and_external_actors(
     pool: asyncpg.Pool, registry: Registry
 ) -> None:
     """An agent acts under its own identity; an external actor, even one holding an internal
-    role, reaches no internal context, by session or by raw SQL (PXOS-61)."""
+    role, reaches no internal context, by session or by raw SQL (K61)."""
     async with session(pool, "restock-agent", "erin") as connection:
         proposal = await propose(
             connection,
@@ -120,46 +120,46 @@ async def test_req_05_identity_for_people_agents_and_external_actors(
             pass
 
     async with pool.acquire() as connection, connection.transaction():
-        await connection.execute("SELECT set_config('pxos.actor', 'vera', true)")
+        await connection.execute("SELECT set_config('guilda.actor', 'vera', true)")
         with pytest.raises(asyncpg.PostgresError, match="vera is external"):
-            await connection.fetch("SELECT * FROM pxos.proposals")
+            await connection.fetch("SELECT * FROM guilda.proposals")
 
 
-@pending("PXOS-31", "ação de agente com política e fase de autonomia")
+@pending("K31", "ação de agente com política e fase de autonomia")
 def test_req_06_action_with_policy_and_approval() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-33", "caminho síncrono para ação pré-aprovada")
+@pending("K33", "caminho síncrono para ação pré-aprovada")
 def test_req_07_action_in_conversation_time() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-21", "registros da operação no mesmo estado vivo")
+@pending("K21", "registros da operação no mesmo estado vivo")
 def test_req_08_work_and_operation_data() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-37", "job diário de manutenção com fila de revisão")
+@pending("K37", "job diário de manutenção com fila de revisão")
 def test_req_09_automatic_maintenance() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-41", "resultado medido contra linha de base auditável")
+@pending("K41", "resultado medido contra linha de base auditável")
 def test_req_10_measured_and_auditable_result() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-10, PXOS-11, PXOS-12", "pseudonimização, residência, consentimento, retenção")
+@pending("K10, K11, K12", "pseudonimização, residência, consentimento, retenção")
 def test_req_11_personal_data_protected() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-45", "auditoria de portabilidade no marco do kernel")
+@pending("K45", "auditoria de portabilidade no marco do kernel")
 def test_req_12_portability() -> None:
     raise NotImplementedError
 
 
-@pending("PXOS-42", "distribuição de referência feita só de módulos")
+@pending("K42", "distribuição de referência feita só de módulos")
 def test_req_13_small_and_extensible_kernel() -> None:
     raise NotImplementedError

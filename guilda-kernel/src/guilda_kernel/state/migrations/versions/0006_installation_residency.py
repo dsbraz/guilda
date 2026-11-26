@@ -1,4 +1,4 @@
-"""Each installation records the residency it requires (PXOS-72, PRD §6.4).
+"""Each installation records the residency it requires (K72, PRD §6.4).
 
 One row, written by the owner at bootstrap. The application reads it to route model calls
 and cannot change it: moving an installation to another residency is a decision for its
@@ -12,12 +12,12 @@ down_revision = "0005"
 
 STATEMENTS = [
     """
-    CREATE TABLE pxos.installation (
+    CREATE TABLE guilda.installation (
         singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
         residency text NOT NULL CHECK (residency IN ('br', 'global'))
     )
     """,
-    "GRANT SELECT ON pxos.installation TO pxos_app",
+    "GRANT SELECT ON guilda.installation TO guilda_app",
 ]
 
 

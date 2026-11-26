@@ -31,7 +31,7 @@ def dedicated_container():
     labels = info["Config"]["Labels"]
     bindings = info["NetworkSettings"]["Ports"].get("7687/tcp", [])
     if (
-        labels.get("com.docker.compose.project") != "pxos-graphiti-spike"
+        labels.get("com.docker.compose.project") != "guilda-graphiti-spike"
         or labels.get("com.docker.compose.service") != "neo4j"
         or bindings != [{"HostIp": "127.0.0.1", "HostPort": "17687"}]
     ):

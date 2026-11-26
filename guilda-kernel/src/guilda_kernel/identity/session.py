@@ -1,4 +1,4 @@
-"""The single place where a transaction gets its actor (ADR 0003 §2, PXOS-50)."""
+"""The single place where a transaction gets its actor (ADR 0003 §2, K50)."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -23,12 +23,13 @@ async def session(
     """Open a transaction whose actor (and principal, for delegation) the database sees."""
     async with pool.acquire() as connection, connection.transaction():
         await connection.execute(
-            "SELECT set_config('pxos.actor', $1, true), set_config('pxos.on_behalf_of', $2, true)",
+            "SELECT set_config('guilda.actor', $1, true), "
+            "set_config('guilda.on_behalf_of', $2, true)",
             actor,
             on_behalf_of or "",
         )
         try:
-            await connection.execute("SELECT pxos.current_actor()")
+            await connection.execute("SELECT guilda.current_actor()")
         except asyncpg.PostgresError as error:
             if error.sqlstate in {"PX001", "PX002", "PX003"}:
                 raise NotAuthorized(str(error)) from None

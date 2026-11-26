@@ -59,7 +59,7 @@
             "type": "object"
         }
     },
-    "$id": "https://pxos.example/fixtures/retail",
+    "$id": "https://guilda.example/fixtures/retail",
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "additionalProperties": true,
     "metamodel_version": "1.12.0",

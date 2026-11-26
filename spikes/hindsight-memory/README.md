@@ -9,13 +9,13 @@ Hindsight ao AlloyDB é o primeiro teste, não a conclusão.
 ## Ambiente
 
 - Hindsight API slim e cliente 1.2.1, Python 3.12, dependências em `uv.lock`.
-- Projeto GCP `pxos-spikes`, reutilizável; cluster exclusivo `hindsight-spike`, região `us-central1`.
+- Projeto GCP definido em `cloud.json`, reutilizável; cluster exclusivo `hindsight-spike`, região `us-central1`.
 - AlloyDB PostgreSQL 16, instância `primary`, 2 vCPUs, zonal, banco `hindsight_spike`.
 - pgvector, busca textual nativa em português e combinação RRF, sem outro reranker.
 - Gemini `gemini-3.8-flash` no Vertex global; `gemini-embedding-001` em `us-central1`, 768 dimensões.
 - API e Auth Proxy locais em `127.0.0.1:18888` e `127.0.0.1:15432`.
 - Auth Proxy 1.17.2 com IP público e IAM, sem redes externas autorizadas.
-- ADC isolado impersonando `spike-runner@pxos-spikes.iam.gserviceaccount.com`; nenhuma chave de conta de serviço.
+- ADC isolado impersonando a conta de serviço indicada em `cloud.json`; nenhuma chave de conta de serviço.
 
 São dados sintéticos. Endpoint global e banco nos EUA não validam uma política de residência brasileira.
 A aplicação local acessa o banco remoto; as latências incluem essa rede e não são benchmark de produção.
@@ -71,14 +71,14 @@ uv run ruff check spike tests
 Se a instância estiver parada, antes de iniciar o runtime:
 
 ```sh
-gcloud alloydb instances update primary --cluster=hindsight-spike --region=us-central1 --project=pxos-spikes --activation-policy=ALWAYS
+gcloud alloydb instances update primary --cluster=hindsight-spike --region=us-central1 --project="$(python3 -c 'import json; print(json.load(open("cloud.json"))["project"])')" --activation-policy=ALWAYS
 ```
 
 Aguardar `state=READY` antes de iniciar o runtime. O comando de atualização pode retornar
 antes de a transição terminar; conferir com:
 
 ```sh
-gcloud alloydb instances describe primary --cluster=hindsight-spike --region=us-central1 --project=pxos-spikes --format='value(state,activationPolicy)'
+gcloud alloydb instances describe primary --cluster=hindsight-spike --region=us-central1 --project="$(python3 -c 'import json; print(json.load(open("cloud.json"))["project"])')" --format='value(state,activationPolicy)'
 ```
 
 ## Renovar o login isolado
@@ -87,12 +87,12 @@ Concluir o login no próprio terminal. O segundo comando prepara a impersonaçã
 chaves locais existentes da API. O ADC global e o projeto ativo do gcloud não são alterados.
 
 ```sh
-CLOUDSDK_CONFIG=/tmp/pxos-spikes-auth gcloud auth application-default login --project=pxos-spikes
-uv run python -m spike.auth --source /tmp/pxos-spikes-auth/application_default_credentials.json
+CLOUDSDK_CONFIG=/tmp/guilda-spikes-auth gcloud auth application-default login --project="$(python3 -c 'import json; print(json.load(open("cloud.json"))["project"])')"
+uv run python -m spike.auth --source /tmp/guilda-spikes-auth/application_default_credentials.json
 ```
 
 A conta autenticada precisa de `roles/iam.serviceAccountTokenCreator` sobre a conta do spike.
-A conta do spike precisa de Vertex AI User, Service Usage Consumer e AlloyDB Client em `pxos-spikes`.
+A conta do spike precisa de Vertex AI User, Service Usage Consumer e AlloyDB Client no projeto indicado em `cloud.json`.
 
 ## Reconstituir a infraestrutura e o proxy
 
@@ -112,7 +112,7 @@ chmod 700 .tools/alloydb-auth-proxy
 
 ```sh
 uv run python -m spike.runtime stop
-gcloud alloydb instances update primary --cluster=hindsight-spike --region=us-central1 --project=pxos-spikes --activation-policy=NEVER
+gcloud alloydb instances update primary --cluster=hindsight-spike --region=us-central1 --project="$(python3 -c 'import json; print(json.load(open("cloud.json"))["project"])')" --activation-policy=NEVER
 ```
 
 Parar os processos locais não para o AlloyDB. Parar a instância preserva o cluster e os dados;

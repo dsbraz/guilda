@@ -37,7 +37,7 @@ def main():
     result = asyncio.run(inspect_database(dsn))
     with httpx.Client(base_url=API_URL, timeout=60) as client:
         result["health"] = client.get("/health").json()
-        route = "/v1/default/banks/pxos-hs-auth-check/memories/list"
+        route = "/v1/default/banks/guilda-hs-auth-check/memories/list"
         result["unauthenticated_status"] = client.get(route).status_code
         result["invalid_token_status"] = client.get(
             route, headers={"Authorization": "Bearer invalid-test"}

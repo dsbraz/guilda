@@ -1,4 +1,4 @@
-"""Context port contract (PXOS-53): one suite for every adapter, so the fake cannot drift.
+"""Context port contract (K53): one suite for every adapter, so the fake cannot drift.
 
 The Hindsight adapter runs only when GUILDA_HINDSIGHT_URL points to a running Hindsight
 (local, opt-in: it calls a real model). CI runs the fake.

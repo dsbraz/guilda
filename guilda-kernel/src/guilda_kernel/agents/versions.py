@@ -1,4 +1,4 @@
-"""Agent definitions as approved versions (PXOS-78, K34; ADR 0004 §3).
+"""Agent definitions as approved versions (K78, K34; ADR 0004 §3).
 
 A definition is a canonical type of the kernel's own package, so it goes through the same
 proposal cycle as any fact: a draft is a pending proposal, platform-admin approves, and
@@ -21,7 +21,7 @@ from guilda_kernel.identity import Connection, session
 from guilda_kernel.ontology import RegisteredPackage, Registry
 from guilda_kernel.state import Evidence, Fact, Proposal, current, get_proposal, propose
 
-AGENTS = "pxos_agents"
+AGENTS = "guilda_agents"
 PACKAGE_DIR = Path(__file__).resolve().parent / "package"
 
 
@@ -81,7 +81,7 @@ async def pinned_version(
     whatever is in force now, as the session can read it."""
     row = await connection.fetchrow(
         """
-        SELECT * FROM pxos.facts WHERE entity_id = $1 AND revision = $2
+        SELECT * FROM guilda.facts WHERE entity_id = $1 AND revision = $2
           AND package = $3 AND type_name = 'AgentVersion' AND payload->>'agent' = $4
         """,
         entity_id,
@@ -163,7 +163,7 @@ async def record_run(connection: Connection, version: AgentVersion, context_ref:
     """Record that the session's agent ran ``version`` on ``context_ref``."""
     row = await connection.fetchrow(
         """
-        INSERT INTO pxos.agent_runs (agent, definition, revision, context_ref)
+        INSERT INTO guilda.agent_runs (agent, definition, revision, context_ref)
         VALUES ('', $1, $2, $3) RETURNING *
         """,
         version.entity_id,

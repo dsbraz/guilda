@@ -1,6 +1,5 @@
 # Deploy numa VM do GCP
 
-Ao atualizar uma instalação anterior à renomeação, substitua o prefixo das chaves de configuração no arquivo privado com `sed -i 's/^PXOS_/GUILDA_/' deploy/.env` antes do próximo deploy. Aplique a mesma mudança às variáveis exportadas no ambiente. Conserve os valores de banco, fila Temporal e banco de memória, além dos identificadores dos recursos já provisionados.
 
 Uma instalação roda numa VM com Docker Compose: Postgres (pgvector), Temporal, Hindsight,
 o app (`python -m brq_at_work.serve`) e o Caddy, que é o único serviço com portas
@@ -9,6 +8,12 @@ com a conta de serviço da VM, sem arquivo de chave.
 
 Projeto, região, modelos e preços vêm de `deploy/.env`. São decisão de deploy, por
 cliente. Por padrão, use a região mais barata que atenda à residência exigida pelo cliente.
+
+Em instalações existentes, confira as chaves do ambiente privado com `.env.example`.
+Os comandos de provisionamento abaixo assumem um banco novo. Para reaproveitar um banco
+anterior à renomeação, migre os nomes dos schemas, papéis e identificadores de ontologia
+antes de trocar a versão da aplicação. Reaplicar o Compose a um banco já migrado pelo
+Alembic não executa as revisões antigas novamente.
 
 ## 1. Projeto, conta de serviço e VM
 
@@ -19,17 +24,17 @@ ZONA=us-central1-a
 gcloud config set project "$PROJETO"
 gcloud services enable compute.googleapis.com aiplatform.googleapis.com
 
-gcloud iam service-accounts create pxos-vm --display-name="Guilda VM"
+gcloud iam service-accounts create guilda-vm --display-name="Guilda VM"
 gcloud projects add-iam-policy-binding "$PROJETO" \
-  --member="serviceAccount:pxos-vm@$PROJETO.iam.gserviceaccount.com" \
+  --member="serviceAccount:guilda-vm@$PROJETO.iam.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 
-gcloud compute addresses create pxos-ip --region="$REGIAO"
-gcloud compute instances create pxos \
+gcloud compute addresses create guilda-ip --region="$REGIAO"
+gcloud compute instances create guilda \
   --zone="$ZONA" --machine-type=e2-standard-4 \
   --image-family=debian-12 --image-project=debian-cloud --boot-disk-size=50GB \
-  --address=pxos-ip --tags=pxos-https \
-  --service-account="pxos-vm@$PROJETO.iam.gserviceaccount.com" --scopes=cloud-platform
+  --address=guilda-ip --tags=guilda-https \
+  --service-account="guilda-vm@$PROJETO.iam.gserviceaccount.com" --scopes=cloud-platform
 ```
 
 Se o modelo dos agentes for Claude, habilite-o no Model Garden da Vertex, na região
@@ -41,10 +46,10 @@ Só HTTP e HTTPS ficam abertos ao mundo. A porta 80 serve ao desafio ACME e ao
 redirecionamento para HTTPS. O SSH entra pelo IAP.
 
 ```sh
-gcloud compute firewall-rules create pxos-https --network=default \
-  --target-tags=pxos-https --allow=tcp:80,tcp:443,udp:443 --source-ranges=0.0.0.0/0
-gcloud compute firewall-rules create pxos-ssh-iap --network=default \
-  --target-tags=pxos-https --allow=tcp:22 --source-ranges=35.235.240.0/20
+gcloud compute firewall-rules create guilda-https --network=default \
+  --target-tags=guilda-https --allow=tcp:80,tcp:443,udp:443 --source-ranges=0.0.0.0/0
+gcloud compute firewall-rules create guilda-ssh-iap --network=default \
+  --target-tags=guilda-https --allow=tcp:22 --source-ranges=35.235.240.0/20
 ```
 
 Se a rede tiver `default-allow-ssh` aberta para `0.0.0.0/0`, remova-a.
@@ -54,7 +59,7 @@ Se a rede tiver `default-allow-ssh` aberta para `0.0.0.0/0`, remova-a.
 Crie um registro A do domínio do bot (`GUILDA_DOMAIN`) para o IP reservado:
 
 ```sh
-gcloud compute addresses describe pxos-ip --region="$REGIAO" --format='value(address)'
+gcloud compute addresses describe guilda-ip --region="$REGIAO" --format='value(address)'
 ```
 
 O Caddy obtém e renova o certificado sozinho na primeira subida, desde que o DNS já
@@ -105,7 +110,7 @@ Passos da TI do cliente:
 ## 5. Subir
 
 ```sh
-gcloud compute ssh pxos --zone="$ZONA" --tunnel-through-iap
+gcloud compute ssh guilda --zone="$ZONA" --tunnel-through-iap
 # na VM:
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER" && newgrp docker
@@ -127,7 +132,7 @@ A UI do Temporal é opcional. Ela escuta só em loopback na VM e é acessada por
 
 ```sh
 docker compose -f deploy/compose.yaml --profile ui up -d temporal-ui
-gcloud compute ssh pxos --zone="$ZONA" --tunnel-through-iap -- -L 8080:127.0.0.1:8080
+gcloud compute ssh guilda --zone="$ZONA" --tunnel-through-iap -- -L 8080:127.0.0.1:8080
 # abra http://localhost:8080
 ```
 
@@ -149,11 +154,13 @@ O comando imprime o id da proposta.
 
 O mesmo compose roda na máquina do desenvolvedor com `deploy/compose.local.yaml`: sem
 Caddy, com o app em `127.0.0.1:8000` e com as credenciais Google do desenvolvedor no lugar
-da conta de serviço da VM. O projeto do compose se chama `pxos-local`, para não dividir
+da conta de serviço da VM. O projeto do compose se chama `guilda-local`, para não dividir
 containers nem volumes com o `compose.yaml` da raiz, que é o dos testes. Para não depender
 de admin do tenant nem de endpoint público, use as opções de desenvolvimento dos
 adaptadores: o login delegado do SharePoint, uma chave pessoal do Granola (plano Business
 ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados de cliente.
+
+O app acessa o Hindsight nativo do usuário em `127.0.0.1:8888`. Confira com `scripts/hindsight-local.sh`. PostgreSQL e Temporal do ambiente local publicam apenas no loopback, nas portas 25433 e 27233.
 
 1. **Vertex e identidades.** Use um projeto seu com a Vertex AI habilitada e uma conta
    de serviço só com `roles/aiplatform.user` nele. Grave a chave dela e as identidades
@@ -161,8 +168,8 @@ ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados
    precisam existir antes de subir: sem eles, o Docker cria diretórios no lugar.
 
    ```sh
-   P=<projeto>; SA=pxos-local@$P.iam.gserviceaccount.com
-   gcloud iam service-accounts create pxos-local --project $P
+   P=<projeto>; SA=guilda-local@$P.iam.gserviceaccount.com
+   gcloud iam service-accounts create guilda-local --project $P
    gcloud projects add-iam-policy-binding $P --member serviceAccount:$SA \
      --role roles/aiplatform.user --condition=None
    mkdir -p .secrets
@@ -185,7 +192,7 @@ ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados
    compartilhadas com você.
 4. **SharePoint sem admin.** Registre o app no Entra como o `.env.example` descreve
    (cliente público, permissões delegadas). Preencha `GUILDA_SHAREPOINT_TENANT`,
-   `GUILDA_SHAREPOINT_CLIENT_ID` e `GUILDA_SHAREPOINT_TOKEN_PATH=/var/lib/pxos/sharepoint-token`,
+   `GUILDA_SHAREPOINT_CLIENT_ID` e `GUILDA_SHAREPOINT_TOKEN_PATH=/var/lib/guilda/sharepoint-token`,
    sem segredo nem certificado, e faça o login uma vez, gravando o token no volume do
    app. Com `--link`, o comando também imprime `GUILDA_SHAREPOINT_DRIVE_ID` e
    `GUILDA_SHAREPOINT_FOLDER_ID`; copie os dois para o `deploy/.env`. Sem o drive, o app
@@ -194,7 +201,7 @@ ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados
    ```sh
    C="docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml"
    $C run --rm --no-deps app python -m guilda_sharepoint.login \
-     --tenant <tenant> --client-id <app> --token-path /var/lib/pxos/sharepoint-token \
+     --tenant <tenant> --client-id <app> --token-path /var/lib/guilda/sharepoint-token \
      --link '<link copiado da pasta>'
    ```
 
@@ -215,7 +222,7 @@ ou Enterprise) e o Telegram no lugar do Teams. Não use essas opções com dados
 
    ```sh
    $C run --rm --no-deps --entrypoint temporal temporal-namespace \
-     schedule trigger --schedule-id pxos-cycle-project-assistant --address temporal:7233
+     schedule trigger --schedule-id guilda-cycle-project-assistant --address temporal:7233
    ```
 
    O ciclo sincroniza as fontes, roda o agente e posta as perguntas no grupo ou manda o
