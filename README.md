@@ -1,5 +1,10 @@
 # Guilda — RH para Digital Workers
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/guilda-dark.png">
+  <img src="docs/brand/guilda.png" alt="Guilda" width="320">
+</picture>
+
 A visão da Guilda é dar às empresas uma forma de contratar, orientar, avaliar e desligar
 Digital Workers. Cada Digital Worker é um agente de IA com identidade duradoura na
 organização. Pessoas e workflows podem acionar o mesmo especialista. Cada conversa
@@ -26,6 +31,7 @@ O kernel está em construção, em fatias verticais (ver o roadmap); spikes são
 - [PRD v0.27](guilda-brq-work-prd.html) e [escopo do MVP: acompanhamento de projeto](guilda-brq-work-prd.html#mvp)
 - [Roadmap](ROADMAP.md) e [backlog](BACKLOG-KERNEL.md)
 - [Decisões de arquitetura](docs/adr/)
+- [Aplicações da marca — versões clara, escura e monocromática e ícone de app](docs/brand/aplicacoes.png)
 - [Ontologia e governança](spikes/ontology-governance/README.md)
 - [Graphiti](spikes/graphiti-memory/README.md) e [Hindsight](spikes/hindsight-memory/README.md)
 
