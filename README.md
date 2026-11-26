@@ -1,4 +1,22 @@
-# pxOS
+# pxOS — RH para Digital Workers
+
+A visão do pxOS é dar às empresas uma forma de contratar, orientar, avaliar e desligar
+Digital Workers. Cada Digital Worker é um agente de IA com identidade duradoura na
+organização. Pessoas e workflows podem acionar o mesmo especialista. Cada conversa
+privada mantém seu histórico, e o acesso aos dados respeita as permissões de quem o aciona.
+
+Ao contratar um Digital Worker, a empresa define por quais entregas ele responde e
+quem avalia seu trabalho. O engenheiro de implantação (FDE) configura seu comportamento,
+os workflows, as ferramentas e os limites de autonomia. O gestor avalia a qualidade e
+a pontualidade das entregas para ajustar as responsabilidades do especialista. No
+desligamento, a empresa encerra seus acessos e agendamentos, transfere as pendências
+e preserva a autoria do trabalho entregue.
+
+**BRQ@work é a instalação do pxOS na BRQ.** Ela reunirá vários Digital Workers.
+O primeiro, no piloto, é o especialista de acompanhamento de projeto que prepara o
+relatório semanal para revisão do PM.
+
+## Repositório
 
 Monorepo do kernel pxOS e suas distribuições, incluindo BRQ@work.
 O kernel está em construção, em fatias verticais (ver o roadmap); spikes são experimentos isolados.
